@@ -1,0 +1,59 @@
+'use client';
+
+import { CheckCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/Button';
+
+export default function OrderConfirmationPage() {
+  const orderNumber = `ORD-${Date.now()}`;
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+      <div className="bg-white border border-accent-2 rounded-lg p-8 md:p-12">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle className="w-12 h-12 text-green-500" />
+        </div>
+        
+        <h1 className="text-3xl font-bold text-primary mb-3">
+          Order Confirmed!
+        </h1>
+        <p className="text-grey mb-6">
+          Thank you for your purchase. Your order has been received and is being processed.
+        </p>
+
+        <div className="bg-accent-1 rounded-lg p-6 mb-8">
+          <p className="text-sm text-grey mb-1">Order Number</p>
+          <p className="text-2xl font-bold text-primary">{orderNumber}</p>
+        </div>
+
+        <div className="text-left mb-8 space-y-3">
+          <div className="flex justify-between py-2 border-b border-accent-2">
+            <span className="text-grey">Production Time</span>
+            <span className="font-semibold text-primary">3-5 business days</span>
+          </div>
+          <div className="flex justify-between py-2 border-b border-accent-2">
+            <span className="text-grey">Delivery Time</span>
+            <span className="font-semibold text-primary">5-7 business days</span>
+          </div>
+          <div className="flex justify-between py-2">
+            <span className="text-grey">Total Time</span>
+            <span className="font-semibold text-primary">8-12 business days</span>
+          </div>
+        </div>
+
+        <p className="text-sm text-grey mb-8">
+          You will receive an email confirmation shortly with your order details and tracking information.
+        </p>
+
+        <div className="space-y-3">
+          <Button asChild size="lg" className="w-full">
+            <Link href="/profile">View Order Details</Link>
+          </Button>
+          <Button asChild variant="outline" size="lg" className="w-full">
+            <Link href="/shop">Continue Shopping</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
