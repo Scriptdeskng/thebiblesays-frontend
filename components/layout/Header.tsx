@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { NavLink } from '../ui/Nav-Link';
 import { SearchInput } from '../ui/Search-Input';
 import { MobileSearchButton } from '../ui/Mobile-search';
+import { MobileSearchModal } from '../ui/MobileSearchModal';
 import { CurrencySelector } from '../ui/Currency-selector';
 import { useState } from 'react';
 import { RiMenu2Fill } from 'react-icons/ri';
@@ -16,6 +17,7 @@ import { CartModal } from '@/components/cart/CartModal';
 const Header = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [cartOpen, setCartOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
 
     const { items } = useCartStore();
     const cartCount = items.reduce((t, i) => t + i.quantity, 0);
@@ -100,7 +102,10 @@ const Header = () => {
                     </div>
 
                     <div className="flex flex-row items-center gap-5">
-                        <MobileSearchButton className="border-none p-0" />
+                        <MobileSearchButton 
+                            className="border-none p-0" 
+                            onClick={() => setSearchOpen(true)}
+                        />
 
                         <div className="relative">
                             <Button
@@ -145,11 +150,11 @@ const Header = () => {
                                 value="NGN"
                                 onChange={(c) => console.log("Selected currency:", c)}
                             />
-                            <li><Link href="/shop">Shop</Link></li>
-                            <li><Link href="/about">About us</Link></li>
-                            <li><Link href="/byom">B.Y.O.M</Link></li>
-                            <li><Link href="/faq">FAQs</Link></li>
-                            <li><Link href="/contact">Contact us</Link></li>
+                            <li><Link href="/shop" onClick={() => setMobileOpen(false)}>Shop</Link></li>
+                            <li><Link href="/about" onClick={() => setMobileOpen(false)}>About us</Link></li>
+                            <li><Link href="/byom" onClick={() => setMobileOpen(false)}>B.Y.O.M</Link></li>
+                            <li><Link href="/faq" onClick={() => setMobileOpen(false)}>FAQs</Link></li>
+                            <li><Link href="/contact" onClick={() => setMobileOpen(false)}>Contact us</Link></li>
                             <li><Button variant="ghost" className="p-0">My Account</Button></li>
                         </ul>
                     </div>
@@ -157,6 +162,7 @@ const Header = () => {
             </div>
 
             <CartModal isOpen={cartOpen} onClose={() => setCartOpen(false)} />
+            <MobileSearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
         </div>
     );
 };

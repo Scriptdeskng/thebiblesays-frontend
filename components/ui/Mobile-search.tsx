@@ -1,16 +1,11 @@
 import { Search } from "lucide-react";
 import { cn } from "@/utils/cn";
 
-interface MobileSearchButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface MobileSearchButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: React.ReactNode;
 }
 
-export function MobileSearchButton({
-  className,
-  icon,
-  ...props
-}: MobileSearchButtonProps) {
+export function MobileSearchButton({ className, icon, ...props }: MobileSearchButtonProps) {
   return (
     <button
       className={cn(

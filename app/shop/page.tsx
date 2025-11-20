@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 import { ProductCard } from '@/components/product/ProductCard';
 import { ShopFilters, FilterState } from '@/components/shop/ShopFilters';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { mockProducts } from '@/lib/mockData';
 import { Product } from '@/types/product.types';
 import { GrNext, GrPrevious } from 'react-icons/gr';
+import { useRouter } from "next/navigation";
 
 type SortOption =
   | 'featured'
@@ -20,6 +22,10 @@ type SortOption =
   | 'date-desc';
 
 export default function ShopPage() {
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('search') || '';
+  const router = useRouter();
+
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     colors: [],
@@ -32,6 +38,16 @@ export default function ShopPage() {
 
   const filteredProducts = useMemo(() => {
     let filtered = [...mockProducts];
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query) ||
+        p.description.toLowerCase().includes(query) ||
+        p.features.some(f => f.toLowerCase().includes(query))
+      );
+    }
 
     if (filters.categories.length > 0) {
       filtered = filtered.filter(p => filters.categories.includes(p.category));
@@ -74,7 +90,7 @@ export default function ShopPage() {
     }
 
     return filtered;
-  }, [filters, sortBy]);
+  }, [filters, sortBy, searchQuery]);
 
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -100,7 +116,14 @@ export default function ShopPage() {
 
   return (
     <div className="max-w-[1536px] mx-auto px-5 py-8 sm:px-10 xl:px-20">
-      <h1 className="text-3xl font-bold text-primary mb-8">Shop</h1>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-primary mb-2">Shop</h1>
+        {searchQuery && (
+          <p className="text-grey">
+            Search results for: <span className="font-semibold text-primary">"{searchQuery}"</span>
+          </p>
+        )}
+      </div>
 
       <div className="flex gap-8">
         <aside className="hidden lg:block w-64 shrink-0">
@@ -142,8 +165,16 @@ export default function ShopPage() {
             {Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} results
           </div>
 
-          {hasActiveFilters && (
+          {(hasActiveFilters || searchQuery) && (
             <div className="mb-6 flex flex-wrap gap-2">
+              {searchQuery && (
+                <Badge className="flex items-center gap-1">
+                  Search: {searchQuery}
+                  <button onClick={() => router.push('/shop')}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              )}
               {filters.categories.map(cat => (
                 <Badge key={cat} className="flex items-center gap-1">
                   {cat}
@@ -173,7 +204,27 @@ export default function ShopPage() {
 
           {paginatedProducts.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-grey text-lg">No products found</p>
+              <p className="text-grey text-lg mb-4">
+                {searchQuery
+                  ? `No products found for "${searchQuery}"`
+                  : 'No products found'}
+              </p>
+              {(hasActiveFilters || searchQuery) && (
+                <button
+                  onClick={() => {
+                    setFilters({
+                      categories: [],
+                      colors: [],
+                      sizes: [],
+                      priceRange: [5000, 1000000],
+                    });
+                    if (searchQuery) router.push('/shop');
+                  }}
+                  className="text-primary hover:underline"
+                >
+                  Clear all filters
+                </button>
+              )}
             </div>
           ) : (
             <>
