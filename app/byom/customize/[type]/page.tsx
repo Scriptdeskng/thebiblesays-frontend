@@ -231,7 +231,7 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
   };
 
   const currentDesign = customization[placement];
-  const merchImageUrl = `/byom/${resolvedParams.type}-${selectedColorName}.png`;
+  const merchImageUrl = `/byom/${resolvedParams.type}-${selectedColorName}.svg`;
 
   const livePreviewText = textInput.trim() ? (
     <div

@@ -57,7 +57,7 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
     const total = basePrice + customizationCost;
 
     const currentDesign = customization[currentView];
-    const merchImageUrl = `/byom/${resolvedParams.type}-${customization.colorName || 'black'}.png`;
+    const merchImageUrl = `/byom/${resolvedParams.type}-${customization.colorName || 'black'}.svg`;
 
     const handleAddToCart = () => {
         const byomProduct = {
