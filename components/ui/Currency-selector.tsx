@@ -3,13 +3,10 @@
 import { cn } from "@/utils/cn";
 import { useState } from "react";
 
-type Currency = "USD" | "NGN" | "EUR" | "GBP";
+type Currency = "NGN"
 
 const currencySymbols: Record<Currency, string> = {
-  USD: "$",
   NGN: "₦",
-  EUR: "€",
-  GBP: "£",
 };
 
 interface CurrencySelectorProps {
@@ -19,7 +16,7 @@ interface CurrencySelectorProps {
 }
 
 export function CurrencySelector({
-  value = "USD",
+  value = "NGN",
   onChange,
   className,
 }: CurrencySelectorProps) {

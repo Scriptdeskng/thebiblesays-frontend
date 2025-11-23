@@ -70,7 +70,9 @@ const Header = () => {
                         )}
                     </div>
 
-                    <Button variant="ghost" leftIcon={<CircleUserRound className="w-6 h-6 text-grey" />} />
+                    <Link href="/profile">
+                        <Button variant="ghost" leftIcon={<CircleUserRound className="w-6 h-6 text-grey" />} />
+                    </Link>
 
                     <CurrencySelector
                         value="NGN"
@@ -102,8 +104,8 @@ const Header = () => {
                     </div>
 
                     <div className="flex flex-row items-center gap-5">
-                        <MobileSearchButton 
-                            className="border-none p-0" 
+                        <MobileSearchButton
+                            className="border-none p-0"
                             onClick={() => setSearchOpen(true)}
                         />
 
@@ -155,7 +157,7 @@ const Header = () => {
                             <li><Link href="/byom" onClick={() => setMobileOpen(false)}>B.Y.O.M</Link></li>
                             <li><Link href="/faq" onClick={() => setMobileOpen(false)}>FAQs</Link></li>
                             <li><Link href="/contact" onClick={() => setMobileOpen(false)}>Contact us</Link></li>
-                            <li><Button variant="ghost" className="p-0">My Account</Button></li>
+                            <li><Link href="/profile"><Button variant="ghost" className="p-0">My Account</Button></Link></li>
                         </ul>
                     </div>
                 )}

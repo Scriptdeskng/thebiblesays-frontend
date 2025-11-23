@@ -62,14 +62,14 @@ const Footer = () => {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-10 xl:gap-16">
                     <div className="flex flex-col gap-3">
                         <h5 className="uppercase mb-2 sm:mb-5 font-bold">Support</h5>
-                        <Link href="/">FAQ</Link>
-                        <Link href="/">Terms of use</Link>
-                        <Link href="/">Privacy Policy</Link>
+                        <Link href="/faq">FAQ</Link>
+                        <Link href="/terms">Terms of use</Link>
+                        <Link href="/privacy">Privacy Policy</Link>
                     </div>
                     <div className="flex flex-col gap-3">
                         <h5 className="uppercase mb-2 sm:mb-5 font-bold">Company</h5>
                         <Link href="/about">About us</Link>
-                        <Link href="/">Contact</Link>
+                        <Link href="/contact">Contact</Link>
                     </div>
                     <div className="flex flex-col gap-3">
                         <h5 className="uppercase mb-2 sm:mb-5 font-bold">Shop</h5>

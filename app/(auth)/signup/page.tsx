@@ -90,7 +90,7 @@ function SignupPage() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">Create Account</h1>
           <p className="text-grey">Sign up to get started</p>
@@ -141,7 +141,7 @@ function SignupPage() {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 pr-12 border border-accent-2 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full px-4 py-2.5 pr-12 border border-accent-2 rounded-md focus:outline-none"
                 />
                 <button
                   type="button"
@@ -162,7 +162,7 @@ function SignupPage() {
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 pr-12 border border-accent-2 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full px-4 py-2.5 pr-12 border border-accent-2 rounded-md focus:outline-none"
                 />
                 <button
                   type="button"
