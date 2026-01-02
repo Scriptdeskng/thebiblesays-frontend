@@ -3,21 +3,25 @@ export interface Product {
   name: string;
   price: number;
   images: ProductImage[];
-  colors: ProductColor[];
-  sizes: Size[];
+
+  readonly colors: readonly ProductColor[];
+  readonly sizes: readonly Size[];
+
   category: Category;
   inStock: boolean;
   description: string;
   features: string[];
   rating: number;
   reviewCount: number;
+  slug?: string;
+  subcategory?: string;
   isFeatured?: boolean;
   isBestseller?: boolean;
 }
 
 export interface ProductImage {
   url: string;
-  color: string;
+  color?: string;
   alt: string;
 }
 

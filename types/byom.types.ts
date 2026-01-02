@@ -1,7 +1,7 @@
 import { Size } from './product.types';
 
 export type MerchType = 'tshirt' | 'longsleeve' | 'hoodie' | 'trouser' | 'short' | 'hat';
-export type PlacementZone = 'front' | 'back' | 'sleeve';
+export type PlacementZone = 'front' | 'back' | 'side';
 
 export interface CustomText {
   id: string;
@@ -37,7 +37,7 @@ export interface BYOMCustomization {
   size: Size;
   front: DesignSide;
   back: DesignSide;
-  sleeve?: DesignSide;
+  side: DesignSide;
 }
 
 export interface Sticker {
