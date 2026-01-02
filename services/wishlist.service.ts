@@ -1,0 +1,84 @@
+import makeRequest from '@/lib/api';
+
+interface ApiWishlistItem {
+  id: number;
+  product: {
+    id: number;
+    name: string;
+    slug: string;
+    featured_image: string;
+  };
+  min_price: string;
+  max_price: string;
+  price_range: string;
+  is_on_sale: string;
+  created_at: string;
+}
+
+class WishlistService {
+  async getWishlist(token: string): Promise<ApiWishlistItem[]> {
+    try {
+      const response = await makeRequest({
+        url: 'products/wishlist/',
+        method: 'GET',
+        requireToken: true,
+        token,
+      });
+
+      return response.results || [];
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+
+      if ((error as any)?.response?.status === 500) {
+        console.error('Backend error - check server logs');
+      }
+
+      return [];
+    }
+  }
+
+  async addToWishlist(token: string, productId: number): Promise<ApiWishlistItem> {
+    try {
+      const response = await makeRequest({
+        url: 'products/wishlist/',
+        method: 'POST',
+        requireToken: true,
+        token,
+        data: {
+          product_id: productId,
+        },
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error adding to wishlist:', error);
+      throw error;
+    }
+  }
+
+  async removeFromWishlist(token: string, wishlistItemId: number): Promise<void> {
+    try {
+      await makeRequest({
+        url: `products/wishlist/${wishlistItemId}/`,
+        method: 'DELETE',
+        requireToken: true,
+        token,
+      });
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+      throw error;
+    }
+  }
+
+  async isInWishlist(token: string, productId: number): Promise<boolean> {
+    try {
+      const wishlist = await this.getWishlist(token);
+      return wishlist.some(item => item.product.id === productId);
+    } catch (error) {
+      console.error('Error checking wishlist:', error);
+      return false;
+    }
+  }
+}
+
+export const wishlistService = new WishlistService();
