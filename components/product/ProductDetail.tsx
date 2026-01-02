@@ -12,6 +12,7 @@ import { formatPrice } from '@/utils/format';
 import { cn } from '@/utils/cn';
 import { FaStar } from 'react-icons/fa';
 import { ReviewSection } from './ReviewSection';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface ProductDetailsProps {
   product: Product;
@@ -26,18 +27,26 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
 
   const addItem = useCartStore((state) => state.addItem);
   const { isInWishlist, toggleItem } = useWishlistStore();
-  const isFavorite = isInWishlist(product.id);
+  const { accessToken } = useAuthStore();
+  const productIdString = product.id.toString();
+  const isFavorite = isInWishlist(productIdString);
 
   const currentImage = product.images.find(img => img.color === selectedColor) || product.images[0];
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     addItem({
       productId: product.id,
       product,
-      quantity,
+      quantity: quantity,
       color: selectedColor,
       size: selectedSize,
     });
+  };
+
+  const handleToggleFavorite = async () => {
+    await toggleItem(productIdString, accessToken || undefined);
   };
 
   return (
@@ -139,17 +148,17 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
               onClick={handleAddToCart}
               disabled={!product.inStock}
               className="flex-1"
-              leftIcon={<ShoppingCart className="w-5 h-5" />}
+              leftIcon={<ShoppingCart className="w-5 h-5 pr-1" />}
             >
               Add to Cart
             </Button>
             <Button
-              onClick={() => toggleItem(product.id)}
+              onClick={handleToggleFavorite}
               variant="outline"
               className={cn(isFavorite && "bg-red-50 border-red-500")}
             >
               <Heart className={cn(
-                "w-5 h-5",
+                "w-5 h-5 pr-1",
                 isFavorite && "fill-red-500 text-red-500"
               )} />
             </Button>

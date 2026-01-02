@@ -12,6 +12,17 @@ interface ProductSectionProps {
   products: Product[];
   bg?: string;
   link?: string;
+  loading?: boolean;
+}
+
+function ProductCardSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="bg-gray-200 aspect-square rounded-lg mb-4"></div>
+      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+    </div>
+  );
 }
 
 export function ProductSection({
@@ -20,6 +31,7 @@ export function ProductSection({
   products,
   bg = "white",
   link = "/shop",
+  loading = false,
 }: ProductSectionProps) {
   return (
     <section className={`py-16 ${bg === "white" ? "bg-white" : ""}`}>
@@ -32,14 +44,22 @@ export function ProductSection({
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {products.slice(0, 4).map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+          {loading ? (
+            Array.from({ length: 4 }).map((_, index) => (
+              <ProductCardSkeleton key={index} />
+            ))
+          ) : (
+            products.slice(0, 4).map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))
+          )}
         </div>
 
         <div className="mt-6 text-center lg:mt-8">
           <Link href={link}>
-            <Button variant="outline">View All</Button>
+            <Button variant="outline" disabled={loading}>
+              View All
+            </Button>
           </Link>
         </div>
       </div>

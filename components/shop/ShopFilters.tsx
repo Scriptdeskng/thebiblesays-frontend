@@ -2,15 +2,13 @@
 
 import { useState } from 'react';
 import { X, SlidersHorizontal } from 'lucide-react';
-import { Category, Size } from '@/types/product.types';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/utils/cn';
 
 export interface FilterState {
-  categories: Category[];
+  categories: string[];
   colors: string[];
-  sizes: Size[];
+  sizes: string[];
   priceRange: [number, number];
 }
 
@@ -20,7 +18,9 @@ interface ShopFiltersProps {
   isMobile?: boolean;
 }
 
-const categories: Category[] = ['Shirts', 'Caps', 'Hoodie', 'Headband', 'Hat', 'Jackets'];
+// Manual predefined options
+const categories = ['Shirts', 'Caps', 'Hoodie', 'Headband', 'Hat', 'Jackets', 'Polo', 'Sweat-shirt'];
+
 const colors = [
   { name: 'Black', hex: '#000000' },
   { name: 'White', hex: '#FFFFFF' },
@@ -29,13 +29,22 @@ const colors = [
   { name: 'Red', hex: '#FF0000' },
   { name: 'Green', hex: '#008000' },
   { name: 'Grey', hex: '#808080' },
+  { name: 'Blue', hex: '#0000FF' },
+  { name: 'Navy', hex: '#000080' },
+  { name: 'Beige', hex: '#F5F5DC' },
 ];
-const sizes: Size[] = ['S', 'M', 'L', 'XL', 'XXL'];
+
+const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '14', '18', '25'];
+
+// Fixed price range
+const MIN_PRICE = 0;
+const MAX_PRICE = 1000000;
+const PRICE_STEP = 5000;
 
 export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const toggleCategory = (category: Category) => {
+  const toggleCategory = (category: string) => {
     const newCategories = filters.categories.includes(category)
       ? filters.categories.filter(c => c !== category)
       : [...filters.categories, category];
@@ -49,7 +58,7 @@ export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFilters
     onChange({ ...filters, colors: newColors });
   };
 
-  const toggleSize = (size: Size) => {
+  const toggleSize = (size: string) => {
     const newSizes = filters.sizes.includes(size)
       ? filters.sizes.filter(s => s !== size)
       : [...filters.sizes, size];
@@ -69,7 +78,7 @@ export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFilters
                 onChange={() => toggleCategory(category)}
                 className="w-4 h-4 rounded border-accent-2 text-primary focus:ring-primary"
               />
-              <span className="text-grey">{category}</span>
+              <span className="text-grey capitalize">{category}</span>
             </label>
           ))}
         </div>
@@ -83,12 +92,20 @@ export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFilters
               key={color.name}
               onClick={() => toggleColor(color.name)}
               className={cn(
-                "w-7 h-7 rounded-full border-2 transition-all",
+                "w-8 h-8 rounded-full border-2 transition-all relative",
                 filters.colors.includes(color.name) ? "border-primary scale-110" : "border-accent-2"
               )}
               style={{ backgroundColor: color.hex }}
               title={color.name}
-            />
+            >
+              {filters.colors.includes(color.name) && (
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </span>
+              )}
+            </button>
           ))}
         </div>
       </div>
@@ -101,7 +118,7 @@ export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFilters
               key={size}
               onClick={() => toggleSize(size)}
               className={cn(
-                "px-4 py-2 border rounded-md font-medium transition-all",
+                "px-4 py-2 border rounded-md font-medium transition-all text-sm",
                 filters.sizes.includes(size)
                   ? "border-primary bg-primary text-white"
                   : "border-accent-2 text-grey hover:border-primary"
@@ -118,16 +135,22 @@ export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFilters
         <div className="space-y-3">
           <input
             type="range"
-            min="5000"
-            max="1000000"
-            step="5000"
+            min={MIN_PRICE}
+            max={MAX_PRICE}
+            step={PRICE_STEP}
             value={filters.priceRange[1]}
-            onChange={(e) => onChange({ ...filters, priceRange: [filters.priceRange[0], parseInt(e.target.value)] })}
+            onChange={(e) => onChange({ 
+              ...filters, 
+              priceRange: [MIN_PRICE, parseInt(e.target.value)] 
+            })}
             className="w-full accent-primary"
           />
           <div className="flex items-center justify-between text-sm text-grey">
-            <span>₦{filters.priceRange[0].toLocaleString()}</span>
+            <span>₦{MIN_PRICE.toLocaleString()}</span>
             <span>₦{filters.priceRange[1].toLocaleString()}</span>
+          </div>
+          <div className="text-xs text-grey text-center">
+            Showing products up to ₦{filters.priceRange[1].toLocaleString()}
           </div>
         </div>
       </div>

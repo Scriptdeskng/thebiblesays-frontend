@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useCartStore } from '@/store/useCartStore';
 import { useWishlistStore } from '@/store/useWishlistStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { formatPrice } from '@/utils/format';
 import { cn } from '@/utils/cn';
 
@@ -20,7 +21,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   const { isInWishlist, toggleItem } = useWishlistStore();
-  const isFavorite = isInWishlist(product.id);
+  const { accessToken } = useAuthStore();
+  const productIdString = product.id.toString();
+  const isFavorite = isInWishlist(productIdString);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -29,19 +32,19 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       productId: product.id,
       product,
       quantity: 1,
-      color: product.colors[0].name,
-      size: product.sizes[0],
+      color: product.colors[0]?.name || 'default',
+      size: product.sizes[0] || 'M',
     });
   };
 
-  const handleToggleFavorite = (e: React.MouseEvent) => {
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleItem(product.id);
+    await toggleItem(productIdString, accessToken || undefined);
   };
 
   return (
-    <Link href={`/shop/${product.id}`}>
+    <Link href={`/shop/${product.slug}`}>
       <div
         className="group relative bg-white rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300"
         onMouseEnter={() => setIsHovered(true)}
@@ -49,8 +52,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       >
         <div className="relative aspect-square overflow-hidden bg-accent-1">
           <Image
-            src={product.images[0].url}
-            alt={product.images[0].alt}
+            src={product.images[0]?.url || '/placeholder.png'}
+            alt={product.images[0]?.alt || product.name}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
