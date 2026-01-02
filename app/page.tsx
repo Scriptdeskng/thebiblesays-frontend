@@ -9,15 +9,22 @@ import Banner from "@/components/home/Banner";
 import Explore from "@/components/home/Explore";
 
 export default function Home() {
-    const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [bestsellers, setBestsellers] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadProducts = async () => {
-      const featured = await productService.getFeaturedProducts();
-      const best = await productService.getBestsellers();
-      setFeaturedProducts(featured);
-      setBestsellers(best);
+      try {
+        const [featured, best] = await Promise.all([
+          productService.getFeaturedProducts(),
+          productService.getBestsellers()
+        ]);
+        setFeaturedProducts(featured);
+        setBestsellers(best);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadProducts();
@@ -32,6 +39,7 @@ export default function Home() {
         subtitle="SHOP NOW"
         products={featuredProducts}
         bg="white"
+        loading={loading}
       />
 
       <Banner />
@@ -41,6 +49,7 @@ export default function Home() {
         subtitle="COMMUNITY FAVORITES"
         products={bestsellers}
         bg="white"
+        loading={loading}
       />
 
       <Explore />

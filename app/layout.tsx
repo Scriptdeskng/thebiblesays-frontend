@@ -29,7 +29,11 @@ export default function RootLayout({
         className={`${cabinetGrotesk.variable} antialiased`}
       >
         <Header />
-        {children}
+
+        <main className="flex-1">
+          {children}
+        </main>
+
         <Footer />
       </body>
     </html>

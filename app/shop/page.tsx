@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 import { ProductCard } from '@/components/product/ProductCard';
 import { ShopFilters, FilterState } from '@/components/shop/ShopFilters';
 import { Badge } from '@/components/ui/Badge';
-import { mockProducts } from '@/lib/mockData';
 import { Product } from '@/types/product.types';
 import { GrNext, GrPrevious } from 'react-icons/gr';
 import { useRouter } from "next/navigation";
+import { productService } from '@/services/product.service';
 
 type SortOption =
   | 'featured'
@@ -25,19 +25,39 @@ export default function ShopPage() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
   const router = useRouter();
-
+  
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     colors: [],
     sizes: [],
-    priceRange: [5000, 1000000],
+    priceRange: [0, 1000000],
   });
   const [sortBy, setSortBy] = useState<SortOption>('featured');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
+  useEffect(() => {
+    const loadProducts = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedProducts = await productService.getProducts();
+        setProducts(fetchedProducts);
+        
+      } catch (error) {
+        console.error('Error loading products:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
+
   const filteredProducts = useMemo(() => {
-    let filtered = [...mockProducts];
+    if (!products.length) return [];
+    let filtered = [...products];
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -45,23 +65,37 @@ export default function ShopPage() {
         p.name.toLowerCase().includes(query) ||
         p.category.toLowerCase().includes(query) ||
         p.description.toLowerCase().includes(query) ||
+        (p.subcategory && p.subcategory.toLowerCase().includes(query)) ||
         p.features.some(f => f.toLowerCase().includes(query))
       );
     }
 
     if (filters.categories.length > 0) {
-      filtered = filtered.filter(p => filters.categories.includes(p.category));
+      filtered = filtered.filter(p => 
+        filters.categories.some(cat => 
+          p.category.toLowerCase().includes(cat.toLowerCase()) ||
+          cat.toLowerCase().includes(p.category.toLowerCase())
+        )
+      );
     }
 
     if (filters.colors.length > 0) {
       filtered = filtered.filter(p =>
-        p.colors.some(c => filters.colors.includes(c.name))
+        p.colors.some(c => 
+          filters.colors.some(filterColor =>
+            c.name.toLowerCase() === filterColor.toLowerCase()
+          )
+        )
       );
     }
 
     if (filters.sizes.length > 0) {
       filtered = filtered.filter(p =>
-        p.sizes.some(s => filters.sizes.includes(s))
+        p.sizes.some(s => 
+          filters.sizes.some(filterSize =>
+            s.toString().toLowerCase() === filterSize.toString().toLowerCase()
+          )
+        )
       );
     }
 
@@ -90,7 +124,7 @@ export default function ShopPage() {
     }
 
     return filtered;
-  }, [filters, sortBy, searchQuery]);
+  }, [filters, sortBy, searchQuery, products]);
 
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -114,6 +148,21 @@ export default function ShopPage() {
     filters.colors.length > 0 ||
     filters.sizes.length > 0;
 
+  // Loading skeleton
+  const LoadingSkeleton = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="bg-white rounded-lg overflow-hidden animate-pulse">
+          <div className="aspect-square bg-accent-1" />
+          <div className="p-4 space-y-3">
+            <div className="h-4 bg-accent-1 rounded w-3/4" />
+            <div className="h-4 bg-accent-1 rounded w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="max-w-[1536px] mx-auto px-5 py-8 sm:px-10 xl:px-20">
       <div className="mb-6">
@@ -136,10 +185,12 @@ export default function ShopPage() {
               <ShopFilters filters={filters} onChange={setFilters} isMobile />
             </div>
 
-            <div className="text-sm text-grey hidden lg:block">
-              Showing {((currentPage - 1) * itemsPerPage) + 1}-
-              {Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} results
-            </div>
+            {!isLoading && (
+              <div className="text-sm text-grey hidden lg:block">
+                Showing {filteredProducts.length === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1}-
+                {Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} results
+              </div>
+            )}
 
             <div className='flex flex-row gap-2 items-center'>
               <label className='text-sm text-grey hidden sm:block'>SORT BY:</label>
@@ -147,6 +198,7 @@ export default function ShopPage() {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
                 className="px-3 py-2 border border-accent-2 rounded-md focus:outline-none"
+                disabled={isLoading}
               >
                 <option value="featured">Featured Listings</option>
                 <option value="new-arrivals">New Arrivals</option>
@@ -160,12 +212,14 @@ export default function ShopPage() {
             </div>
           </div>
 
-          <div className="text-sm text-grey mb-2 lg:hidden">
-            Showing {((currentPage - 1) * itemsPerPage) + 1}-
-            {Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} results
-          </div>
+          {!isLoading && (
+            <div className="text-sm text-grey mb-2 lg:hidden">
+              Showing {filteredProducts.length === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1}-
+              {Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} results
+            </div>
+          )}
 
-          {(hasActiveFilters || searchQuery) && (
+          {(hasActiveFilters || searchQuery) && !isLoading && (
             <div className="mb-6 flex flex-wrap gap-2">
               {searchQuery && (
                 <Badge className="flex items-center gap-1">
@@ -202,7 +256,9 @@ export default function ShopPage() {
             </div>
           )}
 
-          {paginatedProducts.length === 0 ? (
+          {isLoading ? (
+            <LoadingSkeleton />
+          ) : paginatedProducts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-grey text-lg mb-4">
                 {searchQuery
@@ -216,7 +272,7 @@ export default function ShopPage() {
                       categories: [],
                       colors: [],
                       sizes: [],
-                      priceRange: [5000, 1000000],
+                      priceRange: [0, 1000000],
                     });
                     if (searchQuery) router.push('/shop');
                   }}

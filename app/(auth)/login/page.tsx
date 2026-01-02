@@ -28,6 +28,7 @@ function LoginPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -37,7 +38,7 @@ function LoginPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
 
@@ -56,16 +57,16 @@ function LoginPage() {
       return;
     }
 
-    login({
-      id: '1',
-      firstName: 'John',
-      lastName: 'Doe',
-      email: formData.email,
-      phoneNumber: '+234 123 456 7890',
-    });
-
-    const redirect = searchParams.get('redirect') || '/';
-    router.push(redirect);
+    setIsLoading(true);
+    try {
+      await login(formData.email, formData.password);
+      const redirect = searchParams.get('redirect') || '/';
+      router.push(redirect);
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -125,8 +126,8 @@ function LoginPage() {
               </Link>
             </div>
 
-            <Button type="submit" size="lg" className="w-full">
-              Log In
+            <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Logging in...' : 'Log In'}
             </Button>
           </form>
 
