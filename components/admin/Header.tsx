@@ -57,50 +57,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
             <Menu size={24} />
           </button>
 
-          <div className="relative hidden lg:flex flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-admin-primary/49" size={20} />
-            <input
-              type="text"
-              placeholder="Search"
-              className="w-full text-admin-primary/80 pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none transition-all"
-            />
-          </div>
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-4">
-          <div className="relative hidden sm:flex" ref={currencyRef}>
-            <button
-              onClick={() => setShowCurrency(!showCurrency)}
-              className="flex items-center space-x-2 px-3 py-2 bg-white rounded-lg transition-all"
-            >
-              <span className="text-sm text-primary hidden sm:inline">
-                {selectedCurrency}
-              </span>
-              <span className="text-sm text-primary sm:hidden">
-                {selectedCurrency.split(' ')[1]}
-              </span>
-              <ChevronDown size={16} className="text-[#717182]" />
-            </button>
-
-            {showCurrency && (
-              <div className="absolute right-0 mt-2 w-40 bg-white border border-accent-2 rounded-lg shadow-lg py-2 z-50">
-                {currencies.map((currency) => (
-                  <button
-                    key={currency}
-                    onClick={() => {
-                      setSelectedCurrency(currency);
-                      setShowCurrency(false);
-                    }}
-                    className={`w-full px-4 py-2 text-left text-sm hover:bg-accent-1 transition-colors ${
-                      currency === selectedCurrency ? 'bg-accent-1 text-primary font-medium' : 'text-grey'
-                    }`}
-                  >
-                    {currency}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
           <div className="relative" ref={notificationRef}>
             <button
