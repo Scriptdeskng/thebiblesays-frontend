@@ -8,9 +8,15 @@
   --color-grey: #5C5F6A;
   --color-accent-1: #F6F6F6;
   --color-accent-2: #E9E9EB;
+  --color-accent-3: #EDEDED;
+  --color-admin-primary: #1A1A1A;
 }
 
 
 body {
   font-family: var(--font-cabinet-grotesk);
+}
+
+button {
+  @apply cursor-pointer
 }

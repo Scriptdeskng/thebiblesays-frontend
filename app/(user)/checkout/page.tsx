@@ -40,6 +40,7 @@ export default function CheckoutPage() {
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [saveAddress, setSaveAddress] = useState(true);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('payaza');
 
@@ -55,6 +56,18 @@ export default function CheckoutPage() {
     postal_code: '',
     country: 'Nigeria',
   });
+
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+        phoneNumber: user.phoneNumber || prev.phoneNumber,
+      }));
+    }
+  }, [user]);
 
   useEffect(() => {
     const loadAddresses = async () => {
@@ -100,12 +113,12 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (isAuthenticated && !useNewAddress && !selectedAddressId) {
+    if (isAuthenticated && addresses.length > 0 && !useNewAddress && !selectedAddressId) {
       toast.error('Please select a shipping address');
       return;
     }
 
-    if (useNewAddress || !isAuthenticated) {
+    if (useNewAddress || !isAuthenticated || (isAuthenticated && addresses.length === 0)) {
       if (!formData.firstName || !formData.lastName || !formData.email || 
           !formData.phoneNumber || !formData.address_line1 || !formData.city || 
           !formData.state) {
@@ -158,7 +171,6 @@ export default function CheckoutPage() {
         if (item.productId && item.productId !== '0') {
           orderItem.product_id = parseInt(item.productId);
         }
-
         if (item.customization) {
           orderItem.customization = item.customization;
         }
@@ -208,6 +220,32 @@ export default function CheckoutPage() {
       accessToken || undefined
     );
 
+    if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address) {
+      try {
+        const addressData: any = {
+          label: 'Home',
+          address_type: 'home' as const,
+          first_name: orderData.shipping_address.first_name,
+          last_name: orderData.shipping_address.last_name,
+          address_line1: orderData.shipping_address.address_line1,
+          city: orderData.shipping_address.city,
+          state: orderData.shipping_address.state,
+          postal_code: orderData.shipping_address.postal_code || '000000',
+          country: orderData.shipping_address.country,
+          phone: orderData.shipping_address.phone,
+          is_default: addresses.length === 0,
+        };
+        
+        if (orderData.shipping_address.address_line2) {
+          addressData.address_line2 = orderData.shipping_address.address_line2;
+        }
+        
+        await addressService.createAddress(accessToken, addressData);
+      } catch (error) {
+        console.error('Error saving address:', error);
+      }
+    }
+
     clearCart();
     window.location.href = paymentUrl;
   };
@@ -217,6 +255,32 @@ export default function CheckoutPage() {
       orderData,
       accessToken || undefined
     );
+
+    if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address) {
+      try {
+        const addressData: any = {
+          label: 'Home',
+          address_type: 'home' as const,
+          first_name: orderData.shipping_address.first_name,
+          last_name: orderData.shipping_address.last_name,
+          address_line1: orderData.shipping_address.address_line1,
+          city: orderData.shipping_address.city,
+          state: orderData.shipping_address.state,
+          postal_code: orderData.shipping_address.postal_code || '000000',
+          country: orderData.shipping_address.country,
+          phone: orderData.shipping_address.phone,
+          is_default: addresses.length === 0,
+        };
+        
+        if (orderData.shipping_address.address_line2) {
+          addressData.address_line2 = orderData.shipping_address.address_line2;
+        }
+        
+        await addressService.createAddress(accessToken, addressData);
+      } catch (error) {
+        console.error('Error saving address:', error);
+      }
+    }
 
     const shippingAddress = orderData.shipping_address || {
       first_name: formData.firstName,
@@ -249,7 +313,6 @@ export default function CheckoutPage() {
     const checkout = new PayazaCheckout(payazaData);
     checkout.showPopup();
   };
-
 
   const handlePayazaCallback = async (
     response: any,
@@ -304,7 +367,7 @@ export default function CheckoutPage() {
                   value={formData.firstName}
                   onChange={handleChange}
                   required
-                  disabled={isAuthenticated && !useNewAddress}
+                  disabled={isAuthenticated && !!user?.firstName && !useNewAddress}
                 />
                 <Input
                   label="Last Name"
@@ -312,7 +375,7 @@ export default function CheckoutPage() {
                   value={formData.lastName}
                   onChange={handleChange}
                   required
-                  disabled={isAuthenticated && !useNewAddress}
+                  disabled={isAuthenticated && !!user?.lastName && !useNewAddress}
                 />
                 <Input
                   label="Email Address"
@@ -330,7 +393,7 @@ export default function CheckoutPage() {
                   value={formData.phoneNumber}
                   onChange={handleChange}
                   required
-                  disabled={isAuthenticated && !useNewAddress}
+                  disabled={isAuthenticated && !!user?.phoneNumber && !useNewAddress}
                 />
               </div>
             </div>
@@ -451,6 +514,24 @@ export default function CheckoutPage() {
                       required
                     />
                   </div>
+
+                  {isAuthenticated && (
+                    <div className="flex items-start gap-3 p-4 bg-accent-1 rounded-lg mt-4">
+                      <input
+                        type="checkbox"
+                        id="saveAddress"
+                        checked={saveAddress}
+                        onChange={(e) => setSaveAddress(e.target.checked)}
+                        className="mt-1 w-4 h-4"
+                      />
+                      <label htmlFor="saveAddress" className="text-sm text-grey cursor-pointer">
+                        <span className="font-medium text-primary">Save this address to my profile</span>
+                        <br />
+                        This address will be saved for future orders
+                        {addresses.length === 0 && ' and set as your default address'}
+                      </label>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -458,7 +539,6 @@ export default function CheckoutPage() {
             <div className="bg-white border border-accent-2 rounded-lg p-6">
               <h2 className="text-xl font-bold text-primary mb-6">Payment Method</h2>
               <div className="space-y-3">
-                {/* Temporarily disabled - uncomment when ready to use */}
                 {/* <label className="flex items-center gap-3 p-4 border border-accent-2 rounded-lg cursor-pointer hover:border-primary transition-colors">
                   <input
                     type="radio"

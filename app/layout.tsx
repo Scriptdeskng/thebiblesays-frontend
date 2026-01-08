@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
 
 const cabinetGrotesk = localFont({
   variable: "--font-cabinet-grotesk",
@@ -20,22 +18,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body
-        className={`${cabinetGrotesk.variable} antialiased`}
-      >
-        <Header />
-
-        <main className="flex-1">
-          {children}
-        </main>
-
-        <Footer />
-      </body>
+      <body className={`${cabinetGrotesk.variable} antialiased`}>{children}</body>
     </html>
   );
 }
