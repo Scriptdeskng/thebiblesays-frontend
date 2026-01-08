@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Eye, Download, Ban, CheckCircle, Send, Filter, ArrowLeft, ShoppingBag, DollarSign, Bookmark } from 'lucide-react';
 import { Button, Modal, Badge, LoadingSpinner, Input, Textarea } from '@/components/admin/ui';
 import { User, SupportTicket, Order } from '@/types/admin.types';
-import { mockUsers, mockSupportTickets, mockOrders, apiService } from '@/services/api.service';
+import { mockUsers, mockSupportTickets, mockOrders, apiService } from '@/services/mock.service';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { PiShoppingBagDuotone } from 'react-icons/pi';
 import { CgShoppingBag } from 'react-icons/cg';

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Eye, Trash2, EyeOff, Filter, ChevronDown, Tag, X } from 'lucide-react';
 import { Button, Modal, Input, Select, Textarea, Badge, LoadingSpinner, EmptyState } from '@/components/admin/ui';
 import { Product, ProductCategory, ProductColor, ProductSize, ProductStatus } from '@/types/admin.types';
-import { mockProducts, AVAILABLE_COLORS, apiService } from '@/services/api.service';
+import { mockProducts, AVAILABLE_COLORS, apiService } from '@/services/mock.service';
 import { formatCurrency, getStatusColor } from '@/lib/utils';
 import CategoryDropdown from '@/components/admin/products/CategoryDropdown';
 import { PiEyeLight, PiEyeSlash, PiPencilSimpleLineLight } from 'react-icons/pi';
@@ -631,12 +631,11 @@ export default function ProductsPage() {
                                                 <th className="text-left font-medium text-admin-primary px-6 py-4">Amount</th>
                                                 <th className="text-left font-medium text-admin-primary px-6 py-4">Stock</th>
                                                 <th className="text-left font-medium text-admin-primary px-6 py-4">Status</th>
-                                                <th className="text-left font-medium text-admin-primary px-6 py-4">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {paginatedProducts.map((product) => (
-                                                <tr key={product.id} className="border-b border-accent-2 transition-colors bg-white">
+                                                <tr key={product.id} onClick={() => handleOpenForm(product)} className="border-b border-accent-2 transition-colors bg-white cursor-pointer">
                                                     <td className="px-6 py-4">
                                                         <div className="w-12 h-12 bg-accent-1 rounded-lg flex items-center justify-center">
                                                             {product.image ? (
@@ -665,35 +664,6 @@ export default function ProductsPage() {
                                                         <Badge variant={product.status === 'Active' ? 'success' : 'default'}>
                                                             {product.status}
                                                         </Badge>
-                                                    </td>
-
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center space-x-1">
-                                                            <button
-                                                                onClick={() => handleOpenForm(product)}
-                                                                className="p-2 hover:bg-accent-1 rounded-lg transition-colors"
-                                                                title="Edit"
-                                                            >
-                                                                <PiPencilSimpleLineLight size={20} className="text-admin-primary/90" />
-                                                            </button>
-                                                            <button
-                                                                className="p-2 hover:bg-accent-1 rounded-lg transition-colors"
-                                                                title="Toggle visibility"
-                                                            >
-                                                                {product.status === 'Active' ? (
-                                                                    <PiEyeLight size={20} className="text-admin-primary/90" />
-                                                                ) : (
-                                                                    <PiEyeSlash size={20} className="text-admin-primary/90" />
-                                                                )}
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDelete(product.id)}
-                                                                className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                                                                title="Delete"
-                                                            >
-                                                                <Trash2 size={18} className="text-[#CA0F04]" />
-                                                            </button>
-                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}

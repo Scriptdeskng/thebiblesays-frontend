@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Eye, Download, DollarSign, TrendingUp, ArrowLeft, Calendar, ChevronDown } from 'lucide-react';
 import { Button, Modal, Badge, LoadingSpinner, StatsCard, Textarea, StatsCard2 } from '@/components/admin/ui';
 import { Transaction, Settlement } from '@/types/admin.types';
-import { mockTransactions, mockSettlements, apiService } from '@/services/api.service';
+import { mockTransactions, mockSettlements, apiService } from '@/services/mock.service';
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils';
 import { TbMoneybag } from 'react-icons/tb';
 import { LuCalendarRange } from 'react-icons/lu';

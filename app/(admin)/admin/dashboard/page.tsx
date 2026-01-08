@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { StatsCard, LoadingSpinner, StatsCard2 } from '@/components/admin/ui';
-import { apiService, mockProducts, mockOrders } from '@/services/api.service';
+import { apiService, mockProducts, mockOrders } from '@/services/mock.service';
 import { formatCurrency, getStatusColor, calculatePercentage } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DashboardStats, SalesData } from '@/types/admin.types';
@@ -133,7 +133,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Sales Overview Chart */}
       <div className='mt-10'>
         <h2 className="text-xl font-medium text-admin-primary mb-4 lg:text-2xl">Sales Overview</h2>
         <div className="bg-admin-primary/4 rounded-xl p-6">
