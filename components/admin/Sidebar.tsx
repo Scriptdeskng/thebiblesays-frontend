@@ -80,7 +80,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <ul className="space-y-3">
                             {menuItems.map((item) => {
                                 const Icon = item.icon;
-                                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                                const isActive = pathname === item.href ||
+                                    (item.href !== '/admin/dashboard' && pathname.startsWith(item.href + '/'));
 
                                 return (
                                     <li key={item.href}>
@@ -99,7 +100,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                 }
                                     `}
                                         >
-                                            <Icon size={20}/>
+                                            <Icon size={20} />
                                             <span className="text-sm">{item.label}</span>
                                         </Link>
                                     </li>

@@ -32,11 +32,10 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsCategoryOpen((prev) => !prev)}
-        className="flex items-center gap-2 px-4 py-2 border border-accent-2 rounded-lg bg-accent-1 text-grey hover:bg-accent-2 transition"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-admin-primary transition"
       >
         <Filter size={18} />
         <span>{categoryFilter || 'All category'}</span>
-        <ChevronDown size={16} />
       </button>
 
       {isCategoryOpen && (
