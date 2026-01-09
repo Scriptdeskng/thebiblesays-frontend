@@ -1,18 +1,21 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import Image from 'next/image';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { useAuthStore } from "@/store/useAuthStore";
+import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { dashboardLogin, isAuthenticated } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    username: "",
+    password: "",
     rememberMe: false,
   });
 
@@ -20,13 +23,22 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      // Store auth token (mock)
-      localStorage.setItem('authToken', 'mock-token-' + Date.now());
-      router.push('/admin/dashboard');
-    }, 1500);
+    try {
+      await dashboardLogin(formData.username, formData.password);
+      toast.success("Logged in successfully!");
+      router.push("/admin/dashboard");
+    } catch (error) {
+      console.error("Login error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/admin/dashboard");
+    }
+  }, [isAuthenticated, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white px-4">
@@ -44,31 +56,41 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-primary mb-2">
-                Email Address
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-primary mb-2"
+              >
+                Username
               </label>
               <input
-                id="email"
-                type="email"
+                id="username"
+                type="text"
                 required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                value={formData.username}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value })
+                }
                 className="w-full px-4 py-3 border border-accent-2 rounded-lg focus:outline-none transition-all"
-                placeholder="admin@example.com"
+                placeholder="Enter your username"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-primary mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-primary mb-2"
+              >
                 Password
               </label>
               <div className="relative">
                 <input
                   id="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   required
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-accent-2 rounded-lg focus:outline-none transition-all pr-12"
                   placeholder="••••••••"
                 />
@@ -87,7 +109,9 @@ export default function LoginPage() {
                 <input
                   type="checkbox"
                   checked={formData.rememberMe}
-                  onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, rememberMe: e.target.checked })
+                  }
                   className="w-4 h-4 text-primary border-accent-2 rounded focus:ring-2 focus:ring-primary cursor-pointer"
                 />
                 <span className="ml-2 text-sm text-grey">Remember me</span>
@@ -112,17 +136,20 @@ export default function LoginPage() {
                   Signing in...
                 </>
               ) : (
-                'Sign In'
+                "Sign In"
               )}
             </button>
           </form>
 
-          <p className="text-center text-sm text-grey mt-6">
-            Don&apos;t have an account?{' '}
-            <Link href="/admin/auth/signup" className="text-primary hover:underline font-medium">
+          {/* <p className="text-center text-sm text-grey mt-6">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/admin/auth/signup"
+              className="text-primary hover:underline font-medium"
+            >
               Sign up
             </Link>
-          </p>
+          </p> */}
         </div>
       </div>
     </div>

@@ -1,9 +1,9 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { User } from '@/types/user.types';
-import { authService } from '@/services/auth.service';
-import toast from 'react-hot-toast';
-import { useCartStore } from './useCartStore';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { User } from "@/types/user.types";
+import { authService } from "@/services/auth.service";
+import toast from "react-hot-toast";
+import { useCartStore } from "./useCartStore";
 
 interface AuthState {
   user: User | null;
@@ -11,6 +11,7 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   login: (email: string, password: string) => Promise<void>;
+  dashboardLogin: (username: string, password: string) => Promise<void>;
   register: (data: {
     username: string;
     email: string;
@@ -43,12 +44,52 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             accessToken: tokens.access,
             refreshToken: tokens.refresh,
-            
           });
 
-          toast.success('Logged in successfully!');
+          toast.success("Logged in successfully!");
         } catch (error: any) {
-          toast.error(error?.response?.data?.detail || 'Login failed');
+          toast.error(error?.response?.data?.detail || "Login failed");
+          throw error;
+        }
+      },
+
+      dashboardLogin: async (username: string, password: string) => {
+        try {
+          const { user: adminUser, tokens } = await authService.dashboardLogin(
+            username,
+            password
+          );
+
+          if (!adminUser.is_superuser) {
+            toast.error("Access denied. Admin privileges required.");
+            throw new Error("Access denied. Admin privileges required.");
+          }
+
+          const user: User = {
+            id: adminUser.id,
+            firstName: adminUser.first_name,
+            lastName: adminUser.last_name,
+            email: adminUser.email,
+            phoneNumber: "",
+          };
+
+          set({
+            user,
+            isAuthenticated: true,
+            accessToken: tokens.access,
+            refreshToken: tokens.refresh,
+          });
+
+          localStorage.setItem("authToken", tokens.access);
+          localStorage.setItem("refreshToken", tokens.refresh);
+        } catch (error: any) {
+          if (!error?.message?.includes("Access denied")) {
+            toast.error(
+              error?.response?.data?.detail ||
+                error?.response?.data?.message ||
+                "Login failed"
+            );
+          }
           throw error;
         }
       },
@@ -62,12 +103,13 @@ export const useAuthStore = create<AuthState>()(
             accessToken: tokens.access,
             refreshToken: tokens.refresh,
           });
-                    
-          toast.success('Account created successfully!');
+
+          toast.success("Account created successfully!");
         } catch (error: any) {
-          const errorMsg = error?.response?.data?.email?.[0] || 
-                          error?.response?.data?.password1?.[0] ||
-                          'Registration failed';
+          const errorMsg =
+            error?.response?.data?.email?.[0] ||
+            error?.response?.data?.password1?.[0] ||
+            "Registration failed";
           toast.error(errorMsg);
           throw error;
         }
@@ -80,7 +122,7 @@ export const useAuthStore = create<AuthState>()(
             await authService.logout(accessToken);
           }
         } catch (error) {
-          console.error('Logout error:', error);
+          console.error("Logout error:", error);
         } finally {
           set({
             user: null,
@@ -89,9 +131,12 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: null,
           });
 
-          const cartStore = useCartStore.getState();   
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("refreshToken");
+
+          const cartStore = useCartStore.getState();
           cartStore.clearCart();
-          toast.success('Logged out successfully');
+          toast.success("Logged out successfully");
         }
       },
 
@@ -100,11 +145,14 @@ export const useAuthStore = create<AuthState>()(
         if (!accessToken || !user) return;
 
         try {
-          const updatedUser = await authService.updateProfile(accessToken, updates);
+          const updatedUser = await authService.updateProfile(
+            accessToken,
+            updates
+          );
           set({ user: updatedUser });
-          toast.success('Profile updated successfully!');
+          toast.success("Profile updated successfully!");
         } catch (error: any) {
-          toast.error('Failed to update profile');
+          toast.error("Failed to update profile");
           throw error;
         }
       },
@@ -123,13 +171,13 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: tokens.refresh,
           });
         } catch (error) {
-          console.error('Token refresh failed:', error);
+          console.error("Token refresh failed:", error);
           get().logout();
         }
       },
     }),
     {
-      name: 'auth-storage',
+      name: "auth-storage",
     }
   )
 );

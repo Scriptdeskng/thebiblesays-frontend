@@ -1,4 +1,4 @@
-import makeRequest from '@/lib/api';
+import makeRequest, { API_URL } from '@/lib/api';
 import { User } from '@/types/user.types';
 
 interface LoginResponse {
@@ -19,6 +19,19 @@ interface LoginResponse {
 }
 
 interface RegisterResponse extends LoginResponse {}
+
+interface DashboardLoginResponse {
+  access: string;
+  refresh: string;
+  user: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    is_staff: boolean;
+    is_superuser: boolean;
+  };
+}
 
 class AuthService {
   private transformUser(apiUser: LoginResponse['user']): User {
@@ -219,6 +232,33 @@ class AuthService {
       };
     } catch (error) {
       console.error('Error refreshing token:', error);
+      throw error;
+    }
+  }
+
+  async dashboardLogin(username: string, password: string): Promise<{ user: DashboardLoginResponse['user']; tokens: { access: string; refresh: string } }> {
+    try {
+      const response: DashboardLoginResponse = await makeRequest({
+        url: `${API_URL}/dashboard/auth/login/`,
+        method: 'POST',
+        data: {
+          username,
+          password,
+        },
+      });
+
+      return {
+        user: response.user,
+        tokens: {
+          access: response.access,
+          refresh: response.refresh,
+        },
+      };
+    } catch (error: any) {
+      console.error('Dashboard login error:', error);
+      if (error?.response?.data) {
+        console.error('API Error Response:', error.response.data);
+      }
       throw error;
     }
   }

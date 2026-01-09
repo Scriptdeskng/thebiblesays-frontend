@@ -1,28 +1,48 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { Search, Bell, Menu, ChevronDown } from 'lucide-react';
-import { useClickOutside } from '@/hooks/useCommon';
-import { FaBell } from 'react-icons/fa6';
+import { useState, useRef } from "react";
+import { Menu } from "lucide-react";
+import { useClickOutside } from "@/hooks/useCommon";
+import { FaBell } from "react-icons/fa6";
+import { useAuthStore } from "@/store/useAuthStore";
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
-const currencies = ['NGN (₦)',];
+// const currencies = ["NGN (₦)"];
 
 const notifications = [
-  { id: 1, title: 'New Order #ORD-2024-003', message: 'Order received from John Doe', time: '5 mins ago', unread: true },
-  { id: 2, title: 'Low Stock Alert', message: 'Faith Over Fear T-Shirt is running low', time: '1 hour ago', unread: true },
-  { id: 3, title: 'Custom Merch Pending', message: '2 new custom designs awaiting review', time: '2 hours ago', unread: false },
+  {
+    id: 1,
+    title: "New Order #ORD-2024-003",
+    message: "Order received from John Doe",
+    time: "5 mins ago",
+    unread: true,
+  },
+  {
+    id: 2,
+    title: "Low Stock Alert",
+    message: "Faith Over Fear T-Shirt is running low",
+    time: "1 hour ago",
+    unread: true,
+  },
+  {
+    id: 3,
+    title: "Custom Merch Pending",
+    message: "2 new custom designs awaiting review",
+    time: "2 hours ago",
+    unread: false,
+  },
 ];
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCurrency, setShowCurrency] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState(currencies[0]);
-  const [user, setUser] = useState<any>(null);
+  // const [selectedCurrency, setSelectedCurrency] = useState(currencies[0]);
+
+  const { user, isAuthenticated, logout } = useAuthStore();
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const currencyRef = useRef<HTMLDivElement>(null);
@@ -32,19 +52,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   useClickOutside(currencyRef, () => setShowCurrency(false));
   useClickOutside(profileRef, () => setShowProfile(false));
 
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      // Mock user data - replace with actual API call
-      setUser({
-        name: 'Admin User',
-        email: 'admin@churchmerch.com',
-        image: null,
-      });
-    }
-  }, []);
-
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-64 z-30 bg-white lg:pt-5">
@@ -56,11 +64,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
           >
             <Menu size={24} />
           </button>
-
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-4">
-
           <div className="relative" ref={notificationRef}>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
@@ -84,12 +90,18 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     <div
                       key={notification.id}
                       className={`p-4 border-b border-accent-2 hover:bg-accent-1 transition-colors cursor-pointer ${
-                        notification.unread ? 'bg-blue-50' : ''
+                        notification.unread ? "bg-blue-50" : ""
                       }`}
                     >
-                      <h4 className="text-sm font-semibold text-primary mb-1">{notification.title}</h4>
-                      <p className="text-xs text-grey mb-1">{notification.message}</p>
-                      <span className="text-xs text-grey">{notification.time}</span>
+                      <h4 className="text-sm font-semibold text-primary mb-1">
+                        {notification.title}
+                      </h4>
+                      <p className="text-xs text-grey mb-1">
+                        {notification.message}
+                      </p>
+                      <span className="text-xs text-grey">
+                        {notification.time}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -103,7 +115,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           </div>
 
           {/* User Profile or Sign In */}
-          {user ? (
+          {user && isAuthenticated ? (
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setShowProfile(!showProfile)}
@@ -111,11 +123,17 @@ export default function Header({ onMenuClick }: HeaderProps) {
               >
                 <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
-                    {user.name.charAt(0)}
+                    {user.firstName?.charAt(0) ||
+                      user.email?.charAt(0).toUpperCase() ||
+                      "A"}
                   </span>
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className=" text-admin-primary/81">{user.name}</p>
+                  <p className=" text-admin-primary/81">
+                    {user.firstName && user.lastName
+                      ? `${user.firstName} ${user.lastName}`
+                      : "Admin User"}
+                  </p>
                   <p className="text-sm text-admin-primary/50">{user.email}</p>
                 </div>
               </button>
@@ -129,9 +147,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     Profile Settings
                   </a>
                   <button
-                    onClick={() => {
-                      localStorage.removeItem('authToken');
-                      window.location.href = '/admin/auth/login';
+                    onClick={async () => {
+                      await logout();
+                      window.location.href = "/admin/auth/login";
                     }}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                   >

@@ -3,17 +3,32 @@ export interface User {
   name: string;
   email: string;
   image?: string;
-  role: 'admin' | 'manager' | 'staff';
-  status: 'active' | 'inactive' | 'flagged';
+  role: "admin" | "manager" | "staff";
+  status: "active" | "inactive" | "flagged";
   ordersCount: number;
   amountSpent: number;
   lastActive: string;
   createdAt: string;
 }
 
-export type ProductSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | '3XL' | '4XL' | '5XL';
-export type ProductCategory = 'Shirts' | 'Caps' | 'Hoodie' | 'Headband' | 'Hat' | 'Jackets';
-export type ProductStatus = 'Active' | 'Inactive';
+export type ProductSize =
+  | "XS"
+  | "S"
+  | "M"
+  | "L"
+  | "XL"
+  | "XXL"
+  | "3XL"
+  | "4XL"
+  | "5XL";
+export type ProductCategory =
+  | "Shirts"
+  | "Caps"
+  | "Hoodie"
+  | "Headband"
+  | "Hat"
+  | "Jackets";
+export type ProductStatus = "Active" | "Inactive";
 
 export interface ProductColor {
   name: string;
@@ -21,26 +36,26 @@ export interface ProductColor {
 }
 
 export const AVAILABLE_COLORS: ProductColor[] = [
-  { name: 'Black', hex: '#000000' },
-  { name: 'White', hex: '#FFFFFF' },
-  { name: 'Navy', hex: '#001F3F' },
-  { name: 'Grey', hex: '#808080' },
-  { name: 'Red', hex: '#FF4136' },
-  { name: 'Blue', hex: '#0074D9' },
-  { name: 'Green', hex: '#2ECC40' },
-  { name: 'Yellow', hex: '#FFDC00' },
-  { name: 'Orange', hex: '#FF851B' },
-  { name: 'Purple', hex: '#B10DC9' },
-  { name: 'Pink', hex: '#F012BE' },
-  { name: 'Teal', hex: '#39CCCC' },
-  { name: 'Maroon', hex: '#85144B' },
-  { name: 'Brown', hex: '#8B4513' },
-  { name: 'Beige', hex: '#F5F5DC' },
-  { name: 'Olive', hex: '#808000' },
-  { name: 'Cyan', hex: '#00FFFF' },
-  { name: 'Magenta', hex: '#FF00FF' },
-  { name: 'Lime', hex: '#00FF00' },
-  { name: 'Indigo', hex: '#4B0082' },
+  { name: "Black", hex: "#000000" },
+  { name: "White", hex: "#FFFFFF" },
+  { name: "Navy", hex: "#001F3F" },
+  { name: "Grey", hex: "#808080" },
+  { name: "Red", hex: "#FF4136" },
+  { name: "Blue", hex: "#0074D9" },
+  { name: "Green", hex: "#2ECC40" },
+  { name: "Yellow", hex: "#FFDC00" },
+  { name: "Orange", hex: "#FF851B" },
+  { name: "Purple", hex: "#B10DC9" },
+  { name: "Pink", hex: "#F012BE" },
+  { name: "Teal", hex: "#39CCCC" },
+  { name: "Maroon", hex: "#85144B" },
+  { name: "Brown", hex: "#8B4513" },
+  { name: "Beige", hex: "#F5F5DC" },
+  { name: "Olive", hex: "#808000" },
+  { name: "Cyan", hex: "#00FFFF" },
+  { name: "Magenta", hex: "#FF00FF" },
+  { name: "Lime", hex: "#00FF00" },
+  { name: "Indigo", hex: "#4B0082" },
 ];
 
 export interface Product {
@@ -60,9 +75,14 @@ export interface Product {
   tags?: string[];
 }
 
-export type OrderStatus = 'delivered' | 'pending' | 'processing' | 'shipped' | 'cancelled';
-export type PaymentMethod = 'paystack' | 'flutterwave';
-export type PaymentStatus = 'completed' | 'pending' | 'failed' | 'refunded';
+export type OrderStatus =
+  | "delivered"
+  | "pending"
+  | "processing"
+  | "shipped"
+  | "cancelled";
+export type PaymentMethod = "paystack" | "flutterwave";
+export type PaymentStatus = "completed" | "pending" | "failed" | "refunded";
 
 export interface OrderItem {
   productId: string;
@@ -87,7 +107,7 @@ export interface Order {
   createdAt: string;
 }
 
-export type CustomMerchStatus = 'approved' | 'pending' | 'rejected';
+export type CustomMerchStatus = "approved" | "pending" | "rejected";
 
 export interface CustomMerch {
   id: string;
@@ -108,7 +128,7 @@ export interface CustomMerch {
   dateCreated: string;
 }
 
-export type TransactionStatus = 'completed' | 'pending' | 'failed' | 'refunded';
+export type TransactionStatus = "completed" | "pending" | "failed" | "refunded";
 
 export interface Transaction {
   id: string;
@@ -131,7 +151,7 @@ export interface Settlement {
   settlementDate: string;
 }
 
-export type TicketStatus = 'pending' | 'resolved' | 'escalated';
+export type TicketStatus = "pending" | "resolved" | "escalated";
 
 export interface SupportTicket {
   id: string;
@@ -145,8 +165,8 @@ export interface SupportTicket {
   date: string;
 }
 
-export type DiscountType = 'percentage' | 'fixed';
-export type DiscountStatus = 'active' | 'expired';
+export type DiscountType = "percentage" | "fixed";
+export type DiscountStatus = "active" | "expired";
 
 export interface DiscountCode {
   id: string;
@@ -170,7 +190,7 @@ export interface LoyaltyPoint {
 export interface Promotion {
   id: string;
   name: string;
-  status: 'scheduled' | 'active' | 'inactive';
+  status: "scheduled" | "active" | "inactive";
   startDate: string;
   endDate: string;
   discount: number;
@@ -181,7 +201,7 @@ export interface ShippingRegion {
   region: string;
   deliveryFee: number;
   timeline: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
 }
 
 export interface Role {
@@ -190,7 +210,7 @@ export interface Role {
   membersAssigned: number;
   permissionCount: number;
   permissions: string[];
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
 }
 
 export interface TeamMember {
@@ -199,7 +219,7 @@ export interface TeamMember {
   email: string;
   role: string;
   lastActive: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
 }
 
 export interface DashboardStats {
@@ -218,12 +238,52 @@ export interface SalesData {
   amount: number;
 }
 
+export interface RecentOrder {
+  id: number;
+  order_number: string;
+  user_email: string;
+  user_name: string;
+  subtotal: string;
+  total: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  items_count: number;
+}
+
+export interface TopProduct {
+  product_name: string;
+  total_quantity: number;
+  total_sales: number;
+}
+
+export interface MonthlyStats {
+  orders: number;
+  sales: number;
+  average_order: number;
+  custom_designs: number;
+  pending_designs: number;
+}
+
+export interface DashboardOverview {
+  total_products: number;
+  total_orders: number;
+  total_users: number;
+  total_categories: number;
+  total_sales: number;
+  average_order: number;
+  recent_orders: RecentOrder[];
+  top_products: TopProduct[];
+  daily_sales: SalesData[];
+  monthly_stats: MonthlyStats;
+}
+
 export interface Banner {
   id: string;
   title: string;
   image: string;
   link: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
 }
 
 export interface Blog {
@@ -233,7 +293,7 @@ export interface Blog {
   author: string;
   image: string;
   createdAt: string;
-  status: 'published' | 'draft';
+  status: "published" | "draft";
 }
 
 export interface FAQ {
@@ -249,5 +309,5 @@ export interface Testimonial {
   message: string;
   rating: number;
   image?: string;
-  status: 'approved' | 'pending';
+  status: "approved" | "pending";
 }
