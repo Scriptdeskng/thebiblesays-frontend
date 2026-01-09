@@ -596,7 +596,7 @@ export default function ProductsPage() {
                                         placeholder="Search products by name"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none sm:w-96 lg:w-200"
+                                        className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none sm:w-96"
                                     />
                                 </div>
                                 <CategoryDropdown

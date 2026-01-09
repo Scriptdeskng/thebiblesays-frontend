@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Eye, Download, ArrowLeft } from 'lucide-react';
+import { Search, Eye, Download, ArrowLeft, ChevronLeft, Filter } from 'lucide-react';
 import { Button, Modal, Badge, LoadingSpinner, EmptyState, Select } from '@/components/admin/ui';
 import { Order, OrderStatus } from '@/types/admin.types';
 import { mockOrders, apiService } from '@/services/mock.service';
@@ -12,9 +12,11 @@ export default function OrdersPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all');
+    const [filterStatus, setFilterStatus] = useState<string>('all');
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [showOrderDetails, setShowOrderDetails] = useState(false);
     const [tempStatus, setTempStatus] = useState<OrderStatus>('pending');
+    const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
 
     useEffect(() => {
         loadOrders();
@@ -44,7 +46,7 @@ export default function OrdersPage() {
 
     const handleUpdateOrder = async () => {
         if (!selectedOrder) return;
-
+        
         try {
             await apiService.updateOrderStatus(selectedOrder.id, tempStatus);
             setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status: tempStatus } : o));
@@ -60,6 +62,21 @@ export default function OrdersPage() {
             order.userName.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
         return matchesSearch && matchesStatus;
+    }).sort((a, b) => {
+        if (filterStatus === 'date') {
+            return new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime();
+        } else if (filterStatus === 'name') {
+            return a.userName.localeCompare(b.userName);
+        } else if (filterStatus === 'category') {
+            const catA = a.items[0]?.category || '';
+            const catB = b.items[0]?.category || '';
+            return catA.localeCompare(catB);
+        } else if (filterStatus === 'status') {
+            return a.status.localeCompare(b.status);
+        } else if (filterStatus === 'payment') {
+            return a.paymentStatus.localeCompare(b.paymentStatus);
+        }
+        return 0;
     });
 
     const orderCounts = {
@@ -87,14 +104,14 @@ export default function OrdersPage() {
             </div>
 
             {showOrderDetails && selectedOrder ? (
-                <div className="bg-white rounded-xl p-6">
-                    <div className="flex items-center gap-6 mb-6">
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
                         <button
                             onClick={handleBackToList}
                             className="flex items-center space-x-2 text-admin-primary hover:text-admin-primary/80 transition-colors"
                         >
                             <ArrowLeft size={20} />
-                            <span className="font-medium">Back</span>
+                            <span className="font-medium">Back to Orders</span>
                         </button>
                         <h2 className="text-xl font-medium text-admin-primary">Order Details</h2>
                     </div>
@@ -102,40 +119,42 @@ export default function OrdersPage() {
                     <div className="space-y-6">
                         <div>
                             <h3 className="font-semibold text-admin-primary mb-3">Personal Information</h3>
-                            <div className="flex flex-col gap-4 text-sm">
-                                <div className='flex flex-row items-center justify-between'>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
                                     <p className="text-grey mb-1">Name</p>
                                     <p className="text-admin-primary font-medium">{selectedOrder.userName}</p>
                                 </div>
-                                <div className='flex flex-row items-center justify-between'>
+                                <div>
                                     <p className="text-grey mb-1">Email</p>
                                     <p className="text-admin-primary font-medium">{selectedOrder.userEmail}</p>
-                                </div>
-                                <div className='flex flex-row items-center justify-between'>
-                                    <p className="text-grey mb-1">Status</p>
-                                    <p className={`px-3 py-1 rounded-lg flex items-center justify-center border-0 ${getStatusColor(selectedOrder.status)}`}>{selectedOrder.status}</p>
                                 </div>
                             </div>
                         </div>
 
                         <div>
                             <h3 className="font-semibold text-admin-primary mb-3">Order Information</h3>
-                            <div className="flex flex-col gap-4 text-sm bg-admin-primary/6 p-4">
-                                <div className='flex flex-row items-center justify-between'>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
                                     <p className="text-grey mb-1">Order ID</p>
                                     <p className="text-admin-primary font-medium">{selectedOrder.id}</p>
                                 </div>
-                                <div className='flex flex-row items-center justify-between'>
+                                <div>
                                     <p className="text-grey mb-1">Order Date</p>
                                     <p className="text-admin-primary font-medium">{formatDateTime(selectedOrder.orderDate)}</p>
                                 </div>
-                                <div className="flex flex-row items-center justify-between">
+                                <div>
+                                    <p className="text-grey mb-1">Payment Status</p>
+                                    <Badge variant={selectedOrder.paymentStatus === 'completed' ? 'success' : 'warning'}>
+                                        {selectedOrder.paymentStatus}
+                                    </Badge>
+                                </div>
+                                <div>
+                                    <p className="text-grey mb-1">Payment Method</p>
+                                    <p className="text-admin-primary font-medium capitalize">{selectedOrder.paymentMethod}</p>
+                                </div>
+                                <div className="col-span-2">
                                     <p className="text-grey mb-1">Delivery Address</p>
                                     <p className="text-admin-primary font-medium">{selectedOrder.deliveryAddress}</p>
-                                </div>
-                                <div className='flex flex-row items-center justify-between'>
-                                    <p className="text-grey mb-1">Payment Status</p>
-                                    <p className="text-admin-primary font-medium">{selectedOrder.paymentStatus}</p>
                                 </div>
                             </div>
                         </div>
@@ -146,18 +165,18 @@ export default function OrdersPage() {
                                 <table className="w-full">
                                     <thead className="bg-accent-1">
                                         <tr>
-                                            <th className="text-left text-sm font-medium text-admin-primary px-4 py-3">Product</th>
-                                            <th className="text-left text-sm font-medium text-admin-primary px-4 py-3">Category</th>
-                                            <th className="text-left text-sm font-medium text-admin-primary px-4 py-3">Quantity</th>
-                                            <th className="text-left text-sm font-medium text-admin-primary px-4 py-3">Price</th>
+                                            <th className="text-left text-xs font-semibold text-grey px-4 py-3">Product</th>
+                                            <th className="text-left text-xs font-semibold text-grey px-4 py-3">Category</th>
+                                            <th className="text-left text-xs font-semibold text-grey px-4 py-3">Quantity</th>
+                                            <th className="text-left text-xs font-semibold text-grey px-4 py-3">Price</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {selectedOrder.items.map((item, index) => (
                                             <tr key={index} className="border-t border-accent-2">
                                                 <td className="px-4 py-3 text-sm text-admin-primary">{item.productName}</td>
-                                                <td className="px-4 py-3 text-sm text-admin-primary">
-                                                    {item.category}
+                                                <td className="px-4 py-3">
+                                                    <Badge variant="info">{item.category}</Badge>
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-admin-primary">{item.quantity}</td>
                                                 <td className="px-4 py-3 text-sm font-medium text-admin-primary">
@@ -168,16 +187,16 @@ export default function OrdersPage() {
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="flex justify-end gap-5 items-center mt-3">
-                                <span className="text-sm text-admin-primary">Total Amount:</span>
-                                <span className=" text-admin-primary">
+                            <div className="mt-4 flex justify-between items-center bg-accent-1 p-4 rounded-lg">
+                                <span className="font-semibold text-admin-primary">Total Amount</span>
+                                <span className="text-xl font-bold text-admin-primary">
                                     {formatCurrency(selectedOrder.totalAmount)}
                                 </span>
                             </div>
                         </div>
 
                         <div>
-                            <h3 className="font-semibold text-admin-primary mb-3">Change Status</h3>
+                            <h3 className="font-semibold text-admin-primary mb-3">Update Status</h3>
                             <div className="flex flex-wrap gap-3">
                                 {[
                                     { value: 'pending', label: 'Pending' },
@@ -252,15 +271,47 @@ export default function OrdersPage() {
                                 {filteredOrders.length}
                             </p>
                         </div>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-grey" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Search by Orders ID"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none sm:w-100 lg:w-150"
-                            />
+                        <div className="flex gap-4">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-grey" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Search by Orders ID"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none sm:w-96"
+                                />
+                            </div>
+
+                            <div className="relative">
+                                <button
+                                    onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-white rounded-lg border border-accent-2 transition-colors"
+                                >
+                                    <Filter size={18} className="text-admin-primary" />
+                                    <span className="text-admin-primary">Filter</span>
+                                </button>
+                                {filterDropdownOpen && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-accent-2 z-10">
+                                        <div className="p-2">
+                                            <p className="px-3 py-2 text-sm font-medium text-grey">Filter By</p>
+                                            {['date','name','category','status','payment'].map((status) => (
+                                                <button
+                                                    key={status}
+                                                    onClick={() => {
+                                                        setFilterStatus(status);
+                                                        setFilterDropdownOpen(false);
+                                                    }}
+                                                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-accent-1 transition-colors capitalize ${filterStatus === status ? 'bg-accent-1 text-admin-primary font-medium' : 'text-grey'
+                                                        }`}
+                                                >
+                                                    {status}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 

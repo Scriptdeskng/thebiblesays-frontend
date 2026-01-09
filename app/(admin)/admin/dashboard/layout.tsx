@@ -34,7 +34,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-white">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="lg:ml-64">
+      <div className="lg:ml-72">
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="pt-16 flex-1 min-h-screen sm:pt-20 lg:pt-24">
           <div className="p-4 lg:p-6">{children}</div>

@@ -30,6 +30,7 @@ const menuItems = [
     { icon: FaFileLines, label: 'Content Management', href: '/admin/dashboard/content' },
     { icon: RiGiftFill, label: 'Loyalty Program', href: '/admin/dashboard/loyalty' },
     { icon: RiSettings5Fill, label: 'Settings', href: '/admin/dashboard/settings' },
+
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -57,7 +58,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     lg:translate-x-0
                 `}
             >
-                <div className='w-60 flex flex-col bg-admin-primary/4 h-full rounded-lg shadow-lg'>
+                <div className='w-60 flex flex-col bg-admin-primary/4 h-full rounded-lg shadow-lg lg:w-64'>
                     <div className="h-16 flex items-center justify-between pr-4">
                         <Link href="/admin/dashboard">
                             <Image
@@ -107,17 +108,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 );
                             })}
                         </ul>
-                    </nav>
 
-                    <div className="p-4 border-t border-accent-2">
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center space-x-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-all w-full"
-                        >
-                            <LogOut size={20} />
-                            <span className="text-sm font-medium">Logout</span>
-                        </button>
-                    </div>
+                        <div className="p-4 border-t border-accent-2">
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center space-x-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-all w-full"
+                            >
+                                <LogOut size={20} />
+                                <span className="text-sm font-medium">Logout</span>
+                            </button>
+                        </div>
+                    </nav>
 
                 </div>
             </aside>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Eye, Download, DollarSign, TrendingUp, ArrowLeft, Calendar, ChevronDown } from 'lucide-react';
+import { Search, Eye, Download, DollarSign, TrendingUp, ArrowLeft, Calendar, ChevronDown, ChevronLeft } from 'lucide-react';
 import { Button, Modal, Badge, LoadingSpinner, StatsCard, Textarea, StatsCard2 } from '@/components/admin/ui';
 import { Transaction, Settlement } from '@/types/admin.types';
 import { mockTransactions, mockSettlements, apiService } from '@/services/mock.service';
@@ -140,7 +140,7 @@ export default function FinancePage() {
               onClick={handleBackToList}
               className="flex items-center space-x-2 text-admin-primary hover:text-admin-primary/80 transition-colors"
             >
-              <ArrowLeft size={20} />
+              <ChevronLeft size={20} />
             </button>
             <h2 className="font-medium text-admin-primary">Transaction Details</h2>
           </div>
@@ -281,7 +281,7 @@ export default function FinancePage() {
                       placeholder="Search transactions"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none sm:w-100 lg:w-150"
+                      className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none sm:w-96"
                     />
                   </div>
                   <select
