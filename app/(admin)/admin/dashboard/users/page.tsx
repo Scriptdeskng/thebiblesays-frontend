@@ -350,7 +350,7 @@ export default function UsersPage() {
                   placeholder={activeTab === 'users' ? 'Search by user name' : 'Search tickets'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none sm:w-100 lg:w-150 border border-accent-2"
+                  className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none sm:w-96 border-accent-2"
                 />
               </div>
               {activeTab === 'users' && (

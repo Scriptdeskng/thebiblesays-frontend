@@ -29,12 +29,16 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    if (loginError) {
+      setLoginError('');
     }
   };
 
@@ -58,12 +62,14 @@ function LoginPage() {
     }
 
     setIsLoading(true);
+    setLoginError('');
     try {
       await login(formData.email, formData.password);
       const redirect = searchParams.get('redirect') || '/';
       router.push(redirect);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      setLoginError(error?.message || 'Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -78,6 +84,18 @@ function LoginPage() {
         </div>
 
         <div className="bg-white rounded-lg border border-accent-2 p-8">
+          {loginError && (
+            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <div className="shrink-0 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center mt-0.5">
+                <span className="text-white text-xs font-bold">!</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-red-800 font-medium">Login Failed</p>
+                <p className="text-sm text-red-700 mt-0.5">{loginError}</p>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
               label="Email Address"

@@ -29,7 +29,7 @@ const Header = () => {
                 <span className="hidden sm:block"><Link href="/shop">Order Now</Link></span>
             </div>
 
-            <div className="hidden lg:flex flex-row py-5 px-10 justify-between items-center w-full max-w-[1536px] mx-auto">
+            <div className="hidden xl:flex flex-row py-5 px-10 justify-between items-center w-full max-w-[1536px] mx-auto">
                 <div className="flex flex-row items-center gap-20">
                     <Link href="/">
                         <Image
@@ -73,16 +73,11 @@ const Header = () => {
                     <Link href="/profile">
                         <Button variant="ghost" leftIcon={<CircleUserRound className="w-6 h-6 text-grey" />} />
                     </Link>
-
-                    <CurrencySelector
-                        value="NGN"
-                        onChange={(c) => console.log("Selected currency:", c)}
-                    />
                 </div>
             </div>
 
             {/* MOBILE NAV */}
-            <div className="lg:hidden w-full">
+            <div className="xl:hidden w-full">
                 <div className="flex py-3 px-5 sm:px-10 flex-row items-center justify-between w-full">
                     <div className="flex flex-row items-center gap-2">
                         <Button
@@ -148,10 +143,6 @@ const Header = () => {
                         </div>
 
                         <ul className="flex flex-col gap-4 font-medium px-5 py-10 bg-white text-lg">
-                            <CurrencySelector
-                                value="NGN"
-                                onChange={(c) => console.log("Selected currency:", c)}
-                            />
                             <li><Link href="/shop" onClick={() => setMobileOpen(false)}>Shop</Link></li>
                             <li><Link href="/about" onClick={() => setMobileOpen(false)}>About us</Link></li>
                             <li><Link href="/byom" onClick={() => setMobileOpen(false)}>B.Y.O.M</Link></li>
