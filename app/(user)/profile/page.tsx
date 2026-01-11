@@ -107,7 +107,7 @@ export default function ProfilePage() {
 
   if (!user || !accessToken) {
     return (
-      <div className="max-w-[1536px] mx-auto px-5 sm:px-10 xl:px-20 py-16 text-center">
+      <div className="max-w-[1536px] min-h-screen mx-auto px-5 sm:px-10 xl:px-20 py-16 text-center">
         <p className="text-grey">Loading...</p>
       </div>
     );
