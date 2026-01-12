@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, Eye, Download, ArrowLeft, ChevronLeft, Filter } from 'lucide-react';
-import { Button, Modal, Badge, LoadingSpinner, EmptyState, Select } from '@/components/admin/ui';
-import { Order, OrderStatus } from '@/types/admin.types';
-import { mockOrders, apiService } from '@/services/mock.service';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, ArrowLeft, Filter } from 'lucide-react';
+import { Button, Badge, LoadingSpinner, EmptyState } from '@/components/admin/ui';
+import { Order, OrderStatus, ApiOrder, ProductCategory } from '@/types/admin.types';
+import { dashboardService } from '@/services/dashboard.service';
 import { formatCurrency, formatDate, formatDateTime, getStatusColor } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 export default function OrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -15,23 +16,72 @@ export default function OrdersPage() {
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [showOrderDetails, setShowOrderDetails] = useState(false);
-    const [tempStatus, setTempStatus] = useState<OrderStatus>('pending');
+    const [tempStatus, setTempStatus] = useState<OrderStatus>('placed');
     const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+    const [exporting, setExporting] = useState(false);
 
-    useEffect(() => {
-        loadOrders();
+    const inferCategory = (productName: string): ProductCategory => {
+        const nameLower = productName.toLowerCase();
+        if (nameLower.includes('shirt') || nameLower.includes('tee')) return 'Shirts';
+        if (nameLower.includes('cap')) return 'Caps';
+        if (nameLower.includes('hoodie')) return 'Hoodie';
+        if (nameLower.includes('headband')) return 'Headband';
+        if (nameLower.includes('hat')) return 'Hat';
+        if (nameLower.includes('jacket')) return 'Jackets';
+        return 'Shirts';
+    };
+
+    const normalizeStatus = (status: string): OrderStatus => {
+        const statusLower = status.toLowerCase();
+        // API status values: placed, payment_confirmed, processing, shipped, out_for_delivery, delivered, cancelled, backordered
+        if (['placed', 'payment_confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'backordered'].includes(statusLower)) {
+            return statusLower as OrderStatus;
+        }
+        return 'placed'; // Default fallback
+    };
+
+    const transformApiOrderToOrder = useCallback((apiOrder: ApiOrder): Order => {
+        return {
+            id: apiOrder.order_number || apiOrder.id.toString(),
+            userId: apiOrder.user || '',
+            userName: apiOrder.user_name || apiOrder.user_email || apiOrder.guest_email || 'Guest',
+            userEmail: apiOrder.user_email || apiOrder.guest_email || '',
+            items: apiOrder.items?.map(item => ({
+                productId: item.id.toString(),
+                productName: item.product_name,
+                category: inferCategory(item.product_name),
+                quantity: item.quantity,
+                price: parseFloat(item.price) || 0,
+            })) || [],
+            itemsCount: apiOrder.items_count,
+            totalAmount: parseFloat(apiOrder.total) || 0,
+            status: normalizeStatus(apiOrder.status),
+            paymentMethod: (apiOrder.payment_method?.toLowerCase() === 'paystack' || apiOrder.payment_method?.toLowerCase() === 'flutterwave')
+                ? apiOrder.payment_method.toLowerCase() as 'paystack' | 'flutterwave'
+                : 'paystack',
+            paymentStatus: 'completed', // Default to completed since order exists
+            deliveryAddress: apiOrder.shipping_address || '',
+            orderDate: apiOrder.created_at,
+            createdAt: apiOrder.created_at,
+        };
     }, []);
 
-    const loadOrders = async () => {
+    const loadOrders = useCallback(async () => {
         try {
-            const data = await apiService.getOrders();
-            setOrders(data);
+            const apiOrders = await dashboardService.getOrders();
+            const transformedOrders = apiOrders.map(transformApiOrderToOrder);
+            setOrders(transformedOrders);
         } catch (error) {
             console.error('Error loading orders:', error);
+            toast.error('Failed to load orders');
         } finally {
             setLoading(false);
         }
-    };
+    }, [transformApiOrderToOrder]);
+
+    useEffect(() => {
+        loadOrders();
+    }, [loadOrders]);
 
     const handleViewOrder = (order: Order) => {
         setSelectedOrder(order);
@@ -48,12 +98,48 @@ export default function OrdersPage() {
         if (!selectedOrder) return;
         
         try {
-            await apiService.updateOrderStatus(selectedOrder.id, tempStatus);
+            // TODO: Implement update order status API endpoint
+            // await dashboardService.updateOrderStatus(selectedOrder.id, tempStatus);
             setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status: tempStatus } : o));
             setSelectedOrder({ ...selectedOrder, status: tempStatus });
             handleBackToList();
+            toast.success('Order status updated');
         } catch (error) {
             console.error('Error updating order status:', error);
+            toast.error('Failed to update order status');
+        }
+    };
+
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            // Map status filter to API status format
+            let apiStatus: string | undefined;
+            if (statusFilter !== 'all') {
+                apiStatus = statusFilter;
+            }
+
+            const blob = await dashboardService.exportOrders({
+                search: searchQuery || undefined,
+                status: apiStatus,
+            });
+
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `orders-export-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            toast.success('Orders exported successfully');
+        } catch (error) {
+            console.error('Error exporting orders:', error);
+            toast.error('Failed to export orders');
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -67,10 +153,6 @@ export default function OrdersPage() {
             return new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime();
         } else if (filterStatus === 'name') {
             return a.userName.localeCompare(b.userName);
-        } else if (filterStatus === 'category') {
-            const catA = a.items[0]?.category || '';
-            const catB = b.items[0]?.category || '';
-            return catA.localeCompare(catB);
         } else if (filterStatus === 'status') {
             return a.status.localeCompare(b.status);
         } else if (filterStatus === 'payment') {
@@ -79,11 +161,25 @@ export default function OrdersPage() {
         return 0;
     });
 
+    const formatStatusLabel = (status: string): string => {
+        const statusMap: Record<string, string> = {
+            placed: 'Placed',
+            payment_confirmed: 'Payment Confirmed',
+            processing: 'Processing',
+            shipped: 'Shipped',
+            out_for_delivery: 'Out for Delivery',
+            delivered: 'Delivered',
+            cancelled: 'Cancelled',
+            backordered: 'Backordered',
+        };
+        return statusMap[status] || status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    };
+
     const orderCounts = {
         all: orders.length,
-        pending: orders.filter(o => o.status === 'pending').length,
+        placed: orders.filter(o => o.status === 'placed' || o.status === 'payment_confirmed' || o.status === 'backordered').length,
         processing: orders.filter(o => o.status === 'processing').length,
-        shipped: orders.filter(o => o.status === 'shipped').length,
+        shipped: orders.filter(o => o.status === 'shipped' || o.status === 'out_for_delivery').length,
         delivered: orders.filter(o => o.status === 'delivered').length,
         cancelled: orders.filter(o => o.status === 'cancelled').length,
     };
@@ -237,7 +333,7 @@ export default function OrdersPage() {
                             <div className="flex flex-wrap gap-2 bg-white p-1">
                                 {[
                                     { key: 'all', label: 'All Orders' },
-                                    { key: 'pending', label: 'Pending' },
+                                    { key: 'placed', label: 'Placed' },
                                     { key: 'processing', label: 'Processing' },
                                     { key: 'shipped', label: 'Shipped' },
                                     { key: 'delivered', label: 'Delivered' },
@@ -258,8 +354,8 @@ export default function OrdersPage() {
                                     </button>
                                 ))}
                             </div>
-                            <Button>
-                                Export
+                            <Button onClick={handleExport} disabled={exporting}>
+                                {exporting ? 'Exporting...' : 'Export'}
                             </Button>
                         </div>
                     </div>
@@ -295,7 +391,7 @@ export default function OrdersPage() {
                                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-accent-2 z-10">
                                         <div className="p-2">
                                             <p className="px-3 py-2 text-sm font-medium text-grey">Filter By</p>
-                                            {['date','name','category','status','payment'].map((status) => (
+                                            {['date','name','status','payment'].map((status) => (
                                                 <button
                                                     key={status}
                                                     onClick={() => {
@@ -328,7 +424,7 @@ export default function OrdersPage() {
                                         <tr>
                                             <th className="text-left font-medium text-admin-primary px-6 py-4">Order ID</th>
                                             <th className="text-left font-medium text-admin-primary px-6 py-4">Products</th>
-                                            <th className="text-left font-medium text-admin-primary px-6 py-4">Category</th>
+                                            <th className="text-left font-medium text-admin-primary px-6 py-4">User Name</th>
                                             <th className="text-left font-medium text-admin-primary px-6 py-4">Amount</th>
                                             <th className="text-left font-medium text-admin-primary px-6 py-4">Date</th>
                                             <th className="text-left font-medium text-admin-primary px-6 py-4">Status</th>
@@ -342,15 +438,11 @@ export default function OrdersPage() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <p className="text-admin-primary">
-                                                        {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
+                                                        {order.itemsCount ?? order.items.length} {(order.itemsCount ?? order.items.length) === 1 ? 'item' : 'items'}
                                                     </p>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {Array.from(new Set(order.items.map(item => item.category))).map(cat => (
-                                                            <p className='text-admin-primary'>{cat}</p>
-                                                        ))}
-                                                    </div>
+                                                    <p className="text-admin-primary">{order.userName}</p>
                                                 </td>
                                                 <td className="px-6 py-4 text-admin-primary">
                                                     {formatCurrency(order.totalAmount)}
@@ -360,7 +452,7 @@ export default function OrdersPage() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className={`px-3 py-1 rounded-lg w-28 flex items-center justify-center border-0 ${getStatusColor(order.status)}`}>
-                                                        {order.status}
+                                                        {formatStatusLabel(order.status)}
                                                     </div>
                                                 </td>
                                             </tr>

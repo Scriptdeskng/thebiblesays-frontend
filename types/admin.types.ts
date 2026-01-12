@@ -60,7 +60,7 @@ export interface Product {
   tags?: string[];
 }
 
-export type OrderStatus = 'delivered' | 'pending' | 'processing' | 'shipped' | 'cancelled';
+export type OrderStatus = 'placed' | 'payment_confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'backordered';
 export type PaymentMethod = 'paystack' | 'flutterwave';
 export type PaymentStatus = 'completed' | 'pending' | 'failed' | 'refunded';
 
@@ -78,6 +78,7 @@ export interface Order {
   userName: string;
   userEmail: string;
   items: OrderItem[];
+  itemsCount?: number;
   totalAmount: number;
   status: OrderStatus;
   paymentMethod: PaymentMethod;
@@ -358,4 +359,48 @@ export interface ApiProductDetail {
   images: ApiProductImage[];
   total_sold: string;
   total_revenue: string;
+}
+
+export interface ApiOrderItem {
+  id: number;
+  product_name: string;
+  product_variant?: {
+    id: number;
+    product: number;
+    color?: {
+      id: number;
+      name: string;
+      hex_code: string;
+    };
+    size?: {
+      id: number;
+      name: string;
+    };
+  };
+  color?: string;
+  size?: string;
+  price: string;
+  quantity: number;
+  total_price: string;
+}
+
+export interface ApiOrder {
+  id: number;
+  order_number: string;
+  status: string;
+  status_display?: string;
+  user?: string;
+  user_email?: string;
+  user_name?: string;
+  guest_email?: string | null;
+  payment_method?: string;
+  subtotal: string;
+  shipping_fee?: string;
+  tax?: string;
+  total: string;
+  created_at: string;
+  updated_at?: string;
+  shipping_address?: string;
+  items?: ApiOrderItem[];
+  items_count?: number;
 }
