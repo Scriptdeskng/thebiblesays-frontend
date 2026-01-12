@@ -104,16 +104,15 @@ export default function OrdersPage() {
             </div>
 
             {showOrderDetails && selectedOrder ? (
-                <div className="bg-white rounded-xl p-6 shadow-sm">
+                <div className="bg-admin-primary/4 rounded-xl p-6">
                     <div className="flex items-center justify-between mb-6">
                         <button
                             onClick={handleBackToList}
                             className="flex items-center space-x-2 text-admin-primary hover:text-admin-primary/80 transition-colors"
                         >
-                            <ArrowLeft size={20} />
-                            <span className="font-medium">Back to Orders</span>
+                            <ChevronLeft size={20} />
+                            <h2 className="text-lg font-medium text-admin-primary">Order Details</h2>
                         </button>
-                        <h2 className="text-xl font-medium text-admin-primary">Order Details</h2>
                     </div>
 
                     <div className="space-y-6">
@@ -173,10 +172,10 @@ export default function OrdersPage() {
                                     </thead>
                                     <tbody>
                                         {selectedOrder.items.map((item, index) => (
-                                            <tr key={index} className="border-t border-accent-2">
+                                            <tr key={index} className="border-t border-accent-2 bg-white">
                                                 <td className="px-4 py-3 text-sm text-admin-primary">{item.productName}</td>
                                                 <td className="px-4 py-3">
-                                                    <Badge variant="info">{item.category}</Badge>
+                                                    {item.category}
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-admin-primary">{item.quantity}</td>
                                                 <td className="px-4 py-3 text-sm font-medium text-admin-primary">

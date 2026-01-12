@@ -134,7 +134,7 @@ export default function FinancePage() {
       )}
 
       {showTransactionDetails && selectedTransaction ? (
-        <div className="bg-white rounded-xl p-6">
+        <div className="bg-white rounded-xl">
           <div className="flex items-center gap-5 mb-6">
             <button
               onClick={handleBackToList}
