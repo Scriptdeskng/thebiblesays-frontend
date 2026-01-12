@@ -292,7 +292,8 @@ export default function CustomMerchPage() {
               </div>
             </div>
 
-            <div className='bg-admin-primary/10 pt-6 p-6  '>
+            <div className='bg-admin-primary/4 p-6'>
+            <div className='bg-admin-primary/10 pt-6 p-6 rounded-xl'>
               <h3 className="font-semibold text-admin-primary mb-4">Merch Details</h3>
               <div className="space-y-4 text-sm">
                 <div className='flex items-center justify-between'>
@@ -405,6 +406,7 @@ export default function CustomMerchPage() {
                   )}
                 </div>
               </div>
+            </div>
             </div>
 
             {selectedMerch.status === 'pending' && (

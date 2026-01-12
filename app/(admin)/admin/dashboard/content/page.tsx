@@ -676,7 +676,7 @@ export default function ContentPage() {
       ) : (
         <>
           <div className="bg-admin-primary/4 rounded-t-xl p-4">
-            <div className="flex flex-wrap gap-2 bg-white p-1">
+            <div className="flex flex-wrap gap-2 w-fit bg-white p-1">
               {[
                 { key: 'homepage', label: 'Homepage' },
                 { key: 'byom', label: 'BYOM' },

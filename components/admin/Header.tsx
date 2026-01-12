@@ -47,7 +47,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
-    <header className="fixed top-0 right-0 left-0 lg:left-64 z-30 bg-white lg:pt-5">
+    <header className="fixed top-0 right-0 left-0 lg:left-71.5 z-30 bg-white lg:pt-5">
       <div className="h-16 px-4 lg:mx-6 lg:px-6 flex items-center justify-between bg-admin-primary/4 rounded-md">
         <div className="flex items-center flex-1 max-w-md">
           <button
