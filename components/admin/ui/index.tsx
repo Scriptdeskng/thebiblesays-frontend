@@ -225,7 +225,7 @@ export function Select({ label, error, options, className = '', ...props }: Sele
                 {...props}
             >
                 {options.map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <option key={option.value} value={option.value} className='capitalize'>
                         {option.label}
                     </option>
                 ))}
