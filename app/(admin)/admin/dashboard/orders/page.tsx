@@ -261,20 +261,17 @@ export default function OrdersPage() {
         </p>
       </div>
 
-      {showOrderDetails && selectedOrder ? (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <button
-              onClick={handleBackToList}
-              className="flex items-center space-x-2 text-admin-primary hover:text-admin-primary/80 transition-colors"
-            >
-              <ArrowLeft size={20} />
-              <span className="font-medium">Back to Orders</span>
-            </button>
-            <h2 className="text-xl font-medium text-admin-primary">
-              Order Details
-            </h2>
-          </div>
+            {showOrderDetails && selectedOrder ? (
+                <div className="bg-admin-primary/4 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <button
+                            onClick={handleBackToList}
+                            className="flex items-center space-x-2 text-admin-primary hover:text-admin-primary/80 transition-colors"
+                        >
+                            <ChevronLeft size={20} />
+                            <h2 className="text-lg font-medium text-admin-primary">Order Details</h2>
+                        </button>
+                    </div>
 
           <div className="space-y-6">
             <div>

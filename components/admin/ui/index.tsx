@@ -23,13 +23,13 @@ export function StatsCard({
 
     return (
         <div className="bg-admin-primary/4 rounded-xl p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-start gap-5">
+            <div className="flex items-start gap-2 xl:gap-5">
                 <div className={`w-10 h-10 ${iconBgColor} rounded-xl flex items-center justify-center`}>
                     <Icon className={iconColor} size={20} />
                 </div>
-                <div>
+                <div className='overflow-hidden'>
                     <p className="text-sm mb-1 text-admin-primary/60">{title}</p>
-                    <p className="text-3xl font-extrabold text-admin-primary">{value}</p>
+                    <p className="text-3xl font-extrabold text-admin-primary truncate">{value}</p>
                 </div>
             </div>
             <div className="mt-10 flex items-center gap-2">
@@ -64,13 +64,13 @@ export function StatsCard2({
 
     return (
         <div className="bg-admin-primary rounded-xl p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-start gap-5">
-                <div className={`w-10 h-10 ${iconBgColor} rounded-xl flex items-center justify-center`}>
+            <div className="flex items-start gap-2 xl:gap-5">
+                <div className={`w-10 h-10 ${iconBgColor} rounded-md flex items-center justify-center`}>
                     <Icon className={iconColor} size={20} />
                 </div>
-                <div>
+                <div className='overflow-hidden'>
                     <p className="text-sm mb-1 text-[#ABABAB]">{title}</p>
-                    <p className="text-3xl font-extrabold text-white">{value}</p>
+                    <p className="text-3xl font-extrabold text-white truncate">{value}</p>
                 </div>
             </div>
             <div className="mt-10 flex items-center gap-2">
@@ -137,7 +137,7 @@ export function Badge({ children, variant = 'default' }: BadgeProps) {
     };
 
     return (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg font-medium ${variants[variant]}`}>
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg ${variants[variant]}`}>
             {children}
         </span>
     );
