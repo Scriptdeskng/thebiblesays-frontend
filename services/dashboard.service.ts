@@ -6,6 +6,7 @@ import {
   ApiCategory,
   ApiProductDetail,
   ApiOrder,
+  ApiUser,
 } from "@/types/admin.types";
 import { useAuthStore } from "@/store/useAuthStore";
 import axios from "axios";
@@ -202,6 +203,89 @@ class DashboardService {
       return response.data;
     } catch (error) {
       console.error("Error exporting orders:", error);
+      throw error;
+    }
+  }
+
+  async getUsers(params?: {
+    search?: string;
+    ordering?: string;
+    is_active?: boolean;
+  }): Promise<ApiUser[]> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const queryParams: Record<string, any> = {};
+
+      if (params?.search) {
+        queryParams.search = params.search;
+      }
+      if (params?.ordering) {
+        queryParams.ordering = params.ordering;
+      }
+      if (params?.is_active !== undefined) {
+        queryParams.is_active = params.is_active;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/users/`,
+        method: "GET",
+        params: queryParams,
+        requireToken: true,
+        token: accessToken,
+      });
+
+      // API returns array directly (similar to products and orders)
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      throw error;
+    }
+  }
+
+  async exportUsers(params?: {
+    search?: string;
+    ordering?: string;
+    is_active?: boolean;
+  }): Promise<Blob> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const queryParams: Record<string, any> = {};
+
+      if (params?.search) {
+        queryParams.search = params.search;
+      }
+      if (params?.ordering) {
+        queryParams.ordering = params.ordering;
+      }
+      if (params?.is_active !== undefined) {
+        queryParams.is_active = params.is_active;
+      }
+
+      // Use axios directly for file downloads with blob response type
+      const response = await axios.get(
+        `${API_URL}/dashboard/users/export_users/`,
+        {
+          params: queryParams,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          responseType: "blob",
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Error exporting users:", error);
       throw error;
     }
   }

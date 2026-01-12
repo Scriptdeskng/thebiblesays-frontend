@@ -404,3 +404,17 @@ export interface ApiOrder {
   items?: ApiOrderItem[];
   items_count?: number;
 }
+
+export interface ApiUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  is_active: boolean;
+  date_joined: string;
+  last_login: string;
+  total_orders: string;
+  total_spent: string;
+  last_order_date?: string;
+}

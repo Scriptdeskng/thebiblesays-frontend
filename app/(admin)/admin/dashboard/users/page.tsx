@@ -1,48 +1,87 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Search, Eye, Download, Ban, CheckCircle, Send, Filter, ArrowLeft, ShoppingBag, DollarSign, Bookmark } from 'lucide-react';
-import { Button, Modal, Badge, LoadingSpinner, Input, Textarea } from '@/components/admin/ui';
-import { User, SupportTicket, Order } from '@/types/admin.types';
-import { mockUsers, mockSupportTickets, mockOrders, apiService } from '@/services/mock.service';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { PiShoppingBagDuotone } from 'react-icons/pi';
-import { CgShoppingBag } from 'react-icons/cg';
-import { CiHeart } from 'react-icons/ci';
+import { useState, useEffect, useCallback } from "react";
+import {
+  Search,
+  Eye,
+  Download,
+  Ban,
+  CheckCircle,
+  Send,
+  Filter,
+  ArrowLeft,
+  ShoppingBag,
+  DollarSign,
+  Bookmark,
+} from "lucide-react";
+import {
+  Button,
+  Modal,
+  Badge,
+  LoadingSpinner,
+  Input,
+  Textarea,
+} from "@/components/admin/ui";
+import { User, SupportTicket, Order, ApiUser } from "@/types/admin.types";
+import { mockOrders, apiService } from "@/services/mock.service";
+import { dashboardService } from "@/services/dashboard.service";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import toast from "react-hot-toast";
+import { PiShoppingBagDuotone } from "react-icons/pi";
+import { CgShoppingBag } from "react-icons/cg";
+import { CiHeart } from "react-icons/ci";
 
 export default function UsersPage() {
-  const [activeTab, setActiveTab] = useState<'users' | 'tickets'>('users');
+  const [activeTab, setActiveTab] = useState<"users" | "tickets">("users");
   const [users, setUsers] = useState<User[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(
+    null
+  );
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [showTicketDetails, setShowTicketDetails] = useState(false);
-  const [ticketResponse, setTicketResponse] = useState('');
-  const [ticketStatus, setTicketStatus] = useState('pending');
+  const [ticketResponse, setTicketResponse] = useState("");
+  const [ticketStatus, setTicketStatus] = useState("pending");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const transformApiUserToUser = (apiUser: ApiUser): User => {
+    return {
+      id: apiUser.id,
+      name:
+        `${apiUser.first_name} ${apiUser.last_name}`.trim() || apiUser.email,
+      email: apiUser.email,
+      image: undefined, // Not provided by API
+      role: "staff", // Default role, not provided by API
+      status: apiUser.is_active ? "active" : "inactive",
+      ordersCount: parseInt(apiUser.total_orders) || 0,
+      amountSpent: parseFloat(apiUser.total_spent) || 0,
+      lastActive: apiUser.last_login || apiUser.date_joined,
+      createdAt: apiUser.date_joined,
+    };
+  };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const [usersData, ticketsData] = await Promise.all([
-        apiService.getUsers(),
-        apiService.getSupportTickets(),
-      ]);
-      setUsers(usersData);
-      setTickets(ticketsData);
+      const usersData = await dashboardService.getUsers();
+      const transformedUsers = usersData.map(transformApiUserToUser);
+      setUsers(transformedUsers);
+      setTickets([]); // Support tickets empty for now
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error("Error loading data:", error);
+      toast.error("Failed to load users");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleViewUser = (user: User) => {
     setSelectedUser(user);
@@ -60,58 +99,106 @@ export default function UsersPage() {
     setShowTicketDetails(false);
     setSelectedUser(null);
     setSelectedTicket(null);
-    setTicketResponse('');
+    setTicketResponse("");
   };
 
   const handleStatusChange = async (userId: string, newStatus: string) => {
     try {
       await apiService.updateUserStatus(userId, newStatus);
-      setUsers(users.map(u => u.id === userId ? { ...u, status: newStatus as any } : u));
+      setUsers(
+        users.map((u) =>
+          u.id === userId ? { ...u, status: newStatus as any } : u
+        )
+      );
       if (selectedUser?.id === userId) {
         setSelectedUser({ ...selectedUser, status: newStatus as any });
         handleBackToList();
       }
     } catch (error) {
-      console.error('Error updating user status:', error);
+      console.error("Error updating user status:", error);
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      // Map status filter to API is_active format
+      let isActive: boolean | undefined;
+      if (statusFilter === "active") {
+        isActive = true;
+      } else if (statusFilter === "inactive") {
+        isActive = false;
+      }
+
+      const blob = await dashboardService.exportUsers({
+        search: searchQuery || undefined,
+        is_active: isActive,
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `users-export-${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Users exported successfully");
+    } catch (error) {
+      console.error("Error exporting users:", error);
+      toast.error("Failed to export users");
+    } finally {
+      setExporting(false);
     }
   };
 
   const handleSendResponse = () => {
     if (!ticketResponse.trim()) {
-      alert('Please enter a response');
+      alert("Please enter a response");
       return;
     }
-    alert('Response sent successfully!');
-    setTicketResponse('');
+    alert("Response sent successfully!");
+    setTicketResponse("");
     handleBackToList();
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || user.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const filteredTickets = tickets.filter(ticket => {
-    const matchesSearch = ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredTickets = tickets.filter((ticket) => {
+    const matchesSearch =
+      ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ticket.customerName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
 
   const getUserOrders = (userId: string): Order[] => {
-    return mockOrders.filter(o => o.userId === userId).slice(0, 5);
+    return mockOrders.filter((o) => o.userId === userId).slice(0, 5);
   };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
   };
 
   const userCounts = {
     all: users.length,
-    active: users.filter(u => u.status === 'active').length,
-    inactive: users.filter(u => u.status === 'inactive').length,
-    flagged: users.filter(u => u.status === 'flagged').length,
+    active: users.filter((u) => u.status === "active").length,
+    inactive: users.filter((u) => u.status === "inactive").length,
+    flagged: users.filter((u) => u.status === "flagged").length,
   };
 
   if (loading) {
@@ -124,9 +211,13 @@ export default function UsersPage() {
 
   return (
     <div>
-      <div className='mb-6'>
-        <h1 className="text-xl lg:text-2xl font-bold text-admin-primary">User Management</h1>
-        <p className="text-sm text-admin-primary">Manage users, support tickets, and customer relationships</p>
+      <div className="mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold text-admin-primary">
+          User Management
+        </h1>
+        <p className="text-sm text-admin-primary">
+          Manage users, support tickets, and customer relationships
+        </p>
       </div>
 
       {showUserDetails && selectedUser ? (
@@ -145,14 +236,26 @@ export default function UsersPage() {
             <div className="flex items-center justify-between p-4 bg-accent-1 rounded-lg">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-admin-primary rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-xl">{getInitials(selectedUser.name)}</span>
+                  <span className="text-white font-bold text-xl">
+                    {getInitials(selectedUser.name)}
+                  </span>
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-admin-primary">{selectedUser.name}</p>
+                  <p className="text-lg font-semibold text-admin-primary">
+                    {selectedUser.name}
+                  </p>
                   <p className="text-sm text-grey">{selectedUser.email}</p>
                 </div>
               </div>
-              <Badge variant={selectedUser.status === 'active' ? 'success' : selectedUser.status === 'flagged' ? 'warning' : 'default'}>
+              <Badge
+                variant={
+                  selectedUser.status === "active"
+                    ? "success"
+                    : selectedUser.status === "flagged"
+                    ? "warning"
+                    : "default"
+                }
+              >
                 {selectedUser.status}
               </Badge>
             </div>
@@ -163,12 +266,18 @@ export default function UsersPage() {
                   <CgShoppingBag size={20} className="text-admin-primary/65" />
                   <span className="ml-1 text-sm text-grey">Order</span>
                 </div>
-                <p className="text-2xl font-bold text-admin-primary">{selectedUser.ordersCount}</p>
+                <p className="text-2xl font-bold text-admin-primary">
+                  {selectedUser.ordersCount}
+                </p>
               </div>
               <div className="p-4 rounded-lg text-center">
-                <div className="flex items-center justify-center mb-2">                  <span className="ml-2 text-sm text-grey">Total Spent</span>
+                <div className="flex items-center justify-center mb-2">
+                  {" "}
+                  <span className="ml-2 text-sm text-grey">Total Spent</span>
                 </div>
-                <p className="text-2xl font-bold text-admin-primary">{formatCurrency(selectedUser.amountSpent)}</p>
+                <p className="text-2xl font-bold text-admin-primary">
+                  {formatCurrency(selectedUser.amountSpent)}
+                </p>
               </div>
               <div className="p-4 rounded-lg text-right">
                 <div className="flex items-center justify-end mb-2">
@@ -180,22 +289,42 @@ export default function UsersPage() {
             </div>
 
             <div>
-              <h3 className="font-semibold text-admin-primary mb-3">Recent Order History</h3>
+              <h3 className="font-semibold text-admin-primary mb-3">
+                Recent Order History
+              </h3>
               <div className="space-y-3 bg-[#DADADA]/40">
                 {getUserOrders(selectedUser.id).map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-4 rounded-lg">
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between p-4 rounded-lg"
+                  >
                     <div>
-                      <p className="font-medium text-admin-primary mb-2">{order.id}</p>
-                      <p className="text-sm text-grey">{formatDate(order.orderDate)}</p>
+                      <p className="font-medium text-admin-primary mb-2">
+                        {order.id}
+                      </p>
+                      <p className="text-sm text-grey">
+                        {formatDate(order.orderDate)}
+                      </p>
                     </div>
 
                     <div className="text-right">
-                      <p className=" text-admin-primary mb-2">{formatCurrency(order.totalAmount)}</p>
-                      <Badge variant={
-                        order.status === 'delivered' ? 'success' :
-                          order.status === 'pending' ? 'warning' :
-                            order.status === 'shipped' ? 'info' : 'default'
-                      }>
+                      <p className=" text-admin-primary mb-2">
+                        {formatCurrency(order.totalAmount)}
+                      </p>
+                      <Badge
+                        variant={
+                          order.status === "delivered"
+                            ? "success"
+                            : order.status === "placed" ||
+                              order.status === "payment_confirmed" ||
+                              order.status === "backordered"
+                            ? "warning"
+                            : order.status === "shipped" ||
+                              order.status === "out_for_delivery"
+                            ? "info"
+                            : "default"
+                        }
+                      >
                         {order.status}
                       </Badge>
                     </div>
@@ -205,18 +334,24 @@ export default function UsersPage() {
             </div>
 
             <div>
-              <h3 className="font-semibold text-admin-primary mb-3">Account Actions</h3>
+              <h3 className="font-semibold text-admin-primary mb-3">
+                Account Actions
+              </h3>
               <div className="flex gap-4">
-                {selectedUser.status === 'active' ? (
+                {selectedUser.status === "active" ? (
                   <button
-                    onClick={() => handleStatusChange(selectedUser.id, 'inactive')}
+                    onClick={() =>
+                      handleStatusChange(selectedUser.id, "inactive")
+                    }
                     className="flex items-center space-x-2 px-6 py-2 border-2 border-[#CA0F04] text-[#CA0F04] rounded-lg bg-[#CA0F04]/7 transition-colors"
                   >
                     <span>Suspend</span>
                   </button>
                 ) : (
                   <button
-                    onClick={() => handleStatusChange(selectedUser.id, 'active')}
+                    onClick={() =>
+                      handleStatusChange(selectedUser.id, "active")
+                    }
                     className="flex items-center space-x-2 px-6 py-2 border-2 border-admin-primary/35 text-admin-primary rounded-lg transition-colors"
                   >
                     <span>Activate</span>
@@ -226,12 +361,14 @@ export default function UsersPage() {
             </div>
 
             <div className="flex justify-center space-x-5 pt-5">
-              <Button type="button" variant="secondary" onClick={handleBackToList}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleBackToList}
+              >
                 Cancel
               </Button>
-              <Button type="button">
-                Edit User
-              </Button>
+              <Button type="button">Edit User</Button>
             </div>
           </div>
         </div>
@@ -250,27 +387,39 @@ export default function UsersPage() {
           <div className="space-y-6 bg-admin-primary/3 p-6 rounded-lg">
             <div className="bg-accent-1 rounded-lg">
               <div className="mb-8">
-                <p className="text-lg font-semibold text-admin-primary">Support Ticket</p>
+                <p className="text-lg font-semibold text-admin-primary">
+                  Support Ticket
+                </p>
                 <p className=" text-admin-primary">{selectedTicket.title}</p>
               </div>
 
               <div className="flex flex-row items-center gap-4">
                 <div>
-                  <p className="text-admin-primary text-sm font-bold">From: {selectedTicket.customerName}</p>
+                  <p className="text-admin-primary text-sm font-bold">
+                    From: {selectedTicket.customerName}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-admin-primary">{formatDate(selectedTicket.date)}</p>
+                  <p className="text-sm text-admin-primary">
+                    {formatDate(selectedTicket.date)}
+                  </p>
                 </div>
               </div>
 
               <div className="p-4 border border-admin-primary/10 rounded-lg flex flex-row items-end justify-between">
-                <p className="text-admin-primary">{selectedTicket.description}</p>
-                <p className="text-xs text-grey">{formatDate(selectedTicket.date)}</p>
+                <p className="text-admin-primary">
+                  {selectedTicket.description}
+                </p>
+                <p className="text-xs text-grey">
+                  {formatDate(selectedTicket.date)}
+                </p>
               </div>
             </div>
 
             <div>
-              <label className="block text-admin-primary font-medium mb-2">Response</label>
+              <label className="block text-admin-primary font-medium mb-2">
+                Response
+              </label>
               <textarea
                 value={ticketResponse}
                 onChange={(e) => setTicketResponse(e.target.value)}
@@ -281,7 +430,9 @@ export default function UsersPage() {
             </div>
 
             <div>
-              <label className="block text-admin-primary font-medium mb-2">Change Status</label>
+              <label className="block text-admin-primary font-medium mb-2">
+                Change Status
+              </label>
               <select
                 value={ticketStatus}
                 onChange={(e) => setTicketStatus(e.target.value)}
@@ -294,7 +445,11 @@ export default function UsersPage() {
             </div>
 
             <div className="flex justify-center space-x-5 pt-5">
-              <Button type="button" variant="secondary" onClick={handleBackToList}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleBackToList}
+              >
                 Cancel
               </Button>
               <Button type="button" onClick={handleSendResponse}>
@@ -309,51 +464,64 @@ export default function UsersPage() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="flex flex-wrap gap-2 bg-white p-1">
                 <button
-                  onClick={() => setActiveTab('users')}
-                  className={`px-4 py-2 rounded-sm text-sm transition-all flex items-center ${activeTab === 'users'
-                    ? 'bg-admin-primary text-white'
-                    : 'bg-admin-primary/5 text-admin-primary'
-                    }`}
+                  onClick={() => setActiveTab("users")}
+                  className={`px-4 py-2 rounded-sm text-sm transition-all flex items-center ${
+                    activeTab === "users"
+                      ? "bg-admin-primary text-white"
+                      : "bg-admin-primary/5 text-admin-primary"
+                  }`}
                 >
                   <span>All Users</span>
                   <span className="ml-1">({users.length})</span>
                 </button>
                 <button
-                  onClick={() => setActiveTab('tickets')}
-                  className={`px-4 py-2 rounded-sm text-sm transition-all flex items-center ${activeTab === 'tickets'
-                    ? 'bg-admin-primary text-white'
-                    : 'bg-admin-primary/5 text-admin-primary'
-                    }`}
+                  onClick={() => setActiveTab("tickets")}
+                  className={`px-4 py-2 rounded-sm text-sm transition-all flex items-center ${
+                    activeTab === "tickets"
+                      ? "bg-admin-primary text-white"
+                      : "bg-admin-primary/5 text-admin-primary"
+                  }`}
                 >
                   <span>Support Tickets</span>
                   <span className="ml-1">({tickets.length})</span>
                 </button>
               </div>
-              <Button>
-                Export
+              <Button onClick={handleExport} disabled={exporting}>
+                {exporting ? "Exporting..." : "Export"}
               </Button>
             </div>
           </div>
 
-          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between bg-admin-primary/4 p-6 gap-4'>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-admin-primary/4 p-6 gap-4">
             <div>
-              <h2 className="text-sm text-admin-primary/60 mb-1">{activeTab === 'users' ? 'All Users' : 'Support Tickets'}</h2>
+              <h2 className="text-sm text-admin-primary/60 mb-1">
+                {activeTab === "users" ? "All Users" : "Support Tickets"}
+              </h2>
               <p className="text-2xl font-bold text-admin-primary">
-                {activeTab === 'users' ? filteredUsers.length : filteredTickets.length}
+                {activeTab === "users"
+                  ? filteredUsers.length
+                  : filteredTickets.length}
               </p>
             </div>
             <div className="flex gap-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-grey" size={20} />
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-grey"
+                  size={20}
+                />
                 <input
                   type="text"
-                  placeholder={activeTab === 'users' ? 'Search by user name' : 'Search tickets'}
+                  placeholder={
+                    activeTab === "users"
+                      ? "Search by user name"
+                      : "Search tickets"
+                  }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none sm:w-96 border-accent-2"
                 />
               </div>
-              {activeTab === 'users' && (
+              {activeTab === "users" && (
                 <div className="relative">
                   <button
                     onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
@@ -365,20 +533,27 @@ export default function UsersPage() {
                   {filterDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-accent-2 z-10">
                       <div className="p-2">
-                        <p className="px-3 py-2 text-sm font-medium text-grey">Filter By</p>
-                        {['all', 'active', 'inactive', 'flagged'].map((status) => (
-                          <button
-                            key={status}
-                            onClick={() => {
-                              setStatusFilter(status);
-                              setFilterDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-accent-1 transition-colors capitalize ${statusFilter === status ? 'bg-accent-1 text-admin-primary font-medium' : 'text-grey'
+                        <p className="px-3 py-2 text-sm font-medium text-grey">
+                          Filter By
+                        </p>
+                        {["all", "active", "inactive", "flagged"].map(
+                          (status) => (
+                            <button
+                              key={status}
+                              onClick={() => {
+                                setStatusFilter(status);
+                                setFilterDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-accent-1 transition-colors capitalize ${
+                                statusFilter === status
+                                  ? "bg-accent-1 text-admin-primary font-medium"
+                                  : "text-grey"
                               }`}
-                          >
-                            {status}
-                          </button>
-                        ))}
+                            >
+                              {status}
+                            </button>
+                          )
+                        )}
                       </div>
                     </div>
                   )}
@@ -388,16 +563,26 @@ export default function UsersPage() {
           </div>
 
           <div className="bg-admin-primary/4 rounded-b-xl overflow-hidden">
-            {activeTab === 'users' ? (
+            {activeTab === "users" ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-accent-1 shadow-md shadow-black">
                     <tr>
-                      <th className="text-left font-medium text-admin-primary px-6 py-4">User</th>
-                      <th className="text-left font-medium text-admin-primary px-6 py-4">Orders</th>
-                      <th className="text-left font-medium text-admin-primary px-6 py-4">Amount Spent</th>
-                      <th className="text-left font-medium text-admin-primary px-6 py-4">Last Active</th>
-                      <th className="text-left font-medium text-admin-primary px-6 py-4">Status</th>
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        User
+                      </th>
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        Orders
+                      </th>
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        Amount Spent
+                      </th>
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        Last Active
+                      </th>
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        Status
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -410,11 +595,25 @@ export default function UsersPage() {
                         <td className="px-6 py-4">
                           <p className=" text-admin-primary">{user.name}</p>
                         </td>
-                        <td className="px-6 py-4 text-admin-primary">{user.ordersCount}</td>
-                        <td className="px-6 py-4 text-admin-primary">{formatCurrency(user.amountSpent)}</td>
-                        <td className="px-6 py-4 text-grey">{formatDate(user.lastActive)}</td>
-                        <td className="px-6 py-4">
-                          <Badge variant={user.status === 'active' ? 'success' : user.status === 'flagged' ? 'warning' : 'default'}>
+                        <td className="px-6 py-4 text-admin-primary">
+                          {user.ordersCount}
+                        </td>
+                        <td className="px-6 py-4 text-admin-primary">
+                          {formatCurrency(user.amountSpent)}
+                        </td>
+                        <td className="px-6 py-4 text-grey">
+                          {formatDate(user.lastActive)}
+                        </td>
+                        <td className="px-6 py-4 capitalize">
+                          <Badge
+                            variant={
+                              user.status === "active"
+                                ? "success"
+                                : user.status === "flagged"
+                                ? "warning"
+                                : "default"
+                            }
+                          >
                             {user.status}
                           </Badge>
                         </td>
@@ -427,19 +626,28 @@ export default function UsersPage() {
               <div className="overflow-x-auto p-2 sm:p-4">
                 <div>
                   {filteredTickets.map((ticket) => (
-                    <div key={ticket.id} className="flex items-center justify-between p-4 bg-white rounded-lg mb-4">
+                    <div
+                      key={ticket.id}
+                      className="flex items-center justify-between p-4 bg-white rounded-lg mb-4"
+                    >
                       <div>
-                        <p className="mb-2 text-admin-primary">{ticket.title}</p>
-                        <p className="text-xs text-grey">From: {ticket.customerName}</p>
+                        <p className="mb-2 text-admin-primary">
+                          {ticket.title}
+                        </p>
+                        <p className="text-xs text-grey">
+                          From: {ticket.customerName}
+                        </p>
 
                         <div className="mt-2 flex flex-row gap-2 items-center text-admin-primary text-sm">
                           <p>{ticket.id}</p>
                           <p>{formatDate(ticket.date)}</p>
                         </div>
-
                       </div>
                       <div>
-                        <Button size="sm" onClick={() => handleViewTicket(ticket)}>
+                        <Button
+                          size="sm"
+                          onClick={() => handleViewTicket(ticket)}
+                        >
                           View & Respond
                         </Button>
                       </div>
