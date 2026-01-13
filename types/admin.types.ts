@@ -60,7 +60,7 @@ export interface Product {
   tags?: string[];
 }
 
-export type OrderStatus = 'placed' | 'payment_confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'backordered';
+export type OrderStatus = 'placed' | 'payment_confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'backordered' | 'pending';
 export type PaymentMethod = 'paystack' | 'flutterwave';
 export type PaymentStatus = 'completed' | 'pending' | 'failed' | 'refunded';
 
