@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Eye, Download, ArrowLeft, ChevronLeft, Filter } from 'lucide-react';
+import { Search, Eye, Download, ChevronLeft, ArrowLeft, Filter } from 'lucide-react';
 import { Button, Modal, Badge, LoadingSpinner, EmptyState, Select } from '@/components/admin/ui';
 import { Order, OrderStatus } from '@/types/admin.types';
 import { apiService } from '@/services/mock.service';
