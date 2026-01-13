@@ -12,6 +12,8 @@ export interface ApiRequestParams {
   token?: string;
 }
 
+export const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 const Api = axios.create({
   baseURL: `${process.env.NEXT_PUBLIC_API_URL}/api/`,
   headers: {
@@ -35,15 +37,21 @@ Api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error?.response?.status === 401 && error?.config?.headers?.Authorization) {
+    if (
+      error?.response?.status === 401 &&
+      error?.config?.headers?.Authorization
+    ) {
       toast.error("Session expired. Please login again.");
       const authStore = useAuthStore.getState();
       authStore.logout();
-      
+
       const currentPath = window.location.pathname;
-      const redirectPath = currentPath && currentPath !== '/' ? currentPath : '/shop';
-      
-      window.location.href = `/login?redirect=${encodeURIComponent(redirectPath)}`;
+      const redirectPath =
+        currentPath && currentPath !== "/" ? currentPath : "/shop";
+
+      window.location.href = `/login?redirect=${encodeURIComponent(
+        redirectPath
+      )}`;
     }
     return Promise.reject(error);
   }

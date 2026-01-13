@@ -1,9 +1,11 @@
-'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/admin/Sidebar';
-import Header from '@/components/admin/Header';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Sidebar from "@/components/admin/Sidebar";
+import Header from "@/components/admin/Header";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function DashboardLayout({
   children,
@@ -11,17 +13,20 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const [hasMounted, setHasMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      router.push('/admin/auth/login');
-    } else {
-      setIsAuthenticated(true);
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken && hasMounted) {
+      router.push("/admin/auth/login");
     }
-  }, [router]);
+  }, [router, accessToken, hasMounted]);
 
   if (!isAuthenticated) {
     return (
