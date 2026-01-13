@@ -60,7 +60,7 @@ export interface Product {
   tags?: string[];
 }
 
-export type OrderStatus = 'delivered' | 'pending' | 'processing' | 'shipped' | 'cancelled' | 'placed';
+export type OrderStatus = 'placed' | 'payment_confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'backordered' | 'pending';
 export type PaymentMethod = 'paystack' | 'flutterwave';
 export type PaymentStatus = 'completed' | 'pending' | 'failed' | 'refunded';
 
@@ -78,6 +78,7 @@ export interface Order {
   userName: string;
   userEmail: string;
   items: OrderItem[];
+  itemsCount?: number;
   totalAmount: number;
   status: OrderStatus;
   paymentMethod: PaymentMethod;
@@ -250,4 +251,170 @@ export interface Testimonial {
   rating: number;
   image?: string;
   status: 'approved' | 'pending';
+}
+
+// Dashboard API Types
+export interface RecentOrder {
+  id: number;
+  order_number: string;
+  user_email: string;
+  user_name: string;
+  subtotal: string;
+  total: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  items_count: number;
+}
+
+export interface TopProduct {
+  product_name: string;
+  total_quantity: number;
+  total_sales: number;
+}
+
+export interface MonthlyStats {
+  orders: number;
+  sales: number;
+  average_order: number;
+  custom_designs: number;
+  pending_designs: number;
+}
+
+export interface DashboardOverview {
+  total_products: number;
+  total_orders: number;
+  total_users: number;
+  total_categories: number;
+  total_sales: number;
+  average_order: number;
+  recent_orders: RecentOrder[];
+  top_products: TopProduct[];
+  daily_sales: SalesData[];
+  monthly_stats: MonthlyStats;
+}
+
+export interface ApiProduct {
+  id: number;
+  name: string;
+  description: string;
+  price: string;
+  category_name: string;
+  is_active: boolean;
+  average_rating: string;
+  review_count: number;
+  sold_count: number;
+  created_at: string;
+  images_count: number;
+  total_sold: number;
+}
+
+export interface ProductsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ApiProduct[];
+}
+
+export interface GetProductsParams {
+  category?: number;
+  is_active?: boolean;
+  ordering?: string;
+  page?: number;
+  search?: string;
+}
+
+export interface ApiCategory {
+  id: number;
+  name: string;
+  slug?: string;
+  description?: string;
+  product_count?: number;
+}
+
+export interface ApiProductImage {
+  id: number;
+  image: string;
+  is_featured: boolean;
+}
+
+export interface ApiProductDetail {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  price: string;
+  color: string;
+  size: string;
+  category: number;
+  category_name: string;
+  subcategory: number | null;
+  subcategory_name: string | null;
+  is_active: boolean;
+  average_rating: string;
+  review_count: number;
+  sold_count: number;
+  created_at: string;
+  updated_at: string;
+  images: ApiProductImage[];
+  total_sold: string;
+  total_revenue: string;
+}
+
+export interface ApiOrderItem {
+  id: number;
+  product_name: string;
+  product_variant?: {
+    id: number;
+    product: number;
+    color?: {
+      id: number;
+      name: string;
+      hex_code: string;
+    };
+    size?: {
+      id: number;
+      name: string;
+    };
+  };
+  color?: string;
+  size?: string;
+  price: string;
+  quantity: number;
+  total_price: string;
+}
+
+export interface ApiOrder {
+  id: number;
+  order_number: string;
+  status: string;
+  status_display?: string;
+  user?: string;
+  user_email?: string;
+  user_name?: string;
+  guest_email?: string | null;
+  payment_method?: string;
+  subtotal: string;
+  shipping_fee?: string;
+  tax?: string;
+  total: string;
+  created_at: string;
+  updated_at?: string;
+  shipping_address?: string;
+  items?: ApiOrderItem[];
+  items_count?: number;
+}
+
+export interface ApiUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  is_active: boolean;
+  date_joined: string;
+  last_login: string;
+  total_orders: string;
+  total_spent: string;
+  last_order_date?: string;
 }

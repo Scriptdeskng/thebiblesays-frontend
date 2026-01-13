@@ -28,9 +28,13 @@ export const getStatusColor = (status: string): string => {
     delivered: 'text-[#2AA31F] bg-[#2AA31F]/7',
     completed: 'text-[#2AA31F] bg-[#2AA31F]/7',
     pending: 'text-[#626262] bg-[#626262]/7',
+    placed: 'text-[#626262] bg-[#626262]/7',
+    payment_confirmed: 'text-blue-600 bg-blue-50',
     processing: 'text-orange-600 bg-orange-50',
     shipped: 'text-[#3291FF] bg-[#3291FF]/7',
+    out_for_delivery: 'text-[#3291FF] bg-[#3291FF]/7',
     cancelled: 'text-[#CA0F04] bg-[#CA0F04]/7',
+    backordered: 'text-yellow-600 bg-yellow-50',
     failed: 'text-[#CA0F04] bg-[#CA0F04]/7',
     refunded: 'text-grey bg-accent-1',
     
