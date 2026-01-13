@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Eye, Download, ArrowLeft, ChevronLeft, Filter } from 'lucide-react';
 import { Button, Modal, Badge, LoadingSpinner, EmptyState, Select } from '@/components/admin/ui';
 import { Order, OrderStatus } from '@/types/admin.types';
-import { mockOrders, apiService } from '@/services/mock.service';
+import { apiService } from '@/services/mock.service';
 import { formatCurrency, formatDate, formatDateTime, getStatusColor } from '@/lib/utils';
 
 export default function OrdersPage() {
