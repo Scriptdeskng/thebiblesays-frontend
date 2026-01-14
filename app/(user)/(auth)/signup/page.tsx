@@ -103,11 +103,11 @@ function SignupPage() {
       router.push('/');
     } catch (error: any) {
       console.error('Registration error:', error);
-      
+
       if (error?.response?.data) {
         const apiErrors = error.response.data;
         console.error('API returned errors:', apiErrors);
-        
+
         if (apiErrors.email) {
           setErrors(prev => ({ ...prev, email: Array.isArray(apiErrors.email) ? apiErrors.email[0] : apiErrors.email }));
         }
@@ -127,7 +127,7 @@ function SignupPage() {
         if (apiErrors.non_field_errors) {
           toast.error(Array.isArray(apiErrors.non_field_errors) ? apiErrors.non_field_errors[0] : apiErrors.non_field_errors);
         }
-        
+
         const hasSpecificError = apiErrors.email || apiErrors.username || apiErrors.password1 || apiErrors.password || apiErrors.password2 || apiErrors.phone || apiErrors.non_field_errors;
         if (!hasSpecificError) {
           toast.error('Registration failed. Please check your information and try again.');
@@ -142,7 +142,7 @@ function SignupPage() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-lg xl:max-w-xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">Create Account</h1>
           <p className="text-grey">Sign up to get started</p>
@@ -242,7 +242,7 @@ function SignupPage() {
               {['At least 8 characters', 'One uppercase letter', 'One lowercase letter', 'One number'].map((rule, idx) => {
                 const hasError = passwordValidation.errors.includes(rule);
                 const isValid = formData.password && !hasError;
-                
+
                 return (
                   <div key={idx} className="flex items-center gap-2 text-xs">
                     {!formData.password ? (
@@ -253,8 +253,8 @@ function SignupPage() {
                       <Check className="w-4 h-4 text-green-500" />
                     )}
                     <span className={cn(
-                      hasError ? 'text-red-500' : 
-                      isValid ? 'text-green-600' : 'text-grey'
+                      hasError ? 'text-red-500' :
+                        isValid ? 'text-green-600' : 'text-grey'
                     )}>
                       {rule}
                     </span>
