@@ -13,6 +13,7 @@ import { cn } from '@/utils/cn';
 import { FaStar } from 'react-icons/fa';
 import { ReviewSection } from './ReviewSection';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 
 interface ProductDetailsProps {
   product: Product;
@@ -23,6 +24,7 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
   const [selectedColor, setSelectedColor] = useState(product.colors[0].name);
   const [selectedSize, setSelectedSize] = useState<Size>(product.sizes[0]);
   const [quantity, setQuantity] = useState(1);
+  const { currency } = useCurrencyStore();
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
 
   const addItem = useCartStore((state) => state.addItem);
@@ -82,7 +84,7 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
         </div>
 
         <p className="text-xl font-bold text-primary mb-6">
-          {formatPrice(product.price)}
+          {formatPrice(product.price, currency)}
         </p>
 
         <div className="space-y-6">

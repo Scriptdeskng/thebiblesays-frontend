@@ -9,11 +9,13 @@ import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { orderService, Order } from '@/services/order.service';
 import { formatPrice } from '@/utils/format';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 
 export default function OrderConfirmationPage() {
   const searchParams = useSearchParams();
   const { clearCart } = useCartStore();
   const { accessToken } = useAuthStore();
+  const { currency } = useCurrencyStore();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,7 +84,7 @@ export default function OrderConfirmationPage() {
                       {item.product_name} ({item.color}, {item.size}) × {item.quantity}
                     </span>
                     <span className="text-primary font-medium">
-                      {formatPrice(parseFloat(item.total_price))}
+                      {formatPrice(parseFloat(item.total_price), currency)}
                     </span>
                   </div>
                 ))}
@@ -92,20 +94,20 @@ export default function OrderConfirmationPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-grey">Subtotal</span>
-                <span className="text-primary">{formatPrice(parseFloat(order.subtotal))}</span>
+                <span className="text-primary">{formatPrice(parseFloat(order.subtotal), currency)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-grey">Shipping</span>
-                <span className="text-primary">{formatPrice(parseFloat(order.shipping_fee))}</span>
+                <span className="text-primary">{formatPrice(parseFloat(order.shipping_fee), currency)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-grey">Tax</span>
-                <span className="text-primary">{formatPrice(parseFloat(order.tax))}</span>
+                <span className="text-primary">{formatPrice(parseFloat(order.tax), currency)}</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-accent-2">
                 <span className="font-semibold text-primary">Total</span>
                 <span className="font-bold text-primary text-lg">
-                  {formatPrice(parseFloat(order.total))}
+                  {formatPrice(parseFloat(order.total), currency)}
                 </span>
               </div>
             </div>

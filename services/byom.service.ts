@@ -17,6 +17,8 @@ export interface CustomMerchDesign {
   status: 'draft' | 'pending_approval' | 'approved' | 'rejected';
   rejection_reason: string | null;
   is_active: boolean;
+  price: string;
+  currency: 'NGN' | 'USD';
   created_at: string;
   updated_at: string;
 }
@@ -42,28 +44,28 @@ export interface CustomMerchListResponse {
 }
 
 class BYOMService {
-  async getMyDesigns(token: string): Promise<CustomMerchListResponse> {
+  async getMyDesigns(token: string, currencyParam: string = ''): Promise<CustomMerchListResponse> {
     return makeRequest({
       method: 'GET',
-      url: 'byom/custom-merch/',
+      url: `byom/custom-merch/${currencyParam}`,
       requireToken: true,
       token,
     });
   }
 
-  async getSavedDesigns(token: string): Promise<CustomMerchDesign[]> {
+  async getSavedDesigns(token: string, currencyParam: string = ''): Promise<CustomMerchDesign[]> {
     return makeRequest({
       method: 'GET',
-      url: 'byom/custom-merch/saved_designs/',
+      url: `byom/custom-merch/saved_designs/${currencyParam}`,
       requireToken: true,
       token,
     });
   }
 
-  async getDesignById(token: string, id: number): Promise<CustomMerchDesign> {
+  async getDesignById(token: string, id: number, currencyParam: string = ''): Promise<CustomMerchDesign> {
     return makeRequest({
       method: 'GET',
-      url: `byom/custom-merch/${id}/`,
+      url: `byom/custom-merch/${id}/${currencyParam}`,
       requireToken: true,
       token,
     });
@@ -101,7 +103,8 @@ class BYOMService {
   async createDesign(
     token: string,
     payload: CreateCustomMerchPayload,
-    uploadedFiles?: File[]
+    uploadedFiles?: File[],
+    currencyParam: string = ''
   ): Promise<CustomMerchDesign> {
     let filesToUpload = uploadedFiles;
     let usingPlaceholder = false;
@@ -147,7 +150,7 @@ class BYOMService {
       try {
         const result = await makeRequest({
           method: 'POST',
-          url: 'byom/custom-merch/',
+          url: `byom/custom-merch/${currencyParam}`,
           data: formData,
           requireToken: true,
           token,
@@ -155,7 +158,7 @@ class BYOMService {
         });
         return result;
       } catch (error: any) {
-        console.error('❌ Error creating design with file:', error);
+        console.error('Error creating design with file:', error);
         
         if (error?.response?.data?.error?.includes('already submitted for approval') ||
             error?.message?.includes('already submitted for approval')) {
@@ -169,14 +172,14 @@ class BYOMService {
     try {
       const result = await makeRequest({
         method: 'POST',
-        url: 'byom/custom-merch/',
+        url: `byom/custom-merch/${currencyParam}`,
         data: payload,
         requireToken: true,
         token,
       });
       return result;
     } catch (error: any) {
-      console.error('❌ Error creating design:', error);
+      console.error('Error creating design:', error);
       
       if (error?.response?.data?.error?.includes('already submitted for approval') ||
           error?.message?.includes('already submitted for approval')) {
@@ -190,11 +193,12 @@ class BYOMService {
   async updateDesign(
     token: string,
     id: number,
-    payload: Partial<CreateCustomMerchPayload>
+    payload: Partial<CreateCustomMerchPayload>,
+    currencyParam: string = ''
   ): Promise<CustomMerchDesign> {
     return makeRequest({
       method: 'PATCH',
-      url: `byom/custom-merch/${id}/`,
+      url: `byom/custom-merch/${id}/${currencyParam}`,
       data: payload,
       requireToken: true,
       token,
@@ -210,12 +214,15 @@ class BYOMService {
     });
   }
 
-  async submitForApproval(token: string, id: number): Promise<CustomMerchDesign> {
+  async submitForApproval(
+    token: string, 
+    id: number,
+    currencyParam: string = ''
+  ): Promise<CustomMerchDesign> {
     try {
-      
       const result = await makeRequest({
         method: 'POST',
-        url: `byom/custom-merch/${id}/submit_for_approval/`,
+        url: `byom/custom-merch/${id}/submit_for_approval/${currencyParam}`,
         requireToken: true,
         token,
         data: {},
@@ -223,7 +230,7 @@ class BYOMService {
       
       return result;
     } catch (error: any) {
-      console.error('❌ Error submitting for approval:', error);
+      console.error(' Error submitting for approval:', error);
       
       if (error?.response?.data?.error) {
         throw new Error(error.response.data.error);
@@ -236,14 +243,15 @@ class BYOMService {
   async reuploadImage(
     token: string,
     id: number,
-    file: File
+    file: File,
+    currencyParam: string = ''
   ): Promise<CustomMerchDesign> {
     const formData = new FormData();
     formData.append('uploaded_image', file);
 
     return makeRequest({
       method: 'POST',
-      url: `byom/custom-merch/${id}/reupload/`,
+      url: `byom/custom-merch/${id}/reupload/${currencyParam}`,
       data: formData,
       requireToken: true,
       token,
@@ -251,20 +259,28 @@ class BYOMService {
     });
   }
 
-  async addToCart(token: string, id: number): Promise<any> {
+  async addToCart(
+    token: string, 
+    id: number,
+    currencyParam: string = ''
+  ): Promise<any> {
     return makeRequest({
       method: 'POST',
-      url: `byom/custom-merch/${id}/add_to_cart/`,
+      url: `byom/custom-merch/${id}/add_to_cart/${currencyParam}`,
       requireToken: true,
       token,
       data: {},
     });
   }
 
-  async getPreview(token: string, id: number): Promise<CustomMerchDesign> {
+  async getPreview(
+    token: string, 
+    id: number,
+    currencyParam: string = ''
+  ): Promise<CustomMerchDesign> {
     return makeRequest({
       method: 'GET',
-      url: `byom/custom-merch/${id}/preview/`,
+      url: `byom/custom-merch/${id}/preview/${currencyParam}`,
       requireToken: true,
       token,
     });
@@ -273,17 +289,9 @@ class BYOMService {
   validateImageFile(file: File): { valid: boolean; error?: string } {
     const fileName = file.name.toLowerCase();
     const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
-    
-    console.log('🔍 Validating file:', {
-      name: fileName,
-      type: file.type,
-      size: file.size,
-      extension: fileExtension
-    });
 
     const unsupportedFormats = ['.avif', '.webp', '.svg', '.gif', '.bmp', '.tiff', '.heic', '.heif'];
     if (unsupportedFormats.includes(fileExtension)) {
-      console.log('❌ Unsupported extension detected:', fileExtension);
       return {
         valid: false,
         error: `${fileExtension.toUpperCase()} format is not supported. Please use JPG or PNG only.`

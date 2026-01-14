@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/Button';
 import { BYOMCartItem } from '@/components/cart/BYOMCartItem';
 import { useCartStore } from '@/store/useCartStore';
 import { formatPrice } from '@/utils/format';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
+import { useEffect, useState } from 'react';
+import { productService } from '@/services/product.service';
 
 interface CartModalProps {
   isOpen: boolean;
@@ -15,6 +18,37 @@ interface CartModalProps {
 
 export const CartModal = ({ isOpen, onClose }: CartModalProps) => {
   const { items, updateQuantity, removeItem, getTotal } = useCartStore();
+  const { currency, getCurrencyParam } = useCurrencyStore();
+  
+    useEffect(() => {
+      const updatePrices = async () => {
+        if (items.length === 0) return;
+        const currencyParam = getCurrencyParam();
+        const productSlugs = items
+          .map(item => item.product?.slug)
+          .filter((slug): slug is string => Boolean(slug));
+  
+        const uniqueSlugs = [...new Set(productSlugs)];
+  
+        for (const slug of uniqueSlugs) {
+          try {
+            const updatedProduct = await productService.getProductBySlug(slug, currencyParam);
+  
+            if (updatedProduct) {
+              items.forEach(item => {
+                if (item.product?.slug === slug) {
+                  item.product.price = updatedProduct.price;
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`Error updating price for ${slug}:`, error);
+          }
+        }
+        useCartStore.setState({ items: [...items] });
+      };
+      updatePrices();
+    }, [currency, getCurrencyParam]);
 
   if (!isOpen) return null;
 
@@ -98,7 +132,7 @@ export const CartModal = ({ isOpen, onClose }: CartModalProps) => {
                         <Trash2 className="w-4 h-4 text-grey" />
                       </button>
                       <p className="text-primary">
-                        {formatPrice(item.product.price * item.quantity)}
+                        {formatPrice(item.product.price * item.quantity, currency)}
                       </p>
                     </div>
                   </div>
@@ -114,7 +148,7 @@ export const CartModal = ({ isOpen, onClose }: CartModalProps) => {
               <div className="flex items-center justify-between text-lg">
                 <span className="font-semibold text-grey">Total</span>
                 <span className="font-bold text-primary text-xl">
-                  {formatPrice(getTotal())}
+                  {formatPrice(getTotal(), currency)}
                 </span>
               </div>
 

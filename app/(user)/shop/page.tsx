@@ -4,12 +4,13 @@ import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 import { ProductCard } from '@/components/product/ProductCard';
-import { ShopFilters, FilterState } from '@/components/shop/ShopFilters';
+import { ShopFilters, FilterState, PRICE_RANGES } from '@/components/shop/ShopFilters';
 import { Badge } from '@/components/ui/Badge';
 import { Product } from '@/types/product.types';
 import { GrNext, GrPrevious } from 'react-icons/gr';
 import { useRouter } from "next/navigation";
 import { productService } from '@/services/product.service';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 
 type SortOption =
   | 'featured'
@@ -25,14 +26,15 @@ export default function ShopPage() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
   const router = useRouter();
-  
+
   const [products, setProducts] = useState<Product[]>([]);
+  const { currency, getCurrencyParam } = useCurrencyStore();
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     colors: [],
     sizes: [],
-    priceRange: [0, 1000000],
+    priceRange: [0, PRICE_RANGES[currency].MAX],
   });
   const [sortBy, setSortBy] = useState<SortOption>('featured');
   const [currentPage, setCurrentPage] = useState(1);
@@ -41,10 +43,13 @@ export default function ShopPage() {
   useEffect(() => {
     const loadProducts = async () => {
       setIsLoading(true);
+
+      const currencyParam = getCurrencyParam();
+
       try {
-        const fetchedProducts = await productService.getProducts();
+        const fetchedProducts = await productService.getProducts(currencyParam);
         setProducts(fetchedProducts);
-        
+
       } catch (error) {
         console.error('Error loading products:', error);
       } finally {
@@ -53,7 +58,15 @@ export default function ShopPage() {
     };
 
     loadProducts();
-  }, []);
+  }, [currency, filters]);
+
+  useEffect(() => {
+    const newMax = PRICE_RANGES[currency].MAX;
+    setFilters(prev => ({
+      ...prev,
+      priceRange: [0, newMax]
+    }));
+  }, [currency]);
 
   const filteredProducts = useMemo(() => {
     if (!products.length) return [];
@@ -71,8 +84,8 @@ export default function ShopPage() {
     }
 
     if (filters.categories.length > 0) {
-      filtered = filtered.filter(p => 
-        filters.categories.some(cat => 
+      filtered = filtered.filter(p =>
+        filters.categories.some(cat =>
           p.category.toLowerCase().includes(cat.toLowerCase()) ||
           cat.toLowerCase().includes(p.category.toLowerCase())
         )
@@ -81,7 +94,7 @@ export default function ShopPage() {
 
     if (filters.colors.length > 0) {
       filtered = filtered.filter(p =>
-        p.colors.some(c => 
+        p.colors.some(c =>
           filters.colors.some(filterColor =>
             c.name.toLowerCase() === filterColor.toLowerCase()
           )
@@ -91,7 +104,7 @@ export default function ShopPage() {
 
     if (filters.sizes.length > 0) {
       filtered = filtered.filter(p =>
-        p.sizes.some(s => 
+        p.sizes.some(s =>
           filters.sizes.some(filterSize =>
             s.toString().toLowerCase() === filterSize.toString().toLowerCase()
           )
@@ -271,7 +284,7 @@ export default function ShopPage() {
                       categories: [],
                       colors: [],
                       sizes: [],
-                      priceRange: [0, 1000000],
+                      priceRange: [0, PRICE_RANGES[currency].MAX],
                     });
                     if (searchQuery) router.push('/shop');
                   }}

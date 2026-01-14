@@ -1,31 +1,23 @@
 "use client";
 
 import { cn } from "@/utils/cn";
-import { useState } from "react";
-
-type Currency = "NGN"
+import { useCurrencyStore, Currency } from "@/store/useCurrencyStore";
 
 const currencySymbols: Record<Currency, string> = {
   NGN: "₦",
+  USD: "$",
 };
 
 interface CurrencySelectorProps {
-  value?: Currency;
-  onChange?: (currency: Currency) => void;
   className?: string;
 }
 
-export function CurrencySelector({
-  value = "NGN",
-  onChange,
-  className,
-}: CurrencySelectorProps) {
-  const [current, setCurrent] = useState<Currency>(value);
+export function CurrencySelector({ className }: CurrencySelectorProps) {
+  const { currency, setCurrency } = useCurrencyStore();
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newCurrency = e.target.value as Currency;
-    setCurrent(newCurrency);
-    onChange?.(newCurrency);
+    setCurrency(newCurrency);
   };
 
   return (
@@ -37,7 +29,7 @@ export function CurrencySelector({
     >
       <select
         className="outline-none pr-2 sm:pr-5 bg-transparent text-sm cursor-pointer"
-        value={current}
+        value={currency}
         onChange={handleChange}
       >
         {Object.entries(currencySymbols).map(([code, symbol]) => (

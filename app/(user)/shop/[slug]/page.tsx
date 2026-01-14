@@ -6,6 +6,7 @@ import { ProductDetails } from '@/components/product/ProductDetail';
 import { ProductCard } from '@/components/product/ProductCard';
 import { Product, Review } from '@/types/product.types';
 import { productService } from '@/services/product.service';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 
 export default function ProductPage() {
   const params = useParams();
@@ -16,6 +17,7 @@ export default function ProductPage() {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { currency, getCurrencyParam } = useCurrencyStore();
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -24,9 +26,11 @@ export default function ProductPage() {
       setIsLoading(true);
       setError(null);
 
+      const currencyParam = getCurrencyParam();
+
       try {
-        const fetchedProduct = await productService.getProductBySlug(slug);
-        
+        const fetchedProduct = await productService.getProductBySlug(slug, currencyParam);
+
         if (!fetchedProduct) {
           setError('Product not found');
           setIsLoading(false);
@@ -37,7 +41,7 @@ export default function ProductPage() {
 
         const [fetchedReviews, fetchedRelated] = await Promise.all([
           productService.getReviews(fetchedProduct.id),
-          productService.getRelatedProducts(fetchedProduct.id, 4)
+          productService.getRelatedProducts(fetchedProduct.id, 4, currencyParam)
         ]);
 
         setReviews(fetchedReviews);
@@ -51,7 +55,8 @@ export default function ProductPage() {
     };
 
     loadProduct();
-  }, [slug]);
+
+  }, [slug, currency]);
 
   if (isLoading) {
     return (

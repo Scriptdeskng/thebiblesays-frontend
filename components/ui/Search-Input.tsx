@@ -8,6 +8,7 @@ import { Search, X } from "lucide-react";
 import { productService } from '@/services/product.service';
 import { Product } from '@/types/product.types';
 import { formatPrice } from '@/utils/format';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 
 interface SearchInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon?: React.ReactNode;
@@ -18,6 +19,8 @@ export function SearchInput({ className, icon, ...props }: SearchInputProps) {
   const [suggestions, setSuggestions] = useState<Product[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const { currency } = useCurrencyStore();
+  
   const router = useRouter();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -151,7 +154,7 @@ export function SearchInput({ className, icon, ...props }: SearchInputProps) {
                   <p className="font-medium text-primary truncate">{product.name}</p>
                   <p className="text-sm text-grey">{product.category}</p>
                 </div>
-                <p className="font-semibold text-primary">{formatPrice(product.price)}</p>
+                <p className="font-semibold text-primary">{formatPrice(product.price, currency)}</p>
               </button>
             ))}
           </div>

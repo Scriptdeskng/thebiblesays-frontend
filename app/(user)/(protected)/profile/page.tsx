@@ -21,6 +21,7 @@ import { formatPrice } from '@/utils/format';
 import { cn } from '@/utils/cn';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 
 type Tab = 'personal' | 'orders' | 'wishlist' | 'address' | 'drafts';
 
@@ -83,6 +84,7 @@ export default function ProfilePage() {
   const [drafts, setDrafts] = useState<CustomMerchDesign[]>([]);
   const [isLoadingDrafts, setIsLoadingDrafts] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { currency } = useCurrencyStore();
 
   const [newAddress, setNewAddress] = useState({
     label: '',
@@ -544,7 +546,7 @@ export default function ProfilePage() {
                           </div>
                           <div className="text-right">
                             <p className="font-semibold text-primary">
-                              {formatPrice(parseFloat(order.total))}
+                              {formatPrice(parseFloat(order.total), currency)}
                             </p>
                             <span className={`text-xs px-2 py-1 rounded-full ${order.status === 'delivered'
                               ? 'bg-green-100 text-green-700'

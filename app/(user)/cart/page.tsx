@@ -1,18 +1,55 @@
 'use client';
 
-import { Trash2, Minus, Plus, X } from 'lucide-react';
+import { Trash2, Minus, Plus, X, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { BYOMCartItem } from '@/components/cart/BYOMCartItem';
 import { useCartStore } from '@/store/useCartStore';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 import { formatPrice } from '@/utils/format';
+import { useEffect, useState } from 'react';
+import { productService } from '@/services/product.service';
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, getTotal } = useCartStore();
+  const { currency, getCurrencyParam } = useCurrencyStore();
+  const [isUpdatingPrices, setIsUpdatingPrices] = useState(false);
+
+  useEffect(() => {
+    const updatePrices = async () => {
+      if (items.length === 0) return;
+      setIsUpdatingPrices(true);
+      const currencyParam = getCurrencyParam();
+      const productSlugs = items
+        .map(item => item.product?.slug)
+        .filter((slug): slug is string => Boolean(slug));
+
+      const uniqueSlugs = [...new Set(productSlugs)];
+
+      for (const slug of uniqueSlugs) {
+        try {
+          const updatedProduct = await productService.getProductBySlug(slug, currencyParam);
+
+          if (updatedProduct) {
+            items.forEach(item => {
+              if (item.product?.slug === slug) {
+                item.product.price = updatedProduct.price;
+              }
+            });
+          }
+        } catch (error) {
+          console.error(`Error updating price for ${slug}:`, error);
+        }
+      }
+      useCartStore.setState({ items: [...items] });
+      setIsUpdatingPrices(false);
+    };
+    updatePrices();
+  }, [currency, getCurrencyParam]);
 
   const subtotal = getTotal();
-  const shipping = subtotal > 0 ? 2000 : 0;
+  const shipping = subtotal > 0 ? 500 : 0;
   const tax = subtotal * 0.075;
   const total = subtotal + shipping + tax;
 
@@ -37,6 +74,13 @@ export default function CartPage() {
     <div className="max-w-[1536px] mx-auto px-5 sm:px-10 xl:px-20 py-8">
       <h1 className="text-2xl font-bold text-primary mb-8">Shopping Cart</h1>
 
+      {isUpdatingPrices && (
+        <div className="mb-4 bg-secondary border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin text-primary/70" />
+          <span className="text-sm text-primary">Updating prices to {currency}...</span>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">
           {items.map((item) => (
@@ -58,7 +102,7 @@ export default function CartPage() {
                       <p className="text-sm text-grey mb-2">
                         Color: {item.color} • Size: {item.size}
                       </p>
-                      <p className="font-bold text-primary">{formatPrice(item.product.price)}</p>
+                      <p className="font-bold text-primary">{formatPrice(item.product.price, currency)}</p>
                     </div>
 
                     <button
@@ -87,7 +131,7 @@ export default function CartPage() {
                     </div>
 
                     <p className="text-primary xl:text-lg">
-                      {formatPrice(item.product.price * item.quantity)}
+                      {formatPrice(item.product.price * item.quantity, currency)}
                     </p>
                   </div>
                 </div>
@@ -107,20 +151,20 @@ export default function CartPage() {
             <div className="space-y-3 mb-6">
               <div className="flex items-center justify-between">
                 <span className="text-grey">Subtotal</span>
-                <span className="font-semibold text-primary">{formatPrice(subtotal)}</span>
+                <span className="font-semibold text-primary">{formatPrice(subtotal, currency)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-grey">Shipping</span>
-                <span className="font-semibold text-primary">{formatPrice(shipping)}</span>
+                <span className="font-semibold text-primary">{formatPrice(shipping, currency)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-grey">Tax</span>
-                <span className="font-semibold text-primary">{formatPrice(tax)}</span>
+                <span className="font-semibold text-primary">{formatPrice(tax, currency)}</span>
               </div>
               <div className="border-t border-accent-2 pt-3 mt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-semibold text-primary">Total</span>
-                  <span className="text-2xl font-bold text-primary">{formatPrice(total)}</span>
+                  <span className="text-2xl font-bold text-primary">{formatPrice(total, currency)}</span>
                 </div>
               </div>
             </div>

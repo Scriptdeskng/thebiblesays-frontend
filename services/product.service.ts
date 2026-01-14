@@ -70,10 +70,10 @@ class ProductService {
     };
   }
 
-  async getProducts(): Promise<Product[]> {
+  async getProducts(currencyParam: string = ''): Promise<Product[]> {
     try {
       const response = await makeRequest({
-        url: 'products/products/',
+        url: `products/products/${currencyParam}`,
         method: 'GET',
       });
 
@@ -88,10 +88,10 @@ class ProductService {
   }
 
 
-  async getProductBySlug(slug: string): Promise<Product | null> {
+  async getProductBySlug(slug: string, currencyParam: string = ''): Promise<Product | null> {
     try {
       const response = await makeRequest({
-        url: `products/products/${slug}/`,
+        url: `products/products/${slug}/${currencyParam}`,
         method: 'GET',
       });
 
@@ -102,10 +102,10 @@ class ProductService {
     }
   }
 
-  async getFeaturedProducts(): Promise<Product[]> {
+  async getFeaturedProducts(currencyParam: string = ''): Promise<Product[]> {
     try {
       const response = await makeRequest({
-        url: 'products/products/recommended/',
+        url: `products/products/recommended/${currencyParam}`,
         method: 'GET',
         params: { is_featured: true },
       });
@@ -119,10 +119,10 @@ class ProductService {
     }
   }
 
-  async getBestsellers(): Promise<Product[]> {
+  async getBestsellers(currencyParam: string = ''): Promise<Product[]> {
     try {
       const response = await makeRequest({
-        url: 'products/products/bestsellers/',
+        url: `products/products/bestsellers/${currencyParam}`,
         method: 'GET',
       });
 
@@ -138,10 +138,10 @@ class ProductService {
     }
   }
 
-  async getProductsByCategory(category: string): Promise<Product[]> {
+  async getProductsByCategory(category: string, currencyParam: string = ''): Promise<Product[]> {
     try {
       const response = await makeRequest({
-        url: 'products/products/',
+        url: `products/products/${currencyParam}`,
         method: 'GET',
         params: { category },
       });
@@ -155,13 +155,13 @@ class ProductService {
     }
   }
 
-  async getRelatedProducts(productId: string, limit: number = 4): Promise<Product[]> {
+  async getRelatedProducts(productId: string, limit: number = 4, currencyParam: string = ''): Promise<Product[]> {
     try {
-      const product = await this.getProductBySlug(productId);
+      const product = await this.getProductBySlug(productId, currencyParam);
       if (!product) return [];
 
       const response = await makeRequest({
-        url: 'products/products/',
+        url: `products/products/${currencyParam}`,
         method: 'GET',
         params: { category: product.category },
       });

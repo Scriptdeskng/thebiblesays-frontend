@@ -73,6 +73,8 @@ const Header = () => {
                     <Link href="/profile">
                         <Button variant="ghost" leftIcon={<CircleUserRound className="w-6 h-6 text-grey" />} />
                     </Link>
+
+                    <CurrencySelector />
                 </div>
             </div>
 
@@ -120,6 +122,8 @@ const Header = () => {
                                 </span>
                             )}
                         </div>
+
+                        <CurrencySelector />
                     </div>
                 </div>
 

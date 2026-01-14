@@ -3,15 +3,17 @@
 import { use, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ChevronLeft, Clock3, Truck, AlertCircle, Save, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronLeft, Clock3, AlertCircle, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { BYOMCustomization, MerchType, PlacementZone } from '@/types/byom.types';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 import { byomService } from '@/services/byom.service';
 import { formatPrice } from '@/utils/format';
 import { cn } from '@/utils/cn';
 import toast from 'react-hot-toast';
 
+// Base prices in NGN - backend will convert for USD
 const BASE_PRICES: Record<MerchType, number> = {
     tshirt: 15000,
     longsleeve: 20000,
@@ -32,6 +34,7 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
     const resolvedParams = use(params);
     const router = useRouter();
     const { accessToken, user } = useAuthStore();
+    const { currency, getCurrencyParam } = useCurrencyStore();
     const [customization, setCustomization] = useState<BYOMCustomization & {
         uploadedImages?: any[],
         requiresApproval?: boolean
@@ -73,7 +76,6 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
                 const storedMetadata = sessionStorage.getItem('byom-image-metadata');
                 if (storedMetadata) {
                     try {
-
                         const metadata = JSON.parse(storedMetadata);
                         console.warn('Image files were lost. User may need to go back and re-upload.');
                     } catch (error) {
@@ -212,7 +214,6 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
 
         const uploadedFiles: File[] = [];
         if (uploadedImages && uploadedImages.length > 0) {
-
             for (let index = 0; index < uploadedImages.length; index++) {
                 const image = uploadedImages[index];
 
@@ -223,10 +224,10 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
                         const file = byomService['base64ToFile'](image.url, image.name || `custom-image-${index + 1}.png`);
                         uploadedFiles.push(file);
                     } catch (error) {
-                        console.error(`❌ Failed to reconstruct file ${index + 1}:`, error);
+                        console.error(`Failed to reconstruct file ${index + 1}:`, error);
                     }
                 } else {
-                    console.warn(`⚠️ Image ${index + 1} has no valid File object or base64 data`);
+                    console.warn(`Image ${index + 1} has no valid File object or base64 data`);
                 }
             }
         }
@@ -239,7 +240,7 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
                 }
             }
         } else if (uploadedImages && uploadedImages.length > 0) {
-            console.warn('⚠️ Had uploaded images but could not extract any valid files');
+            console.warn('Had uploaded images but could not extract any valid files');
             toast.error('Failed to process uploaded images. Please try uploading again.');
             setIsProcessing(false);
             return;
@@ -252,21 +253,22 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
         setSubmitError('');
 
         try {
+            const currencyParam = getCurrencyParam();
             const payload = byomService.prepareDesignPayload(customization);
-            const hasCustomImages = uploadedFiles.length > 0;
 
             setSubmitProgress(20);
             const savedDesign = await byomService.createDesign(
                 accessToken,
                 payload,
-                uploadedFiles.length > 0 ? uploadedFiles : undefined
+                uploadedFiles.length > 0 ? uploadedFiles : undefined,
+                currencyParam
             );
 
             setSubmitProgress(70);
 
             setSubmitStatus('processing');
             setSubmitProgress(80);
-            await byomService.submitForApproval(accessToken, savedDesign.id);
+            await byomService.submitForApproval(accessToken, savedDesign.id, currencyParam);
 
             setSubmitProgress(100);
             setSubmitStatus('success');
@@ -277,7 +279,7 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
             sessionStorage.removeItem('byom-uploaded-images');
             router.push('/profile?tab=drafts');
         } catch (error: any) {
-            console.error('❌ Error submitting design:', error);
+            console.error('Error submitting design:', error);
             console.error('Error response:', error?.response?.data);
 
             const errorData = error?.response?.data;
@@ -461,7 +463,7 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
                         <div className="space-y-4 mb-6">
                             <div className="flex justify-between">
                                 <span className="text-primary">Base Price</span>
-                                <span className="font-semibold text-primary">{formatPrice(basePrice)}</span>
+                                <span className="font-semibold text-primary">{formatPrice(basePrice, currency)}</span>
                             </div>
 
                             <div className="flex justify-between">
@@ -472,22 +474,22 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
                             <div className="border-t border-accent-2 pt-4">
                                 <div className="flex justify-between mb-2">
                                     <span className="text-grey text-sm">Text Elements ({textCount})</span>
-                                    <span className="text-sm text-grey">{formatPrice(textCount * 1000)}</span>
+                                    <span className="text-sm text-grey">{formatPrice(textCount * 1000, currency)}</span>
                                 </div>
                                 <div className="flex justify-between mb-2">
                                     <span className="text-grey text-sm">Stickers ({stickerCount})</span>
-                                    <span className="text-sm text-grey">{formatPrice(stickerCount * 500)}</span>
+                                    <span className="text-sm text-grey">{formatPrice(stickerCount * 500, currency)}</span>
                                 </div>
                                 <div className="flex justify-between font-medium">
                                     <span className="text-primary">Customization</span>
-                                    <span className="text-primary">{formatPrice(customizationCost)}</span>
+                                    <span className="text-primary">{formatPrice(customizationCost, currency)}</span>
                                 </div>
                             </div>
 
                             <div className="border-t border-accent-2 pt-4">
                                 <div className="flex justify-between items-center">
                                     <span className="text-lg font-semibold text-primary">Estimated Total</span>
-                                    <span className="text-xl font-bold text-primary">{formatPrice(total)}</span>
+                                    <span className="text-xl font-bold text-primary">{formatPrice(total, currency)}</span>
                                 </div>
                                 <p className="text-xs text-grey mt-1">Final price confirmed after approval</p>
                             </div>
