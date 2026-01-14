@@ -69,12 +69,52 @@ class BYOMService {
     });
   }
 
+  /**
+   * Create a transparent placeholder image for designs without custom uploads
+   * This is needed because the backend requires an uploaded_image field
+   * Must be at least 500x500 pixels to pass backend validation
+   */
+  private async createPlaceholderImage(): Promise<File> {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 500;
+      canvas.height = 500;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx) {
+        ctx.clearRect(0, 0, 500, 500);
+      }
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], 'placeholder.png', { type: 'image/png' });
+          resolve(file);
+        } else {
+          const emptyBlob = new Blob([], { type: 'image/png' });
+          const file = new File([emptyBlob], 'placeholder.png', { type: 'image/png' });
+          resolve(file);
+        }
+      }, 'image/png');
+    });
+  }
+
   async createDesign(
     token: string,
     payload: CreateCustomMerchPayload,
     uploadedFiles?: File[]
   ): Promise<CustomMerchDesign> {
-    const hasFiles = uploadedFiles && uploadedFiles.length > 0;
+    let filesToUpload = uploadedFiles;
+    let usingPlaceholder = false;
+    
+    if (!filesToUpload || filesToUpload.length === 0) {
+      const placeholder = await this.createPlaceholderImage();
+      filesToUpload = [placeholder];
+      usingPlaceholder = true;
+    } else {
+      usingPlaceholder = false;
+    }
+
+    const hasFiles = filesToUpload && filesToUpload.length > 0;
 
     if (hasFiles) {
       const formData = new FormData();
@@ -100,27 +140,51 @@ class BYOMService {
         formData.append('is_active', payload.is_active.toString());
       }
 
-      if (uploadedFiles[0]) {
-        formData.append('uploaded_image', uploadedFiles[0], uploadedFiles[0].name);
+      if (filesToUpload[0]) {
+        formData.append('uploaded_image', filesToUpload[0], filesToUpload[0].name);
       }
 
-      return makeRequest({
-        method: 'POST',
-        url: 'byom/custom-merch/',
-        data: formData,
-        requireToken: true,
-        token,
-        content_type: 'multipart/form-data',
-      });
+      try {
+        const result = await makeRequest({
+          method: 'POST',
+          url: 'byom/custom-merch/',
+          data: formData,
+          requireToken: true,
+          token,
+          content_type: 'multipart/form-data',
+        });
+        return result;
+      } catch (error: any) {
+        console.error('❌ Error creating design with file:', error);
+        
+        if (error?.response?.data?.error?.includes('already submitted for approval') ||
+            error?.message?.includes('already submitted for approval')) {
+          throw new Error('This design has already been submitted for approval. Please check your Drafts section.');
+        }
+        
+        throw error;
+      }
     }
 
-    return makeRequest({
-      method: 'POST',
-      url: 'byom/custom-merch/',
-      data: payload,
-      requireToken: true,
-      token,
-    });
+    try {
+      const result = await makeRequest({
+        method: 'POST',
+        url: 'byom/custom-merch/',
+        data: payload,
+        requireToken: true,
+        token,
+      });
+      return result;
+    } catch (error: any) {
+      console.error('❌ Error creating design:', error);
+      
+      if (error?.response?.data?.error?.includes('already submitted for approval') ||
+          error?.message?.includes('already submitted for approval')) {
+        throw new Error('This design has already been submitted for approval. Please check your Drafts section.');
+      }
+      
+      throw error;
+    }
   }
 
   async updateDesign(
@@ -147,13 +211,26 @@ class BYOMService {
   }
 
   async submitForApproval(token: string, id: number): Promise<CustomMerchDesign> {
-    return makeRequest({
-      method: 'POST',
-      url: `byom/custom-merch/${id}/submit_for_approval/`,
-      requireToken: true,
-      token,
-      data: {},
-    });
+    try {
+      
+      const result = await makeRequest({
+        method: 'POST',
+        url: `byom/custom-merch/${id}/submit_for_approval/`,
+        requireToken: true,
+        token,
+        data: {},
+      });
+      
+      return result;
+    } catch (error: any) {
+      console.error('❌ Error submitting for approval:', error);
+      
+      if (error?.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      
+      throw error;
+    }
   }
 
   async reuploadImage(
@@ -193,9 +270,122 @@ class BYOMService {
     });
   }
 
+  validateImageFile(file: File): { valid: boolean; error?: string } {
+    const fileName = file.name.toLowerCase();
+    const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+    
+    console.log('🔍 Validating file:', {
+      name: fileName,
+      type: file.type,
+      size: file.size,
+      extension: fileExtension
+    });
+
+    const unsupportedFormats = ['.avif', '.webp', '.svg', '.gif', '.bmp', '.tiff', '.heic', '.heif'];
+    if (unsupportedFormats.includes(fileExtension)) {
+      console.log('❌ Unsupported extension detected:', fileExtension);
+      return {
+        valid: false,
+        error: `${fileExtension.toUpperCase()} format is not supported. Please use JPG or PNG only.`
+      };
+    }
+    const unsupportedMimeTypes = [
+      'image/avif', 'image/webp', 'image/svg+xml', 
+      'image/gif', 'image/bmp', 'image/tiff', 
+      'image/heic', 'image/heif'
+    ];
+    if (file.type && unsupportedMimeTypes.includes(file.type.toLowerCase())) {
+      return {
+        valid: false,
+        error: `${file.type} format is not supported. Please use JPG or PNG only.`
+      };
+    }
+    
+    const validExtensions = ['.jpg', '.jpeg', '.png'];
+    if (!validExtensions.includes(fileExtension)) {
+      return {
+        valid: false,
+        error: `Invalid file format. Only JPG and PNG images are allowed. You uploaded: ${fileExtension || 'unknown format'}`
+      };
+    }
+
+    const acceptedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (file.type && !acceptedMimeTypes.includes(file.type.toLowerCase())) {
+      return {
+        valid: false,
+        error: `Invalid file type detected. Only JPG and PNG images are allowed. File type: ${file.type || 'unknown'}`
+      };
+    }
+
+    if (file.type && !file.type.startsWith('image/')) {
+      return {
+        valid: false,
+        error: 'Please upload an image file (JPG or PNG only)'
+      };
+    }
+
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      return {
+        valid: false,
+        error: `File is too large (${fileSizeMB}MB). Maximum size is 10MB. Please compress or resize your image.`
+      };
+    }
+
+    return { valid: true };
+  }
+
+
+  async validateImageDimensions(file: File): Promise<{ valid: boolean; error?: string; width?: number; height?: number }> {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      const reader = new FileReader();
+
+      reader.onload = (event) => {
+        img.onload = () => {
+          const MIN_DIMENSION = 1500;
+          
+          if (img.width < MIN_DIMENSION || img.height < MIN_DIMENSION) {
+            resolve({
+              valid: false,
+              error: `Image must be at least ${MIN_DIMENSION} x ${MIN_DIMENSION}px. Your image is ${img.width} x ${img.height}px.`,
+              width: img.width,
+              height: img.height
+            });
+          } else {
+            resolve({
+              valid: true,
+              width: img.width,
+              height: img.height
+            });
+          }
+        };
+
+        img.onerror = () => {
+          resolve({
+            valid: false,
+            error: 'Failed to load image. Please ensure it is a valid JPG or PNG file.'
+          });
+        };
+
+        img.src = event.target?.result as string;
+      };
+
+      reader.onerror = () => {
+        resolve({
+          valid: false,
+          error: 'Failed to read file. Please try again.'
+        });
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
+
   prepareDesignPayload(
     customization: BYOMCustomization & {
-      uploadedStickers?: any[];
+      uploadedImages?: any[];
       requiresApproval?: boolean;
     }
   ): CreateCustomMerchPayload {
@@ -230,19 +420,18 @@ class BYOMService {
 
   extractUploadedFiles(
     customization: BYOMCustomization & {
-      uploadedStickers?: any[];
+      uploadedImages?: any[];
     }
   ): File[] {
     const files: File[] = [];
 
-    if (customization.uploadedStickers) {
-      customization.uploadedStickers.forEach((sticker) => {
-
-        if (sticker.file instanceof File) {
-          files.push(sticker.file);
+    if (customization.uploadedImages) {
+      customization.uploadedImages.forEach((image) => {
+        if (image.file instanceof File) {
+          files.push(image.file);
         }
-        else if (sticker.url && sticker.url.startsWith('data:')) {
-          const file = this.base64ToFile(sticker.url, sticker.name || 'custom-image.png');
+        else if (image.url && image.url.startsWith('data:')) {
+          const file = this.base64ToFile(image.url, image.name || 'custom-image.png');
           files.push(file);
         }
       });
@@ -251,7 +440,7 @@ class BYOMService {
     return files;
   }
 
-  private base64ToFile(dataUrl: string, filename: string): File {
+  base64ToFile(dataUrl: string, filename: string): File {
     const arr = dataUrl.split(',');
     const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
     const bstr = atob(arr[1]);
