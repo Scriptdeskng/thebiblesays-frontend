@@ -37,11 +37,11 @@ interface ApiCart {
 }
 
 class CartService {
-  async getCart(token?: string): Promise<ApiCart | null> {
+  async getCart(token?: string, currencyParam: string = ''): Promise<ApiCart | null> {
     try {
       if (token) {
         const response = await makeRequest({
-          url: 'cart/',
+          url: `cart/${currencyParam}`,
           method: 'GET',
           requireToken: true,
           token,
@@ -59,11 +59,12 @@ class CartService {
   async addToCart(
     token: string | undefined,
     productVariantId: number,
-    quantity: number
+    quantity: number,
+    currencyParam: string = ''
   ): Promise<ApiCart> {
     try {
       const response = await makeRequest({
-        url: 'cart/add/',
+        url: `cart/add/${currencyParam}`,
         method: 'POST',
         requireToken: !!token,
         token,
@@ -83,11 +84,12 @@ class CartService {
   async updateCartItem(
     token: string,
     itemId: number,
-    quantity: number
+    quantity: number,
+    currencyParam: string = ''
   ): Promise<ApiCart> {
     try {
       const response = await makeRequest({
-        url: `cart/update/${itemId}/`,
+        url: `cart/update/${itemId}/${currencyParam}`,
         method: 'PUT',
         requireToken: true,
         token,
@@ -101,10 +103,14 @@ class CartService {
     }
   }
 
-  async removeFromCart(token: string, itemId: number): Promise<void> {
+  async removeFromCart(
+    token: string, 
+    itemId: number,
+    currencyParam: string = ''
+  ): Promise<void> {
     try {
       await makeRequest({
-        url: `cart/remove/${itemId}/`,
+        url: `cart/remove/${itemId}/${currencyParam}`,
         method: 'DELETE',
         requireToken: true,
         token,
@@ -115,12 +121,12 @@ class CartService {
     }
   }
 
-  async clearCart(token: string): Promise<void> {
+  async clearCart(token: string, currencyParam: string = ''): Promise<void> {
     try {
-      const cart = await this.getCart(token);
+      const cart = await this.getCart(token, currencyParam);
       if (cart && cart.items.length > 0) {
         await Promise.all(
-          cart.items.map(item => this.removeFromCart(token, item.id))
+          cart.items.map(item => this.removeFromCart(token, item.id, currencyParam))
         );
       }
     } catch (error) {

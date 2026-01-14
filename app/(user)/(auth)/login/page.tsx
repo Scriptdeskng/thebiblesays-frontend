@@ -69,7 +69,20 @@ function LoginPage() {
       router.push(redirect);
     } catch (error: any) {
       console.error('Login error:', error);
-      setLoginError(error?.message || 'Invalid email or password. Please try again.');
+
+      let errorMessage = 'Invalid email or password. Please try again.';
+
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      setLoginError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +90,7 @@ function LoginPage() {
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-lg xl:max-w-xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">Welcome Back</h1>
           <p className="text-grey">Log in to your account</p>
@@ -115,7 +128,7 @@ function LoginPage() {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 pr-12 border border-accent-2 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full px-4 py-2.5 pr-12 border border-accent-2 rounded-md focus:outline-none"
                   placeholder="Enter your password"
                 />
                 <button

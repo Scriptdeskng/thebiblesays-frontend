@@ -16,10 +16,10 @@ interface ApiWishlistItem {
 }
 
 class WishlistService {
-  async getWishlist(token: string): Promise<ApiWishlistItem[]> {
+  async getWishlist(token: string, currencyParam: string = ''): Promise<ApiWishlistItem[]> {
     try {
       const response = await makeRequest({
-        url: 'products/wishlist/',
+        url: `products/wishlist/${currencyParam}`,
         method: 'GET',
         requireToken: true,
         token,
@@ -37,10 +37,14 @@ class WishlistService {
     }
   }
 
-  async addToWishlist(token: string, productId: number): Promise<ApiWishlistItem> {
+  async addToWishlist(
+    token: string, 
+    productId: number,
+    currencyParam: string = ''
+  ): Promise<ApiWishlistItem> {
     try {
       const response = await makeRequest({
-        url: 'products/wishlist/',
+        url: `products/wishlist/${currencyParam}`,
         method: 'POST',
         requireToken: true,
         token,
@@ -56,10 +60,14 @@ class WishlistService {
     }
   }
 
-  async removeFromWishlist(token: string, wishlistItemId: number): Promise<void> {
+  async removeFromWishlist(
+    token: string, 
+    wishlistItemId: number,
+    currencyParam: string = ''
+  ): Promise<void> {
     try {
       await makeRequest({
-        url: `products/wishlist/${wishlistItemId}/`,
+        url: `products/wishlist/${wishlistItemId}/${currencyParam}`,
         method: 'DELETE',
         requireToken: true,
         token,
@@ -70,9 +78,13 @@ class WishlistService {
     }
   }
 
-  async isInWishlist(token: string, productId: number): Promise<boolean> {
+  async isInWishlist(
+    token: string, 
+    productId: number,
+    currencyParam: string = ''
+  ): Promise<boolean> {
     try {
-      const wishlist = await this.getWishlist(token);
+      const wishlist = await this.getWishlist(token, currencyParam);
       return wishlist.some(item => item.product.id === productId);
     } catch (error) {
       console.error('Error checking wishlist:', error);

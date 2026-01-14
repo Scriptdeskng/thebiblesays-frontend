@@ -1,10 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useAuthStore } from '@/store/useAuthStore';
 import { MerchType } from '@/types/byom.types';
 
 const merchTypes: { type: MerchType; label: string; image: string }[] = [
@@ -17,34 +14,6 @@ const merchTypes: { type: MerchType; label: string; image: string }[] = [
 ];
 
 export default function BYOMPage() {
-  const router = useRouter();
-  const { user, accessToken, isLoading } = useAuthStore();
-
-  useEffect(() => {
-    if (!isLoading && (!user || !accessToken)) {
-      router.push('/login?redirect=/byom');
-    }
-  }, [user, accessToken, isLoading, router]);
-
-  if (isLoading) {
-    return (
-      <div className="max-w-[1536px] mx-auto px-5 sm:px-10 xl:px-20 py-16 text-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-grey">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user || !accessToken) {
-    return (
-      <div className="max-w-[1536px] mx-auto px-5 sm:px-10 xl:px-20 py-16 text-center">
-        <p className="text-grey">Redirecting to login...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-[1536px] mx-auto px-5 sm:px-10 xl:px-20 py-10">
       <div className="mb-12">

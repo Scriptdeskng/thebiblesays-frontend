@@ -1,4 +1,14 @@
-export const formatPrice = (price: number): string => {
+import { Currency } from '@/store/useCurrencyStore';
+
+export const formatPrice = (price: number, currency: Currency = 'NGN'): string => {
+  if (currency === 'USD') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(price);
+  }
+  
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',

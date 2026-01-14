@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { CartItem } from '@/types/product.types';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 import { formatPrice } from '@/utils/format';
 
 const stickers = Array.from({ length: 13 }, (_, i) => ({
@@ -19,6 +20,7 @@ interface BYOMCartItemProps {
 
 export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
   const [showDetails, setShowDetails] = useState(false);
+  const { currency } = useCurrencyStore();
   const customization = item.customization;
 
   if (!customization) return null;
@@ -149,7 +151,7 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
           )}
 
           <div className="border-t border-accent-2 pt-3 text-xs text-grey">
-            <p>💡 This is a custom-made item. Production time: 3-5 business days</p>
+            <p>This is a custom-made item. Production time: 3-5 business days</p>
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 import { cn } from '@/utils/cn';
 
 export interface FilterState {
@@ -18,7 +19,6 @@ interface ShopFiltersProps {
   isMobile?: boolean;
 }
 
-// Manual predefined options
 const categories = ['Shirts', 'Caps', 'Hoodie', 'Headband', 'Hat', 'Jackets', 'Polo', 'Sweat-shirt'];
 
 const colors = [
@@ -36,13 +36,24 @@ const colors = [
 
 const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '14', '18', '25'];
 
-// Fixed price range
-const MIN_PRICE = 0;
-const MAX_PRICE = 1000000;
-const PRICE_STEP = 5000;
+export const PRICE_RANGES = {
+  NGN: {
+    MIN: 0,
+    MAX: 1000000,
+    STEP: 5000,
+  },
+  USD: {
+    MIN: 0,
+    MAX: 5000,
+    STEP: 50,
+  }
+};
 
 export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { currency } = useCurrencyStore();
+
+  const priceConfig = PRICE_RANGES[currency];
 
   const toggleCategory = (category: string) => {
     const newCategories = filters.categories.includes(category)
@@ -63,6 +74,13 @@ export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFilters
       ? filters.sizes.filter(s => s !== size)
       : [...filters.sizes, size];
     onChange({ ...filters, sizes: newSizes });
+  };
+
+  const formatCurrencyValue = (value: number) => {
+    if (currency === 'USD') {
+      return `$${value.toLocaleString()}`;
+    }
+    return `₦${value.toLocaleString()}`;
   };
 
   const FilterContent = () => (
@@ -131,26 +149,28 @@ export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFilters
       </div>
 
       <div>
-        <h3 className="font-semibold text-primary mb-3">Price Range</h3>
+        <h3 className="font-semibold text-primary mb-3">
+          Price Range ({currency})
+        </h3>
         <div className="space-y-3">
           <input
             type="range"
-            min={MIN_PRICE}
-            max={MAX_PRICE}
-            step={PRICE_STEP}
-            value={filters.priceRange[1]}
-            onChange={(e) => onChange({ 
-              ...filters, 
-              priceRange: [MIN_PRICE, parseInt(e.target.value)] 
+            min={priceConfig.MIN}
+            max={priceConfig.MAX}
+            step={priceConfig.STEP}
+            value={Math.min(filters.priceRange[1], priceConfig.MAX)}
+            onChange={(e) => onChange({
+              ...filters,
+              priceRange: [priceConfig.MIN, parseInt(e.target.value)]
             })}
             className="w-full accent-primary"
           />
           <div className="flex items-center justify-between text-sm text-grey">
-            <span>₦{MIN_PRICE.toLocaleString()}</span>
-            <span>₦{filters.priceRange[1].toLocaleString()}</span>
+            <span>{formatCurrencyValue(priceConfig.MIN)}</span>
+            <span>{formatCurrencyValue(filters.priceRange[1])}</span>
           </div>
           <div className="text-xs text-grey text-center">
-            Showing products up to ₦{filters.priceRange[1].toLocaleString()}
+            Showing products up to {formatCurrencyValue(filters.priceRange[1])}
           </div>
         </div>
       </div>
@@ -170,7 +190,7 @@ export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFilters
 
         {isOpen && (
           <div className="fixed inset-0 z-50">
-            <div 
+            <div
               className="absolute inset-0 bg-black/50 backdrop-blur-sm"
               onClick={() => setIsOpen(false)}
             />

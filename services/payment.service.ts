@@ -1,12 +1,14 @@
 import makeRequest from '@/lib/api';
 
-export type PaymentMethod = 'paystack' | 'nova' | 'payaza';
+export type PaymentMethod = 'paystack' | 'nova' | 'payaza' | 'stripe';
 
 export interface PaymentInitializeResponse {
   authorization_url?: string;
   access_code?: string;
   reference: string;
   payment_url?: string;
+  stripe_session_id?: string;
+  stripe_session_url?: string;
 }
 
 export interface PaymentVerifyResponse {
@@ -57,10 +59,14 @@ interface OrderCreateData {
 }
 
 class PaymentService {
-  async createOrder(token: string | undefined, orderData: OrderCreateData): Promise<any> {
+  async createOrder(
+    token: string | undefined,
+    orderData: OrderCreateData,
+    currencyParam: string = ''
+  ): Promise<any> {
     try {
       const response = await makeRequest({
-        url: 'orders/',
+        url: `orders/${currencyParam}`,
         method: 'POST',
         requireToken: !!token,
         token,
@@ -78,11 +84,12 @@ class PaymentService {
     orderId: number,
     paymentMethod: PaymentMethod,
     email: string,
-    token?: string
+    token?: string,
+    currencyParam: string = ''
   ): Promise<PaymentInitializeResponse> {
     try {
       const response = await makeRequest({
-        url: 'payments/initialize/',
+        url: `payments/initialize/${currencyParam}`,
         method: 'POST',
         requireToken: !!token,
         token,
@@ -100,10 +107,14 @@ class PaymentService {
     }
   }
 
-  async verifyPayment(reference: string, token?: string): Promise<PaymentVerifyResponse> {
+  async verifyPayment(
+    reference: string,
+    token?: string,
+    currencyParam: string = ''
+  ): Promise<PaymentVerifyResponse> {
     try {
       const response = await makeRequest({
-        url: `payments/verify/?reference=${reference}`,
+        url: `payments/verify/${currencyParam}&reference=${reference}`,
         method: 'GET',
         requireToken: !!token,
         token,
@@ -117,10 +128,14 @@ class PaymentService {
   }
 
 
-  async verifyPayazaPayment(reference: string, token?: string): Promise<PayazaVerifyResponse> {
+  async verifyPayazaPayment(
+    reference: string,
+    token?: string,
+    currencyParam: string = ''
+  ): Promise<PayazaVerifyResponse> {
     try {
       const response = await makeRequest({
-        url: 'payments/verify-payaza/',
+        url: `payments/verify-payaza/${currencyParam}`,
         method: 'POST',
         requireToken: !!token,
         token,
@@ -136,14 +151,38 @@ class PaymentService {
     }
   }
 
+  async verifyStripePayment(
+    sessionId: string,
+    token?: string,
+    currencyParam: string = ''
+  ): Promise<PaymentVerifyResponse> {
+    try {
+      const response = await makeRequest({
+        url: `payments/verify-stripe/${currencyParam}`,
+        method: 'POST',
+        requireToken: !!token,
+        token,
+        data: {
+          session_id: sessionId,
+        },
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error verifying Stripe payment:', error);
+      throw error;
+    }
+  }
+
   async checkout(
     orderData: OrderCreateData,
-    token?: string
-  ): Promise<{ order: any; paymentUrl: string }> {
+    token?: string,
+    currencyParam: string = ''
+  ): Promise<{ order: any; paymentUrl: string; sessionId?: string }> {
     try {
-      const order = await this.createOrder(token, orderData);
-            const email = orderData.email || order.guest_email || order.user?.email;
-      
+      const order = await this.createOrder(token, orderData, currencyParam);
+      const email = orderData.email || order.guest_email || order.user?.email;
+
       if (!email) {
         throw new Error('Email is required for payment initialization');
       }
@@ -152,10 +191,14 @@ class PaymentService {
         order.id,
         orderData.payment_method,
         email,
-        token
+        token,
+        currencyParam
       );
 
-      const paymentUrl = payment.authorization_url || payment.payment_url || '';
+      const paymentUrl = payment.authorization_url ||
+        payment.payment_url ||
+        payment.stripe_session_url ||
+        '';
 
       if (!paymentUrl) {
         throw new Error('No payment URL received from payment gateway');
@@ -164,6 +207,7 @@ class PaymentService {
       return {
         order,
         paymentUrl,
+        sessionId: payment.stripe_session_id,
       };
     } catch (error) {
       console.error('Error during checkout:', error);
@@ -173,13 +217,14 @@ class PaymentService {
 
   async createOrderForPayaza(
     orderData: OrderCreateData,
-    token?: string
+    token?: string,
+    currencyParam: string = ''
   ): Promise<{ order: any; reference: string }> {
     try {
-      const order = await this.createOrder(token, orderData);
+      const order = await this.createOrder(token, orderData, currencyParam);
 
       const reference = order.payment_reference || order.order_number;
-      
+
       if (!reference) {
         throw new Error('No payment reference received from backend');
       }

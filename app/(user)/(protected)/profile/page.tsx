@@ -21,6 +21,7 @@ import { formatPrice } from '@/utils/format';
 import { cn } from '@/utils/cn';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 
 type Tab = 'personal' | 'orders' | 'wishlist' | 'address' | 'drafts';
 
@@ -82,6 +83,8 @@ export default function ProfilePage() {
 
   const [drafts, setDrafts] = useState<CustomMerchDesign[]>([]);
   const [isLoadingDrafts, setIsLoadingDrafts] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { currency } = useCurrencyStore();
 
   const [newAddress, setNewAddress] = useState({
     label: '',
@@ -99,19 +102,7 @@ export default function ProfilePage() {
   });
   const [isAddingAddress, setIsAddingAddress] = useState(false);
 
-  useEffect(() => {
-    if (!user || !accessToken) {
-      router.push('/login?redirect=/profile');
-    }
-  }, [user, accessToken, router]);
-
-  if (!user || !accessToken) {
-    return (
-      <div className="max-w-[1536px] min-h-screen mx-auto px-5 sm:px-10 xl:px-20 py-16 text-center">
-        <p className="text-grey">Loading...</p>
-      </div>
-    );
-  }
+  if (!user) return null;
 
   useEffect(() => {
     if (accessToken) {
@@ -222,8 +213,16 @@ export default function ProfilePage() {
   };
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/');
+    try {
+      setIsLoggingOut(true);
+
+      await logout();
+
+      router.replace('/login');
+    } catch (error) {
+      console.error("Logout failed", error);
+      router.replace('/login');
+    }
   };
 
   const handleAddAddress = async () => {
@@ -458,10 +457,15 @@ export default function ProfilePage() {
             })}
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+              disabled={isLoggingOut}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
             >
-              <LogOut className="w-5 h-5" />
-              <span>Logout</span>
+              {isLoggingOut ? (
+                <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <LogOut className="w-5 h-5" />
+              )}
+              <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
             </button>
           </div>
         </aside>
@@ -542,7 +546,7 @@ export default function ProfilePage() {
                           </div>
                           <div className="text-right">
                             <p className="font-semibold text-primary">
-                              {formatPrice(parseFloat(order.total))}
+                              {formatPrice(parseFloat(order.total), currency)}
                             </p>
                             <span className={`text-xs px-2 py-1 rounded-full ${order.status === 'delivered'
                               ? 'bg-green-100 text-green-700'

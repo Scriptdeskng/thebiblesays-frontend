@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { useCartStore } from '@/store/useCartStore';
 import { useWishlistStore } from '@/store/useWishlistStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 import { formatPrice } from '@/utils/format';
 import { cn } from '@/utils/cn';
 
@@ -22,6 +23,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const addItem = useCartStore((state) => state.addItem);
   const { isInWishlist, toggleItem } = useWishlistStore();
   const { accessToken } = useAuthStore();
+  const { currency } = useCurrencyStore();
   const productIdString = product.id.toString();
   const isFavorite = isInWishlist(productIdString);
 
@@ -101,7 +103,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             </div>
 
             <p className="text-sm font-medium sm:text-base text-[#474B57]">
-              {formatPrice(product.price)}
+              {formatPrice(product.price, currency)}
             </p>
           </div>
         </div>

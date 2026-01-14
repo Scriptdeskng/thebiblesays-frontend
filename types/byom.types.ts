@@ -15,6 +15,9 @@ export interface CustomText {
   color: string;
   x: number;
   y: number;
+  letterSpacing?: number;
+  lineHeight?: number;
+  strikethrough?: boolean;
 }
 
 export interface CustomSticker {

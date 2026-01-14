@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { productService } from '@/services/product.service';
 import { Product } from '@/types/product.types';
 import { formatPrice } from '@/utils/format';
+import { useCurrencyStore } from '@/store/useCurrencyStore';
 
 interface MobileSearchModalProps {
   isOpen: boolean;
@@ -20,6 +21,8 @@ export function MobileSearchModal({ isOpen, onClose }: MobileSearchModalProps) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Product[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const { currency } = useCurrencyStore();
+
   const router = useRouter();
 
   useEffect(() => {
@@ -134,7 +137,7 @@ export function MobileSearchModal({ isOpen, onClose }: MobileSearchModalProps) {
                     <p className="font-medium text-primary truncate">{product.name}</p>
                     <p className="text-sm text-grey">{product.category}</p>
                   </div>
-                  <p className="font-semibold text-primary text-sm">{formatPrice(product.price)}</p>
+                  <p className="font-semibold text-primary text-sm">{formatPrice(product.price, currency)}</p>
                 </button>
               ))}
             </div>

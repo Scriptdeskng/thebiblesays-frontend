@@ -40,6 +40,7 @@ export interface Order {
   shipping_fee: string;
   tax: string;
   total: string;
+  currency: 'NGN' | 'USD';
   created_at: string;
   estimated_delivery: string;
   items: OrderItem[];
@@ -60,11 +61,12 @@ class OrderService {
       page?: number;
       search?: string;
       ordering?: string;
-    }
+    },
+    currencyParam: string = ''
   ): Promise<OrderListResponse> {
     try {
       const response = await makeRequest({
-        url: 'orders/',
+        url: `orders/${currencyParam}`,
         method: 'GET',
         requireToken: true,
         token,
@@ -84,11 +86,12 @@ class OrderService {
       page?: number;
       search?: string;
       ordering?: string;
-    }
+    },
+    currencyParam: string = ''
   ): Promise<OrderListResponse> {
     try {
       const response = await makeRequest({
-        url: 'orders/my_orders/',
+        url: `orders/my_orders/${currencyParam}`,
         method: 'GET',
         requireToken: true,
         token,
@@ -102,10 +105,14 @@ class OrderService {
     }
   }
 
-  async getOrderById(token: string, orderId: number): Promise<Order> {
+  async getOrderById(
+    token: string, 
+    orderId: number,
+    currencyParam: string = ''
+  ): Promise<Order> {
     try {
       const response = await makeRequest({
-        url: `orders/${orderId}/`,
+        url: `orders/${orderId}/${currencyParam}`,
         method: 'GET',
         requireToken: true,
         token,
@@ -118,9 +125,13 @@ class OrderService {
     }
   }
 
-  async getOrderByNumber(token: string, orderNumber: string): Promise<Order | null> {
+  async getOrderByNumber(
+    token: string, 
+    orderNumber: string,
+    currencyParam: string = ''
+  ): Promise<Order | null> {
     try {
-      const response = await this.getMyOrders(token, { search: orderNumber });
+      const response = await this.getMyOrders(token, { search: orderNumber }, currencyParam);
       
       if (response.results && response.results.length > 0) {
         return response.results[0];
@@ -152,6 +163,7 @@ class OrderService {
       tax: parseFloat(order.tax),
       total: parseFloat(order.total),
       itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
+      currency: order.currency || 'NGN',
     };
   }
 }
