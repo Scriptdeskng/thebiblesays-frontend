@@ -12,7 +12,10 @@ import { useAuthStore } from "@/store/useAuthStore";
 import axios from "axios";
 
 class DashboardService {
-  async getOverview(dateFilter?: string): Promise<DashboardOverview> {
+  async getOverview(
+    dateFilter?: string,
+    dateRange?: [Date | null, Date | null]
+  ): Promise<DashboardOverview> {
     try {
       const { accessToken } = useAuthStore.getState();
 
@@ -21,8 +24,19 @@ class DashboardService {
       }
 
       const params: Record<string, any> = {};
+
+      // Add date_filter for predefined filters (monthly, daily, etc.)
       if (dateFilter) {
         params.date_filter = dateFilter;
+      }
+
+      // Add start_date and end_date as separate parameters if date range is provided
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        const startDate = dateRange[0].toISOString().split("T")[0]; // Format as YYYY-MM-DD
+        const endDate = dateRange[1].toISOString().split("T")[0]; // Format as YYYY-MM-DD
+
+        params.start_date = startDate;
+        params.end_date = endDate;
       }
 
       const response = await makeRequest({

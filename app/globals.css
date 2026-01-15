@@ -20,3 +20,128 @@ body {
 button {
   @apply cursor-pointer
 }
+
+/* React Day Picker Custom Styles */
+.custom-day-picker {
+  font-family: var(--font-cabinet-grotesk);
+}
+
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: #1A1A1A;
+  --rdp-background-color: #EDEDED;
+  --rdp-accent-color-dark: #0E1422;
+  --rdp-background-color-dark: #E9E9EB;
+  --rdp-outline: 2px solid var(--rdp-accent-color);
+  --rdp-outline-selected: 2px solid var(--rdp-accent-color);
+  margin: 0;
+  font-family: var(--font-cabinet-grotesk);
+}
+
+.rdp-button_reset {
+  @apply appearance-none;
+}
+
+.rdp-button {
+  @apply border-0 bg-transparent;
+}
+
+.rdp-button:hover:not([disabled]) {
+  @apply bg-accent-2;
+}
+
+.rdp-month {
+  @apply m-0;
+}
+
+.rdp-table {
+  @apply mb-4;
+}
+
+.rdp-head_cell {
+  @apply text-grey font-medium text-xs py-2;
+  color: #5C5F6A;
+}
+
+.rdp-cell {
+  @apply text-sm;
+}
+
+.rdp-day {
+  @apply w-10 h-10 rounded-lg transition-all duration-200;
+  @apply text-admin-primary;
+}
+
+.rdp-day:hover:not([disabled]):not(.rdp-day_selected) {
+  @apply bg-accent-2;
+}
+
+.rdp-day_selected,
+.rdp-day_selected:focus-visible,
+.rdp-day_selected:hover {
+  @apply bg-admin-primary text-white font-medium;
+}
+
+.rdp-day_range_start,
+.rdp-day_range_end {
+  @apply bg-admin-primary text-white font-semibold rounded-lg;
+}
+
+.rdp-day_range_middle {
+  @apply bg-accent-2 text-admin-primary;
+}
+
+.rdp-day_today:not(.rdp-day_outside) {
+  @apply font-semibold;
+}
+
+.rdp-day_outside {
+  @apply text-grey opacity-40;
+}
+
+.rdp-day_disabled {
+  @apply text-grey opacity-30 cursor-not-allowed;
+}
+
+.rdp-day_disabled:hover {
+  @apply bg-transparent;
+}
+
+.rdp-nav {
+  @apply flex items-center justify-between mb-4;
+}
+
+.rdp-nav_button {
+  @apply w-8 h-8 rounded-lg transition-colors;
+  @apply flex items-center justify-center;
+}
+
+.rdp-nav_button:hover:not([disabled]) {
+  @apply bg-accent-2;
+}
+
+.rdp-nav_button_previous,
+.rdp-nav_button_next {
+  @apply text-admin-primary;
+}
+
+.rdp-nav_icon {
+  @apply w-4 h-4;
+  fill: currentColor;
+}
+
+.rdp-caption {
+  @apply flex items-center justify-between px-2 mb-2;
+}
+
+.rdp-caption_label {
+  @apply text-admin-primary font-semibold text-sm;
+}
+
+.rdp-multiple_months .rdp-month {
+  @apply mr-4;
+}
+
+.rdp-multiple_months .rdp-month:last-child {
+  @apply mr-0;
+}
