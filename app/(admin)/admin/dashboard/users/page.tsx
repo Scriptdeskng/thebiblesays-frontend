@@ -3,31 +3,38 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
-  Eye,
-  Download,
-  Ban,
-  CheckCircle,
-  Send,
+  // Eye,
+  // Download,
+  // Ban,
+  // CheckCircle,
+  // Send,
   Filter,
   ArrowLeft,
-  ShoppingBag,
-  DollarSign,
-  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  // ShoppingBag,
+  // DollarSign,
+  // Bookmark,
 } from "lucide-react";
 import {
   Button,
-  Modal,
+  // Modal,
   Badge,
   LoadingSpinner,
-  Input,
-  Textarea,
+  // Input,
+  // Textarea,
 } from "@/components/admin/ui";
-import { User, SupportTicket, Order, ApiUser } from "@/types/admin.types";
+import {
+  User,
+  // SupportTicket,
+  Order,
+  ApiUser,
+} from "@/types/admin.types";
 import { mockOrders, apiService } from "@/services/mock.service";
 import { dashboardService } from "@/services/dashboard.service";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import toast from "react-hot-toast";
-import { PiShoppingBagDuotone } from "react-icons/pi";
+// import { PiShoppingBagDuotone } from "react-icons/pi";
 import { CgShoppingBag } from "react-icons/cg";
 import { CiHeart } from "react-icons/ci";
 
@@ -40,6 +47,8 @@ export default function UsersPage() {
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const transformApiUserToUser = (apiUser: ApiUser): User => {
     return {
@@ -147,6 +156,17 @@ export default function UsersPage() {
     return matchesSearch && matchesStatus;
   });
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, searchQuery]);
+
   const getUserOrders = (userId: string): Order[] => {
     return mockOrders.filter((o) => o.userId === userId).slice(0, 5);
   };
@@ -159,12 +179,12 @@ export default function UsersPage() {
       .toUpperCase();
   };
 
-  const userCounts = {
-    all: users.length,
-    active: users.filter((u) => u.status === "active").length,
-    inactive: users.filter((u) => u.status === "inactive").length,
-    flagged: users.filter((u) => u.status === "flagged").length,
-  };
+  // const userCounts = {
+  //   all: users.length,
+  //   active: users.filter((u) => u.status === "active").length,
+  //   inactive: users.filter((u) => u.status === "inactive").length,
+  //   flagged: users.filter((u) => u.status === "flagged").length,
+  // };
 
   if (loading) {
     return (
@@ -435,7 +455,7 @@ export default function UsersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <tr
                       key={user.id}
                       onClick={() => handleViewUser(user)}
@@ -472,6 +492,78 @@ export default function UsersPage() {
               </table>
             </div>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredUsers.length > 0 && (
+            <div className="bg-admin-primary/4 p-4 rounded-b-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-admin-primary/60">
+                Showing {startIndex + 1} to{" "}
+                {Math.min(endIndex, filteredUsers.length)} of{" "}
+                {filteredUsers.length} users
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={currentPage === 1}
+                  className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${
+                    currentPage === 1
+                      ? "opacity-50 cursor-not-allowed text-grey"
+                      : "text-admin-primary hover:bg-accent-1"
+                  }`}
+                >
+                  <ChevronLeft size={18} />
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((page) => {
+                      // Show first page, last page, current page, and pages around current
+                      if (page === 1 || page === totalPages) return true;
+                      if (Math.abs(page - currentPage) <= 1) return true;
+                      return false;
+                    })
+                    .map((page, index, array) => {
+                      // Add ellipsis if there's a gap
+                      const showEllipsisBefore =
+                        index > 0 && array[index - 1] !== page - 1;
+                      return (
+                        <div key={page} className="flex items-center gap-1">
+                          {showEllipsisBefore && (
+                            <span className="px-2 text-grey">...</span>
+                          )}
+                          <button
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-2 rounded-lg border transition-colors ${
+                              currentPage === page
+                                ? "bg-admin-primary text-white border-admin-primary"
+                                : "border-accent-2 text-admin-primary hover:bg-accent-1"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${
+                    currentPage === totalPages
+                      ? "opacity-50 cursor-not-allowed text-grey"
+                      : "text-admin-primary hover:bg-accent-1"
+                  }`}
+                >
+                  Next
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
