@@ -32,6 +32,18 @@ interface Address {
   is_default: boolean;
 }
 
+interface FormErrors {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phoneNumber?: string;
+  address_line1?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, getTotal, clearCart } = useCartStore();
@@ -44,6 +56,7 @@ export default function CheckoutPage() {
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [saveAddress, setSaveAddress] = useState(true);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const paymentMethod: PaymentMethod = currency === 'USD' ? 'stripe' : 'payaza';
 
@@ -84,7 +97,6 @@ export default function CheckoutPage() {
             });
           }
         } catch (error) {
-          console.error(`Error updating price for ${slug}:`, error);
         }
       }
       useCartStore.setState({ items: [...items] });
@@ -118,7 +130,6 @@ export default function CheckoutPage() {
             setSelectedAddressId(defaultAddress.id);
           }
         } catch (error) {
-          console.error('Error loading addresses:', error);
         } finally {
           setIsLoadingAddresses(false);
         }
@@ -128,10 +139,7 @@ export default function CheckoutPage() {
     loadAddresses();
   }, [isAuthenticated, accessToken]);
 
-  const subtotal = getTotal();
-  const shipping = 500;
-  const tax = subtotal * 0.075;
-  const total = subtotal + shipping + tax;
+  const total = getTotal();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -139,6 +147,56 @@ export default function CheckoutPage() {
       ...prev,
       [name]: value
     }));
+
+    if (formErrors[name as keyof FormErrors]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
+
+    if (useNewAddress || !isAuthenticated || (isAuthenticated && addresses.length === 0)) {
+      if (!formData.firstName.trim()) {
+        errors.firstName = 'First name is required';
+      }
+
+      if (!formData.lastName.trim()) {
+        errors.lastName = 'Last name is required';
+      }
+
+      if (!formData.email.trim()) {
+        errors.email = 'Email is required';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        errors.email = 'Please enter a valid email address';
+      }
+
+      if (!formData.phoneNumber.trim()) {
+        errors.phoneNumber = 'Phone number is required';
+      }
+
+      if (!formData.address_line1.trim()) {
+        errors.address_line1 = 'Street address is required';
+      }
+
+      if (!formData.city.trim()) {
+        errors.city = 'City is required';
+      }
+
+      if (!formData.state.trim()) {
+        errors.state = 'State is required';
+      }
+
+      if (!formData.country.trim()) {
+        errors.country = 'Country is required';
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -154,13 +212,9 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (useNewAddress || !isAuthenticated || (isAuthenticated && addresses.length === 0)) {
-      if (!formData.firstName || !formData.lastName || !formData.email ||
-        !formData.phoneNumber || !formData.address_line1 || !formData.city ||
-        !formData.state) {
-        toast.error('Please fill in all required fields');
-        return;
-      }
+    if (!validateForm()) {
+      toast.error('Please fill in all required fields correctly');
+      return;
     }
 
     setIsProcessing(true);
@@ -182,7 +236,7 @@ export default function CheckoutPage() {
           address_line2: formData.address_line2,
           city: formData.city,
           state: formData.state,
-          postal_code: formData.postal_code,
+          postal_code: formData.postal_code || '000000',
           country: formData.country,
           phone: formData.phoneNumber,
         };
@@ -220,208 +274,230 @@ export default function CheckoutPage() {
         await handlePayazaCheckout(orderData, currencyParam);
       } else if (paymentMethod === 'stripe') {
         await handleStripeCheckout(orderData, currencyParam);
-      } else {
-        await handleTraditionalCheckout(orderData, currencyParam);
       }
 
     } catch (error: any) {
-      console.error('Checkout error:', error);
+      let errorMessage = 'Checkout failed. Please try again.';
 
       if (error?.response?.data) {
         const errors = error.response.data;
 
-        if (typeof errors === 'object') {
-          const errorMessages = Object.entries(errors)
+        if (typeof errors === 'object' && !Array.isArray(errors)) {
+          const messages = Object.entries(errors)
             .map(([key, value]) => {
               if (Array.isArray(value)) {
                 return `${key}: ${value[0]}`;
               }
               return `${key}: ${value}`;
             })
-            .join(', ');
+            .filter(Boolean);
 
-          toast.error(errorMessages || 'Checkout failed. Please try again.');
-        } else {
-          toast.error(errors || 'Checkout failed. Please try again.');
+          if (messages.length > 0) {
+            errorMessage = messages[0];
+          }
+        } else if (typeof errors === 'string') {
+          errorMessage = errors;
         }
       } else if (error?.message) {
-        toast.error(error.message);
-      } else {
-        toast.error('Checkout failed. Please try again.');
+        errorMessage = error.message;
       }
+
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleTraditionalCheckout = async (orderData: any, currencyParam: string) => {
-    const { order, paymentUrl } = await paymentService.checkout(
-      orderData,
-      accessToken || undefined,
-      currencyParam
-    );
-
-    if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address) {
-      try {
-        const addressData: any = {
-          label: 'Home',
-          address_type: 'home' as const,
-          first_name: orderData.shipping_address.first_name,
-          last_name: orderData.shipping_address.last_name,
-          address_line1: orderData.shipping_address.address_line1,
-          city: orderData.shipping_address.city,
-          state: orderData.shipping_address.state,
-          postal_code: orderData.shipping_address.postal_code || '000000',
-          country: orderData.shipping_address.country,
-          phone: orderData.shipping_address.phone,
-          is_default: addresses.length === 0,
-        };
-
-        if (orderData.shipping_address.address_line2) {
-          addressData.address_line2 = orderData.shipping_address.address_line2;
-        }
-
-        await addressService.createAddress(accessToken, addressData);
-      } catch (error) {
-        console.error('Error saving address:', error);
-      }
-    }
-
-    clearCart();
-    window.location.href = paymentUrl;
-  };
-
   const handleStripeCheckout = async (orderData: any, currencyParam: string) => {
-    const { order, paymentUrl, sessionId } = await paymentService.checkout(
-      orderData,
-      accessToken || undefined,
-      currencyParam
-    );
+    try {
+      const { order, paymentUrl } = await paymentService.checkout(
+        orderData,
+        accessToken || undefined,
+        currencyParam
+      );
 
-    if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address) {
-      try {
-        const addressData: any = {
-          label: 'Home',
-          address_type: 'home' as const,
-          first_name: orderData.shipping_address.first_name,
-          last_name: orderData.shipping_address.last_name,
-          address_line1: orderData.shipping_address.address_line1,
-          city: orderData.shipping_address.city,
-          state: orderData.shipping_address.state,
-          postal_code: orderData.shipping_address.postal_code || '000000',
-          country: orderData.shipping_address.country,
-          phone: orderData.shipping_address.phone,
-          is_default: addresses.length === 0,
-        };
+      if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address) {
+        try {
+          const addressData: any = {
+            label: 'Home',
+            address_type: 'home' as const,
+            first_name: orderData.shipping_address.first_name,
+            last_name: orderData.shipping_address.last_name,
+            address_line1: orderData.shipping_address.address_line1,
+            city: orderData.shipping_address.city,
+            state: orderData.shipping_address.state,
+            postal_code: orderData.shipping_address.postal_code || '000000',
+            country: orderData.shipping_address.country,
+            phone: orderData.shipping_address.phone,
+            is_default: addresses.length === 0,
+          };
 
-        if (orderData.shipping_address.address_line2) {
-          addressData.address_line2 = orderData.shipping_address.address_line2;
+          if (orderData.shipping_address.address_line2) {
+            addressData.address_line2 = orderData.shipping_address.address_line2;
+          }
+
+          await addressService.createAddress(accessToken, addressData);
+        } catch (error) {
         }
-
-        await addressService.createAddress(accessToken, addressData);
-      } catch (error) {
-        console.error('Error saving address:', error);
       }
+
+      clearCart();
+      window.location.href = paymentUrl;
+    } catch (error) {
+      throw error;
     }
-
-    clearCart();
-
-    window.location.href = paymentUrl;
   };
 
   const handlePayazaCheckout = async (orderData: any, currencyParam: string) => {
-    const { order, reference } = await paymentService.createOrderForPayaza(
-      orderData,
-      accessToken || undefined,
-      currencyParam
-    );
+    try {
+      const { order, payment, transactionReference, backendReference } = await paymentService.createOrderAndInitializePayaza(
+        orderData,
+        accessToken || undefined,
+        currencyParam
+      );
 
-    if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address) {
-      try {
-        const addressData: any = {
-          label: 'Home',
-          address_type: 'home' as const,
-          first_name: orderData.shipping_address.first_name,
-          last_name: orderData.shipping_address.last_name,
-          address_line1: orderData.shipping_address.address_line1,
-          city: orderData.shipping_address.city,
-          state: orderData.shipping_address.state,
-          postal_code: orderData.shipping_address.postal_code || '000000',
-          country: orderData.shipping_address.country,
-          phone: orderData.shipping_address.phone,
-          is_default: addresses.length === 0,
-        };
+      const verificationReference = backendReference || order.order_number;
 
-        if (orderData.shipping_address.address_line2) {
-          addressData.address_line2 = orderData.shipping_address.address_line2;
+      if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address) {
+        try {
+          const addressData: any = {
+            label: 'Home',
+            address_type: 'home' as const,
+            first_name: orderData.shipping_address.first_name,
+            last_name: orderData.shipping_address.last_name,
+            address_line1: orderData.shipping_address.address_line1,
+            city: orderData.shipping_address.city,
+            state: orderData.shipping_address.state,
+            postal_code: orderData.shipping_address.postal_code || '000000',
+            country: orderData.shipping_address.country,
+            phone: orderData.shipping_address.phone,
+            is_default: addresses.length === 0,
+          };
+
+          if (orderData.shipping_address.address_line2) {
+            addressData.address_line2 = orderData.shipping_address.address_line2;
+          }
+
+          await addressService.createAddress(accessToken, addressData);
+        } catch (error) {
         }
-
-        await addressService.createAddress(accessToken, addressData);
-      } catch (error) {
-        console.error('Error saving address:', error);
       }
+
+      const shippingAddress = orderData.shipping_address || {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        phone: formData.phoneNumber,
+      };
+
+      const payazaData: PayazaCheckoutOptionsInterface = {
+        merchant_key: process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.trim() || '',
+        connection_mode: ConnectionMode.LIVE,
+        checkout_amount: total,
+        currency_code: 'NGN',
+        currency: 'NGN',
+        email_address: orderData.email,
+        first_name: shippingAddress.first_name,
+        last_name: shippingAddress.last_name,
+        phone_number: shippingAddress.phone || formData.phoneNumber,
+        transaction_reference: transactionReference,
+        onClose: () => {
+          toast('Payment window closed', {
+            duration: 3000,
+          });
+          setIsProcessing(false);
+        },
+        callback: async (response: any) => {
+          await handlePayazaCallback(response, order, verificationReference);
+        },
+      };
+
+      const checkout = new PayazaCheckout(payazaData);
+      checkout.showPopup();
+    } catch (error) {
+      throw error;
     }
-
-    const shippingAddress = orderData.shipping_address || {
-      first_name: formData.firstName,
-      last_name: formData.lastName,
-      phone: formData.phoneNumber,
-    };
-
-    const payazaData: PayazaCheckoutOptionsInterface = {
-      merchant_key: process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.trim() || '',
-      connection_mode: ConnectionMode.TEST,
-      checkout_amount: total,
-      currency_code: 'NGN',
-      currency: 'NGN',
-      email_address: orderData.email,
-      first_name: shippingAddress.first_name,
-      last_name: shippingAddress.last_name,
-      phone_number: shippingAddress.phone || formData.phoneNumber,
-      transaction_reference: reference,
-      onClose: () => {
-        toast('Payment window closed', {
-          duration: 3000,
-        });
-        setIsProcessing(false);
-      },
-      callback: async (response: any) => {
-        await handlePayazaCallback(response, order, currencyParam);
-      },
-    };
-
-    const checkout = new PayazaCheckout(payazaData);
-    checkout.showPopup();
   };
 
   const handlePayazaCallback = async (
     response: any,
     order: any,
-    currencyParam: string
+    paymentReference: string
   ) => {
     if (response.type === 'success') {
       try {
-        const verificationResult = await paymentService.verifyPayazaPayment(
-          response.data.transaction_reference,
-          accessToken || undefined,
-          currencyParam
-        );
+        const payazaRef = response.data?.payaza_reference;
+        const transactionRef = response.data?.transaction_reference;
+
+        if (!payazaRef || !transactionRef) {
+          toast.error('Payment reference not found. Please contact support with order: ' + order.order_number);
+          setIsProcessing(false);
+          return;
+        }
+
+        toast.loading('Confirming payment...', { id: 'payment-verify' });
+
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        let verificationResult = null;
+        const maxAttempts = 3;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            verificationResult = await paymentService.verifyPayazaPayment(
+              paymentReference,
+              accessToken || undefined
+            );
+
+            if (verificationResult) {
+              break;
+            }
+
+          } catch (error: any) {
+            if (attempt < maxAttempts &&
+              (error?.response?.status === 404 ||
+                error?.response?.data?.error?.toLowerCase().includes('not found'))) {
+              await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+              continue;
+            }
+
+            throw error;
+          }
+        }
+
+        toast.dismiss('payment-verify');
+
+        if (!verificationResult) {
+          toast.error('Payment verification failed after multiple attempts. Please contact support with order: ' + order.order_number);
+          setIsProcessing(false);
+          return;
+        }
 
         if (verificationResult.status === 'success') {
           toast.success('Payment successful!');
           clearCart();
-
           router.push(`/order-confirmation?order=${order.order_number}`);
+        } else if (verificationResult.status === 'pending') {
+          toast('Payment is being processed. Check your orders page.', {
+            duration: 5000,
+          });
+          clearCart();
+          router.push(`/profile?tab=orders`);
         } else {
-          toast.error('Payment verification failed. Please contact support.');
+          toast.error('Payment verification failed. Please contact support with order: ' + order.order_number);
         }
-      } catch (error) {
-        console.error('Payment verification error:', error);
-        toast.error('Failed to verify payment. Please contact support.');
+      } catch (error: any) {
+        toast.dismiss('payment-verify');
+
+        const errorMessage = error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          error?.message ||
+          'Failed to verify payment. Please contact support with order: ' + order.order_number;
+
+        toast.error(errorMessage, { duration: 10000 });
       }
     } else {
       const errorData = response.data as any;
-      toast.error(errorData.message || 'Payment failed');
+      toast.error(errorData?.message || 'Payment failed');
     }
 
     setIsProcessing(false);
@@ -449,40 +525,63 @@ export default function CheckoutPage() {
             <div className="bg-white border border-accent-2 rounded-lg p-6">
               <h2 className="text-xl font-bold text-primary mb-6">Personal Information</h2>
               <div className="grid sm:grid-cols-2 gap-4">
-                <Input
-                  label="First Name"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  required
-                  disabled={isAuthenticated && !!user?.firstName && !useNewAddress}
-                />
-                <Input
-                  label="Last Name"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  required
-                  disabled={isAuthenticated && !!user?.lastName && !useNewAddress}
-                />
-                <Input
-                  label="Email Address"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  disabled={isAuthenticated}
-                />
-                <Input
-                  label="Phone Number"
-                  name="phoneNumber"
-                  type="tel"
-                  value={formData.phoneNumber}
-                  onChange={handleChange}
-                  required
-                  disabled={isAuthenticated && !!user?.phoneNumber && !useNewAddress}
-                />
+                <div>
+                  <Input
+                    label="First Name"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    required
+                    disabled={isAuthenticated && !!user?.firstName && !useNewAddress}
+                  />
+                  {formErrors.firstName && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.firstName}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Input
+                    label="Last Name"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    required
+                    disabled={isAuthenticated && !!user?.lastName && !useNewAddress}
+                  />
+                  {formErrors.lastName && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.lastName}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Input
+                    label="Email Address"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    disabled={isAuthenticated}
+                  />
+                  {formErrors.email && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Input
+                    label="Phone Number"
+                    name="phoneNumber"
+                    type="tel"
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    required
+                    disabled={isAuthenticated && !!user?.phoneNumber && !useNewAddress}
+                  />
+                  {formErrors.phoneNumber && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.phoneNumber}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -559,47 +658,77 @@ export default function CheckoutPage() {
                     </button>
                   )}
 
-                  <Input
-                    label="Street Address"
-                    name="address_line1"
-                    value={formData.address_line1}
-                    onChange={handleChange}
-                    required
-                  />
+                  <div>
+                    <Input
+                      label="Street Address"
+                      name="address_line1"
+                      value={formData.address_line1}
+                      onChange={handleChange}
+                      required
+                    />
+                    {formErrors.address_line1 && (
+                      <p className="mt-1 text-sm text-red-600">{formErrors.address_line1}</p>
+                    )}
+                  </div>
+
                   <Input
                     label="Apartment, suite, etc. (optional)"
                     name="address_line2"
                     value={formData.address_line2}
                     onChange={handleChange}
                   />
+
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <Input
-                      label="City"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleChange}
-                      required
-                    />
-                    <Input
-                      label="State"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleChange}
-                      required
-                    />
-                    <Input
-                      label="Zip Code"
-                      name="postal_code"
-                      value={formData.postal_code}
-                      onChange={handleChange}
-                    />
-                    <Input
-                      label="Country"
-                      name="country"
-                      value={formData.country}
-                      onChange={handleChange}
-                      required
-                    />
+                    <div>
+                      <Input
+                        label="City"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleChange}
+                        required
+                      />
+                      {formErrors.city && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.city}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Input
+                        label="State"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleChange}
+                        required
+                      />
+                      {formErrors.state && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.state}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Input
+                        label="Zip Code (optional)"
+                        name="postal_code"
+                        value={formData.postal_code}
+                        onChange={handleChange}
+                      />
+                      {formErrors.postal_code && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.postal_code}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Input
+                        label="Country"
+                        name="country"
+                        value={formData.country}
+                        onChange={handleChange}
+                        required
+                      />
+                      {formErrors.country && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.country}</p>
+                      )}
+                    </div>
                   </div>
 
                   {isAuthenticated && (
@@ -698,24 +827,10 @@ export default function CheckoutPage() {
               ))}
             </div>
 
-            <div className="border-t border-accent-2 pt-4 space-y-5">
+            <div className="border-t border-accent-2 pt-4">
               <div className="flex items-center justify-between">
-                <span className="text-grey">Subtotal</span>
-                <span className="text-primary">{formatPrice(subtotal, currency)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-grey">Shipping</span>
-                <span className="text-primary">{formatPrice(shipping, currency)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-grey">Tax</span>
-                <span className="text-primary">{formatPrice(tax, currency)}</span>
-              </div>
-              <div className="border-t border-accent-2 pt-3 mt-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold text-primary">Total</span>
-                  <span className="text-2xl font-bold text-primary">{formatPrice(total, currency)}</span>
-                </div>
+                <span className="text-lg font-semibold text-primary">Total</span>
+                <span className="text-2xl font-bold text-primary">{formatPrice(total, currency)}</span>
               </div>
             </div>
           </div>

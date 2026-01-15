@@ -120,7 +120,6 @@ export default function ProfilePage() {
         const filtered = allProducts.filter(p => wishlistItems.includes(p.id));
         setWishlistProducts(filtered);
       } catch (error) {
-        console.error('Error loading wishlist products:', error);
       } finally {
         setIsLoadingWishlist(false);
       }
@@ -136,9 +135,21 @@ export default function ProfilePage() {
       setIsLoadingOrders(true);
       try {
         const response = await orderService.getMyOrders(accessToken);
-        setOrders(response.results || []);
+
+        let ordersList: Order[] = [];
+
+        if (response.results && Array.isArray(response.results)) {
+          ordersList = response.results;
+        } else if (response.orders && Array.isArray(response.orders)) {
+          ordersList = response.orders;
+        } else if (response.data && Array.isArray(response.data)) {
+          ordersList = response.data;
+        } else if (Array.isArray(response)) {
+          ordersList = response;
+        }
+
+        setOrders(ordersList);
       } catch (error) {
-        console.error('Error loading orders:', error);
         setOrders([]);
       } finally {
         setIsLoadingOrders(false);
@@ -157,7 +168,6 @@ export default function ProfilePage() {
         const fetchedAddresses = await addressService.getAddresses(accessToken);
         setAddresses(fetchedAddresses || []);
       } catch (error) {
-        console.error('Error loading addresses:', error);
         setAddresses([]);
       } finally {
         setIsLoadingAddresses(false);
@@ -176,7 +186,6 @@ export default function ProfilePage() {
         const savedDesigns = await byomService.getSavedDesigns(accessToken);
         setDrafts(savedDesigns || []);
       } catch (error) {
-        console.error('Error loading drafts:', error);
         setDrafts([]);
       } finally {
         setIsLoadingDrafts(false);
@@ -215,12 +224,9 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-
       await logout();
-
       router.replace('/login');
     } catch (error) {
-      console.error("Logout failed", error);
       router.replace('/login');
     }
   };
@@ -338,7 +344,6 @@ export default function ProfilePage() {
           config = draft.configuration_json as any;
         }
       } catch (parseError) {
-        console.error('Error parsing configuration:', parseError);
         toast.error('Invalid design configuration');
         return;
       }
@@ -383,7 +388,6 @@ export default function ProfilePage() {
       toast.success('Added to cart!');
       router.push('/cart');
     } catch (error) {
-      console.error('Error adding draft to cart:', error);
       toast.error('Failed to add to cart');
     }
   };
@@ -427,7 +431,6 @@ export default function ProfilePage() {
       }
       return draft.configuration_json as any;
     } catch (error) {
-      console.error('Error parsing configuration:', error);
       return null;
     }
   };
@@ -545,21 +548,21 @@ export default function ProfilePage() {
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold text-primary">
-                              {formatPrice(parseFloat(order.total), currency)}
-                            </p>
                             <span className={`text-xs px-2 py-1 rounded-full ${order.status === 'delivered'
-                              ? 'bg-green-100 text-green-700'
+                              ? 'bg-green-100 text-green-500'
                               : order.status === 'cancelled'
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-blue-100 text-blue-700'
+                                ? 'bg-red-100 text-red-500'
+                                : 'bg-blue-100 text-blue-500'
                               }`}>
                               {order.status_display}
                             </span>
+                            <p className="font-semibold mt-5 text-primary">
+                              {formatPrice(parseFloat(order.total), currency)}
+                            </p>
                           </div>
                         </div>
                         <p className="text-sm text-grey">
-                          {order.items.length} item(s)
+                          {order.items?.length || 0} item(s)
                         </p>
                       </div>
                     ))}
@@ -583,7 +586,7 @@ export default function ProfilePage() {
                   </div>
                 ) : wishlistProducts.length === 0 ? (
                   <div className="text-center py-12">
-                    <Heart className="w-16 h-16 text-grey mx-auto mb-4" />
+                    <Heart className="w-10 h-10 text-grey mx-auto mb-4" />
                     <p className="text-grey text-lg mb-4">No items in wishlist</p>
                     <Link href="/shop">
                       <Button>Browse Products</Button>

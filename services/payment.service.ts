@@ -3,12 +3,34 @@ import makeRequest from '@/lib/api';
 export type PaymentMethod = 'paystack' | 'nova' | 'payaza' | 'stripe';
 
 export interface PaymentInitializeResponse {
+  id?: number;
+  order?: number;
+  amount?: string;
+  reference?: string;
+  status?: 'pending' | 'success' | 'failed';
+  payment_method?: string;
+  currency?: string;
+  created_at?: string;
+  updated_at?: string;
   authorization_url?: string;
   access_code?: string;
-  reference: string;
   payment_url?: string;
   stripe_session_id?: string;
   stripe_session_url?: string;
+  data?: {
+    reference?: string;
+    transaction_reference?: string;
+    amount?: number;
+    currency?: string;
+    email_address?: string;
+    first_name?: string;
+    last_name?: string;
+    phone_number?: string;
+    callback_url?: string;
+    description?: string;
+    service_type?: string;
+  };
+  message?: string;
 }
 
 export interface PaymentVerifyResponse {
@@ -75,7 +97,6 @@ class PaymentService {
 
       return response;
     } catch (error) {
-      console.error('Error creating order:', error);
       throw error;
     }
   }
@@ -102,7 +123,6 @@ class PaymentService {
 
       return response;
     } catch (error) {
-      console.error('Error initializing payment:', error);
       throw error;
     }
   }
@@ -122,20 +142,17 @@ class PaymentService {
 
       return response;
     } catch (error) {
-      console.error('Error verifying payment:', error);
       throw error;
     }
   }
 
-
   async verifyPayazaPayment(
     reference: string,
-    token?: string,
-    currencyParam: string = ''
+    token?: string
   ): Promise<PayazaVerifyResponse> {
     try {
       const response = await makeRequest({
-        url: `payments/verify-payaza/${currencyParam}`,
+        url: 'payments/verify-payaza/',
         method: 'POST',
         requireToken: !!token,
         token,
@@ -145,8 +162,7 @@ class PaymentService {
       });
 
       return response;
-    } catch (error) {
-      console.error('Error verifying Payaza payment:', error);
+    } catch (error: any) {
       throw error;
     }
   }
@@ -169,7 +185,6 @@ class PaymentService {
 
       return response;
     } catch (error) {
-      console.error('Error verifying Stripe payment:', error);
       throw error;
     }
   }
@@ -210,31 +225,54 @@ class PaymentService {
         sessionId: payment.stripe_session_id,
       };
     } catch (error) {
-      console.error('Error during checkout:', error);
       throw error;
     }
   }
 
-  async createOrderForPayaza(
+  async createOrderAndInitializePayaza(
     orderData: OrderCreateData,
     token?: string,
     currencyParam: string = ''
-  ): Promise<{ order: any; reference: string }> {
+  ): Promise<{
+    order: any;
+    payment: PaymentInitializeResponse;
+    transactionReference: string;
+    backendReference?: string;
+  }> {
     try {
       const order = await this.createOrder(token, orderData, currencyParam);
 
-      const reference = order.payment_reference || order.order_number;
+      const email = orderData.email || order.guest_email || order.user?.email;
 
-      if (!reference) {
-        throw new Error('No payment reference received from backend');
+      if (!email) {
+        throw new Error('Email is required for payment initialization');
+      }
+
+      const payment = await this.initializePayment(
+        order.id,
+        orderData.payment_method,
+        email,
+        token,
+        currencyParam
+      );
+
+      const backendReference = payment.data?.reference ||
+        payment.reference ||
+        null;
+
+      const transactionReference = order.order_number;
+
+      if (!transactionReference) {
+        throw new Error('No order number received from backend');
       }
 
       return {
         order,
-        reference,
+        payment,
+        transactionReference,
+        backendReference: backendReference || undefined,
       };
     } catch (error) {
-      console.error('Error creating order for Payaza:', error);
       throw error;
     }
   }

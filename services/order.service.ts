@@ -55,47 +55,30 @@ export interface OrderListResponse {
 }
 
 class OrderService {
-  async getOrders(
-    token: string,
-    params?: {
-      page?: number;
-      search?: string;
-      ordering?: string;
-    },
-    currencyParam: string = ''
-  ): Promise<OrderListResponse> {
+  async getAllOrders(token: string): Promise<any> {
     try {
       const response = await makeRequest({
-        url: `orders/${currencyParam}`,
+        url: 'orders/',
         method: 'GET',
         requireToken: true,
         token,
-        params,
       });
 
       return response;
     } catch (error) {
-      console.error('Error fetching orders:', error);
       throw error;
     }
   }
 
-  async getMyOrders(
-    token: string,
-    params?: {
-      page?: number;
-      search?: string;
-      ordering?: string;
-    },
-    currencyParam: string = ''
-  ): Promise<OrderListResponse> {
+    async getMyOrders(
+    token: string
+  ): Promise<any> {
     try {
       const response = await makeRequest({
-        url: `orders/my_orders/${currencyParam}`,
+        url: `orders/my_orders/`,
         method: 'GET',
         requireToken: true,
         token,
-        params,
       });
 
       return response;
@@ -105,66 +88,19 @@ class OrderService {
     }
   }
 
-  async getOrderById(
-    token: string, 
-    orderId: number,
-    currencyParam: string = ''
-  ): Promise<Order> {
+  async getOrderByNumber(orderNumber: string, token?: string): Promise<any> {
     try {
       const response = await makeRequest({
-        url: `orders/${orderId}/${currencyParam}`,
+        url: `orders/${orderNumber}/`,
         method: 'GET',
-        requireToken: true,
+        requireToken: !!token,
         token,
       });
 
       return response;
     } catch (error) {
-      console.error('Error fetching order:', error);
       throw error;
     }
-  }
-
-  async getOrderByNumber(
-    token: string, 
-    orderNumber: string,
-    currencyParam: string = ''
-  ): Promise<Order | null> {
-    try {
-      const response = await this.getMyOrders(token, { search: orderNumber }, currencyParam);
-      
-      if (response.results && response.results.length > 0) {
-        return response.results[0];
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error fetching order by number:', error);
-      return null;
-    }
-  }
-
-  getStatusColor(status: Order['status']): string {
-    const colors: Record<Order['status'], string> = {
-      placed: 'bg-blue-100 text-blue-700',
-      processing: 'bg-yellow-100 text-yellow-700',
-      shipped: 'bg-purple-100 text-purple-700',
-      delivered: 'bg-green-100 text-green-700',
-      cancelled: 'bg-red-100 text-red-700',
-    };
-
-    return colors[status] || 'bg-gray-100 text-gray-700';
-  }
-
-  calculateOrderTotals(order: Order) {
-    return {
-      subtotal: parseFloat(order.subtotal),
-      shipping: parseFloat(order.shipping_fee),
-      tax: parseFloat(order.tax),
-      total: parseFloat(order.total),
-      itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
-      currency: order.currency || 'NGN',
-    };
   }
 }
 
