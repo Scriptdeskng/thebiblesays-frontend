@@ -492,6 +492,62 @@ class DashboardService {
       throw error;
     }
   }
+
+  async getTeamMembers(): Promise<any[]> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/settings/team/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      // API returns object with results array
+      if (response && response.results && Array.isArray(response.results)) {
+        return response.results;
+      }
+      // Fallback: if response is already an array
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      throw error;
+    }
+  }
+
+  async createTeamMember(data: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    role: 'admin' | 'superuser';
+  }): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/settings/team/`,
+        method: "POST",
+        requireToken: true,
+        token: accessToken,
+        data,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error creating team member:", error);
+      throw error;
+    }
+  }
 }
 
 export const dashboardService = new DashboardService();
