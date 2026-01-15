@@ -7,6 +7,8 @@ import {
   ApiProductDetail,
   ApiOrder,
   ApiUser,
+  ApiTransaction,
+  RevenueAnalytics,
 } from "@/types/admin.types";
 import { useAuthStore } from "@/store/useAuthStore";
 import axios from "axios";
@@ -545,6 +547,152 @@ class DashboardService {
       return response;
     } catch (error) {
       console.error("Error creating team member:", error);
+      throw error;
+    }
+  }
+
+  async getTransactions(params?: {
+    search?: string;
+    status?: string;
+    payment_method?: string;
+    ordering?: string;
+    date_filter?: string;
+  }): Promise<ApiTransaction[]> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const queryParams: Record<string, any> = {};
+
+      if (params?.search) {
+        queryParams.search = params.search;
+      }
+      if (params?.status) {
+        queryParams.status = params.status;
+      }
+      if (params?.payment_method) {
+        queryParams.payment_method = params.payment_method;
+      }
+      if (params?.ordering) {
+        queryParams.ordering = params.ordering;
+      }
+      if (params?.date_filter) {
+        queryParams.date_filter = params.date_filter;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/transactions/`,
+        method: "GET",
+        params: queryParams,
+        requireToken: true,
+        token: accessToken,
+      });
+
+      // API returns array directly (similar to products and orders)
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      throw error;
+    }
+  }
+
+  async exportTransactions(params?: {
+    search?: string;
+    status?: string;
+    payment_method?: string;
+    ordering?: string;
+    date_filter?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<Blob> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const queryParams: Record<string, any> = {};
+
+      if (params?.search) {
+        queryParams.search = params.search;
+      }
+      if (params?.status) {
+        queryParams.status = params.status;
+      }
+      if (params?.payment_method) {
+        queryParams.payment_method = params.payment_method;
+      }
+      if (params?.ordering) {
+        queryParams.ordering = params.ordering;
+      }
+      if (params?.date_filter) {
+        queryParams.date_filter = params.date_filter;
+      }
+      if (params?.start_date) {
+        queryParams.start_date = params.start_date;
+      }
+      if (params?.end_date) {
+        queryParams.end_date = params.end_date;
+      }
+
+      // Use axios directly for file downloads with blob response type
+      const response = await axios.get(
+        `${API_URL}/dashboard/transactions/export/`,
+        {
+          params: queryParams,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          responseType: "blob",
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Error exporting transactions:", error);
+      throw error;
+    }
+  }
+
+  async getRevenueAnalytics(params?: {
+    date_filter?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<RevenueAnalytics> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const queryParams: Record<string, any> = {};
+
+      if (params?.date_filter) {
+        queryParams.date_filter = params.date_filter;
+      }
+      if (params?.start_date) {
+        queryParams.start_date = params.start_date;
+      }
+      if (params?.end_date) {
+        queryParams.end_date = params.end_date;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/transactions/revenue_analytics/`,
+        method: "GET",
+        params: queryParams,
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error fetching revenue analytics:", error);
       throw error;
     }
   }

@@ -61,7 +61,7 @@ export interface Product {
 }
 
 export type OrderStatus = 'placed' | 'payment_confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'backordered' | 'pending';
-export type PaymentMethod = 'paystack' | 'flutterwave';
+export type PaymentMethod = 'paystack' | 'nova' | 'payaza' | 'stripe';
 export type PaymentStatus = 'completed' | 'pending' | 'failed' | 'refunded';
 
 export interface OrderItem {
@@ -109,7 +109,7 @@ export interface CustomMerch {
   dateCreated: string;
 }
 
-export type TransactionStatus = 'completed' | 'pending' | 'failed' | 'refunded';
+export type TransactionStatus = 'pending' | 'successful' | 'failed';
 
 export interface Transaction {
   id: string;
@@ -431,4 +431,38 @@ export interface ApiUser {
   total_orders: string;
   total_spent: string;
   last_order_date?: string;
+}
+
+export interface ApiTransaction {
+  id: number;
+  user_email: string;
+  order_number: string;
+  amount: string;
+  status: string;
+  payment_method: string;
+  reference: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyRevenue {
+  date?: string;
+  revenue?: number | string;
+  [key: string]: any;
+}
+
+export interface PaymentMethodStat {
+  method?: string;
+  count?: number;
+  revenue?: number | string;
+  [key: string]: any;
+}
+
+export interface RevenueAnalytics {
+  average_payment?: number | string;
+  daily_revenue?: DailyRevenue[];
+  payment_count?: number | string;
+  payment_method_stats?: PaymentMethodStat[];
+  total_revenue?: number | string;
+  [key: string]: any; // Allow for additional fields
 }

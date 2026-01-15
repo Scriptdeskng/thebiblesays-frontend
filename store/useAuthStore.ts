@@ -60,8 +60,6 @@ export const useAuthStore = create<AuthState>()(
             password
           );
 
-          console.log(adminUser);
-
           if (!adminUser.is_superuser && !adminUser.is_staff) {
             toast.error("Access denied. Admin privileges required.");
             throw new Error("Access denied. Admin privileges required.");
