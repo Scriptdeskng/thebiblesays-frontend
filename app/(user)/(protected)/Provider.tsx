@@ -8,19 +8,17 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, accessToken } = useAuthStore();
-
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    const unsub = useAuthStore.persist.onFinishHydration(() => {
-      setIsHydrated(true);
-    });
+    const unsub = useAuthStore.persist.onFinishHydration(() => setIsHydrated(true));
+    
     if (useAuthStore.persist.hasHydrated()) {
-      setIsHydrated(true);
+        setIsHydrated(true);
     }
-
+    
     return () => {
-      unsub();
+        unsub();
     };
   }, []);
 
@@ -43,7 +41,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated || !accessToken) {
-    return null; 
+    return null;
   }
 
   return <>{children}</>;

@@ -85,10 +85,6 @@ Api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         authStore.logout();
-        if (typeof window !== "undefined") {
-            const path = window.location.pathname;
-            window.location.href = `/login?redirect=${encodeURIComponent(path)}`;
-        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
