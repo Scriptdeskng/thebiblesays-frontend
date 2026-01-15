@@ -88,7 +88,7 @@ export interface Order {
   createdAt: string;
 }
 
-export type CustomMerchStatus = 'approved' | 'pending' | 'rejected';
+export type CustomMerchStatus = 'approved' | 'pending' | 'rejected' | 'draft';
 
 export interface CustomMerch {
   id: string;

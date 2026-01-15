@@ -295,6 +295,46 @@ class DashboardService {
     }
   }
 
+  async getCustomMerch(params?: {
+    search?: string;
+    ordering?: string;
+    status?: string;
+  }): Promise<any[]> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const queryParams: Record<string, any> = {};
+
+      if (params?.search) {
+        queryParams.search = params.search;
+      }
+      if (params?.ordering) {
+        queryParams.ordering = params.ordering;
+      }
+      if (params?.status) {
+        queryParams.status = params.status;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/byom-designs/`,
+        method: "GET",
+        params: queryParams,
+        requireToken: true,
+        token: accessToken,
+      });
+
+      // API returns array directly (similar to products and orders)
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching custom merch:", error);
+      throw error;
+    }
+  }
+
   async exportUsers(params?: {
     search?: string;
     ordering?: string;
@@ -334,6 +374,107 @@ class DashboardService {
       return response.data;
     } catch (error) {
       console.error("Error exporting users:", error);
+      throw error;
+    }
+  }
+
+  async getCustomMerchById(id: string | number): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/byom-designs/${id}/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error fetching custom merch by id:", error);
+      throw error;
+    }
+  }
+
+  async approveCustomMerch(id: string | number): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/byom-designs/${id}/approve_design/`,
+        method: "POST",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error approving custom merch:", error);
+      throw error;
+    }
+  }
+
+  async rejectCustomMerch(
+    id: string | number,
+    rejectionReason?: string
+  ): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const data: Record<string, any> = {};
+      if (rejectionReason) {
+        data.rejection_reason = rejectionReason;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/byom-designs/${id}/reject_design/`,
+        method: "POST",
+        requireToken: true,
+        token: accessToken,
+        data,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error rejecting custom merch:", error);
+      throw error;
+    }
+  }
+
+  async exportCustomMerch(): Promise<Blob> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      // Use axios directly for file downloads with blob response type
+      const response = await axios.get(
+        `${API_URL}/dashboard/byom-designs/export/`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          responseType: "blob",
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Error exporting custom merch:", error);
       throw error;
     }
   }
