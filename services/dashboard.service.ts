@@ -167,6 +167,28 @@ class DashboardService {
     }
   }
 
+  async getOrderById(id: string | number): Promise<ApiOrder> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/orders/${id}/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error fetching order:", error);
+      throw error;
+    }
+  }
+
   async exportOrders(params?: {
     search?: string;
     ordering?: string;

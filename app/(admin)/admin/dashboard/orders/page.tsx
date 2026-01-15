@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, ArrowLeft, Filter, ChevronLeft } from "lucide-react";
+import { Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Button,
   Badge,
@@ -13,6 +13,7 @@ import {
   OrderStatus,
   ApiOrder,
   ProductCategory,
+  PaymentStatus,
 } from "@/types/admin.types";
 import { dashboardService } from "@/services/dashboard.service";
 import {
@@ -26,6 +27,7 @@ import toast from "react-hot-toast";
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingOrder, setLoadingOrder] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -34,6 +36,8 @@ export default function OrdersPage() {
   const [tempStatus, setTempStatus] = useState<OrderStatus>("placed");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const inferCategory = (productName: string): ProductCategory => {
     const nameLower = productName.toLowerCase();
@@ -67,16 +71,50 @@ export default function OrdersPage() {
     return "placed"; // Default fallback
   };
 
+  const normalizePaymentStatus = (status: string | undefined): PaymentStatus => {
+    if (!status) return "pending";
+    const statusLower = status.toLowerCase();
+    if (statusLower === "paid" || statusLower === "completed") return "completed";
+    if (statusLower === "pending" || statusLower === "unpaid") return "pending";
+    if (statusLower === "failed") return "failed";
+    if (statusLower === "refunded") return "refunded";
+    return "pending";
+  };
+
   const transformApiOrderToOrder = useCallback((apiOrder: ApiOrder): Order => {
+    // Extract user information
+    let userId = "";
+    let userName = "";
+    let userEmail = "";
+
+    if (apiOrder.user) {
+      if (typeof apiOrder.user === "object") {
+        userId = apiOrder.user.id || "";
+        userEmail = apiOrder.user.email || "";
+        userName =
+          `${apiOrder.user.first_name || ""} ${apiOrder.user.last_name || ""}`.trim() ||
+          apiOrder.user.email ||
+          "";
+      } else {
+        userId = apiOrder.user;
+      }
+    }
+
+    // Fallback to direct fields or guest
+    userName =
+      userName ||
+      apiOrder.user_name ||
+      userEmail ||
+      apiOrder.user_email ||
+      apiOrder.guest_email ||
+      "Guest";
+    userEmail = userEmail || apiOrder.user_email || apiOrder.guest_email || "";
+
     return {
-      id: apiOrder.order_number || apiOrder.id.toString(),
-      userId: apiOrder.user || "",
-      userName:
-        apiOrder.user_name ||
-        apiOrder.user_email ||
-        apiOrder.guest_email ||
-        "Guest",
-      userEmail: apiOrder.user_email || apiOrder.guest_email || "",
+      id: apiOrder.id.toString(),
+      userId: userId,
+      userName: userName,
+      userEmail: userEmail,
       items:
         apiOrder.items?.map((item) => ({
           productId: item.id.toString(),
@@ -85,7 +123,7 @@ export default function OrdersPage() {
           quantity: item.quantity,
           price: parseFloat(item.price) || 0,
         })) || [],
-      itemsCount: apiOrder.items_count,
+      itemsCount: apiOrder.items_count || apiOrder.items?.length || 0,
       totalAmount: parseFloat(apiOrder.total) || 0,
       status: normalizeStatus(apiOrder.status),
       paymentMethod:
@@ -95,8 +133,11 @@ export default function OrdersPage() {
               | "paystack"
               | "flutterwave")
           : "paystack",
-      paymentStatus: "completed", // Default to completed since order exists
-      deliveryAddress: apiOrder.shipping_address || "",
+      paymentStatus: normalizePaymentStatus(apiOrder.payment_status),
+      deliveryAddress:
+        apiOrder.shipping_full_address ||
+        apiOrder.shipping_address ||
+        "",
       orderDate: apiOrder.created_at,
       createdAt: apiOrder.created_at,
     };
@@ -119,10 +160,21 @@ export default function OrdersPage() {
     loadOrders();
   }, [loadOrders]);
 
-  const handleViewOrder = (order: Order) => {
-    setSelectedOrder(order);
-    setTempStatus(order.status);
+  const handleViewOrder = async (order: Order) => {
+    setLoadingOrder(true);
     setShowOrderDetails(true);
+    try {
+      const apiOrder = await dashboardService.getOrderById(order.id);
+      const transformedOrder = transformApiOrderToOrder(apiOrder);
+      setSelectedOrder(transformedOrder);
+      setTempStatus(transformedOrder.status);
+    } catch (error) {
+      console.error("Error loading order details:", error);
+      toast.error("Failed to load order details");
+      setShowOrderDetails(false);
+    } finally {
+      setLoadingOrder(false);
+    }
   };
 
   const handleBackToList = () => {
@@ -209,6 +261,17 @@ export default function OrdersPage() {
       return 0;
     });
 
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, filterStatus]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
   const formatStatusLabel = (status: string): string => {
     const statusMap: Record<string, string> = {
       placed: "Placed",
@@ -261,7 +324,7 @@ export default function OrdersPage() {
         </p>
       </div>
 
-            {showOrderDetails && selectedOrder ? (
+            {showOrderDetails ? (
                 <div className="bg-admin-primary/4 rounded-xl p-6">
                     <div className="flex items-center justify-between mb-6">
                         <button
@@ -273,6 +336,11 @@ export default function OrdersPage() {
                         </button>
                     </div>
 
+          {loadingOrder ? (
+            <div className="flex items-center justify-center min-h-[40vh]">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : selectedOrder ? (
           <div className="space-y-6">
             <div>
               <h3 className="font-semibold text-admin-primary mb-3">
@@ -431,6 +499,11 @@ export default function OrdersPage() {
               </Button>
             </div>
           </div>
+          ) : (
+            <div className="text-center py-8 text-admin-primary">
+              <p>Order not found</p>
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -560,7 +633,7 @@ export default function OrdersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map((order) => (
+                    {paginatedOrders.map((order) => (
                       <tr
                         key={order.id}
                         onClick={() => handleViewOrder(order)}
@@ -599,6 +672,72 @@ export default function OrdersPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {filteredOrders.length > 0 && totalPages > 1 && (
+              <div className="bg-white border-t border-accent-2 px-6 py-4 flex items-center justify-between">
+                <div className="text-sm text-admin-primary">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredOrders.length)} of{" "}
+                  {filteredOrders.length} orders
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${
+                      currentPage === 1
+                        ? "opacity-50 cursor-not-allowed text-grey"
+                        : "text-admin-primary hover:bg-accent-1"
+                    }`}
+                  >
+                    <ChevronLeft size={18} />
+                    Previous
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        // Show first page, last page, current page, and pages around current
+                        if (page === 1 || page === totalPages) return true;
+                        if (Math.abs(page - currentPage) <= 1) return true;
+                        return false;
+                      })
+                      .map((page, index, array) => {
+                        // Add ellipsis if there's a gap
+                        const showEllipsisBefore = index > 0 && array[index - 1] !== page - 1;
+                        return (
+                          <div key={page} className="flex items-center gap-1">
+                            {showEllipsisBefore && (
+                              <span className="px-2 text-grey">...</span>
+                            )}
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={`px-3 py-2 rounded-lg border transition-colors ${
+                                currentPage === page
+                                  ? "bg-admin-primary text-white border-admin-primary"
+                                  : "border-accent-2 text-admin-primary hover:bg-accent-1"
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${
+                      currentPage === totalPages
+                        ? "opacity-50 cursor-not-allowed text-grey"
+                        : "text-admin-primary hover:bg-accent-1"
+                    }`}
+                  >
+                    Next
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
               </div>
             )}
           </div>

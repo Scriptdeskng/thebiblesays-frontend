@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 import makeRequest, { API_URL } from '@/lib/api';
 import { User } from '@/types/user.types';
+import axios from 'axios';
 
 interface LoginResponse {
   access: string;
@@ -256,6 +258,24 @@ class AuthService {
       };
     } catch (error: any) {
       console.error('Dashboard login error:', error);
+      if (error?.response?.data) {
+        console.error('API Error Response:', error.response.data);
+      }
+      throw error;
+    }
+  }
+
+  async dashboardPasswordReset(email: string): Promise<void> {
+    try {
+      await axios.post(`${API_URL}/dashboard/auth/password-reset/`, {
+        email,
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (error: any) {
+      console.error('Dashboard password reset error:', error);
       if (error?.response?.data) {
         console.error('API Error Response:', error.response.data);
       }

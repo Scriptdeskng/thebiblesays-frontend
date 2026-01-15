@@ -384,23 +384,36 @@ export interface ApiOrderItem {
   total_price: string;
 }
 
+export interface ApiOrderUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name?: string;
+}
+
 export interface ApiOrder {
   id: number;
   order_number: string;
   status: string;
   status_display?: string;
-  user?: string;
+  user?: string | ApiOrderUser;
   user_email?: string;
   user_name?: string;
   guest_email?: string | null;
   payment_method?: string;
+  payment_status?: string;
+  payment_reference?: string;
   subtotal: string;
   shipping_fee?: string;
+  shipping_full_address?: string;
+  shipping_address?: string;
   tax?: string;
   total: string;
+  discount_amount?: string;
+  discount_code?: string;
+  estimated_delivery?: string;
   created_at: string;
   updated_at?: string;
-  shipping_address?: string;
   items?: ApiOrderItem[];
   items_count?: number;
 }
