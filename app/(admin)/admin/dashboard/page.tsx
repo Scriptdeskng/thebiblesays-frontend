@@ -58,23 +58,76 @@ export default function DashboardPage() {
     );
   }
 
-  const placedOrders = overview.recent_orders.filter(
-    (o) => o.status === "placed"
-  ).length;
   const totalRecentOrders = overview.recent_orders.length;
+
+  // Count orders by status
+  const statusCounts = {
+    placed: overview.recent_orders.filter((o) => o.status === "placed").length,
+    processing: overview.recent_orders.filter(
+      (o) => o.status === "processing"
+    ).length,
+    shipped: overview.recent_orders.filter((o) => o.status === "shipped")
+      .length,
+    delivered: overview.recent_orders.filter(
+      (o) => o.status === "delivered"
+    ).length,
+    cancelled: overview.recent_orders.filter(
+      (o) => o.status === "cancelled"
+    ).length,
+    pending: overview.recent_orders.filter((o) => o.status === "pending")
+      .length,
+  };
 
   const orderSummary = [
     {
       name: "Placed",
       value:
         totalRecentOrders > 0
-          ? calculatePercentage(placedOrders, totalRecentOrders)
+          ? calculatePercentage(statusCounts.placed, totalRecentOrders)
           : 0,
       color: "#10b981",
     },
-    { name: "Processing", value: 0, color: "#3b82f6" },
-    { name: "Pending", value: 0, color: "#f97316" },
-  ];
+    {
+      name: "Processing",
+      value:
+        totalRecentOrders > 0
+          ? calculatePercentage(statusCounts.processing, totalRecentOrders)
+          : 0,
+      color: "#8b5cf6",
+    },
+    {
+      name: "Shipped",
+      value:
+        totalRecentOrders > 0
+          ? calculatePercentage(statusCounts.shipped, totalRecentOrders)
+          : 0,
+      color: "#06b6d4",
+    },
+    {
+      name: "Delivered",
+      value:
+        totalRecentOrders > 0
+          ? calculatePercentage(statusCounts.delivered, totalRecentOrders)
+          : 0,
+      color: "#22c55e",
+    },
+    {
+      name: "Cancelled",
+      value:
+        totalRecentOrders > 0
+          ? calculatePercentage(statusCounts.cancelled, totalRecentOrders)
+          : 0,
+      color: "#ef4444",
+    },
+    {
+      name: "Pending",
+      value:
+        totalRecentOrders > 0
+          ? calculatePercentage(statusCounts.pending, totalRecentOrders)
+          : 0,
+      color: "#f97316",
+    },
+  ].filter((item) => item.value > 0);
 
   const bestSellers = overview.top_products.slice(0, 5);
 
@@ -174,12 +227,17 @@ export default function DashboardPage() {
               </h2>
               <p className="text-2xl font-bold text-admin-primary">
                 {formatCurrency(
-                  salesData.reduce((sum, item) => sum + item.amount, 0)
+                  salesData.reduce((sum, item) => sum + item.daily_total, 0)
                 )}
               </p>
             </div>
             <div className="flex items-center gap-2 mt-4 md:mt-0">
-              <span className="text-sm text-grey">Jan 2025 - Dec 2025</span>
+              <span className="text-sm text-grey">
+                {new Date().toLocaleDateString("en-US", {
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
             </div>
           </div>
 
@@ -187,9 +245,16 @@ export default function DashboardPage() {
             <LineChart data={salesData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E9E9EB" />
               <XAxis
-                dataKey="month"
+                dataKey="date"
                 stroke="#5C5F6A"
                 style={{ fontSize: "12px" }}
+                tickFormatter={(value) => {
+                  const date = new Date(value);
+                  return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  });
+                }}
               />
               <YAxis
                 stroke="#5C5F6A"
@@ -203,10 +268,18 @@ export default function DashboardPage() {
                   borderRadius: "8px",
                 }}
                 formatter={(value: any) => [formatCurrency(value), "Sales"]}
+                labelFormatter={(value) => {
+                  const date = new Date(value);
+                  return date.toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  });
+                }}
               />
               <Line
                 type="monotone"
-                dataKey="amount"
+                dataKey="daily_total"
                 stroke="#0E1422"
                 strokeWidth={2}
                 dot={{ fill: "#0E1422", r: 4 }}

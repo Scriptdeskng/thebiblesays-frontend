@@ -71,6 +71,7 @@ export const useAuthStore = create<AuthState>()(
             lastName: adminUser.last_name,
             email: adminUser.email,
             phoneNumber: "",
+            role: "admin",
           };
 
           set({

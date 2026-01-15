@@ -215,8 +215,9 @@ export interface DashboardStats {
 }
 
 export interface SalesData {
-  month: string;
-  amount: number;
+  date: string;
+  daily_total: number;
+  order_count: number;
 }
 
 export interface Banner {

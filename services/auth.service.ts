@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
-import makeRequest, { API_URL } from '@/lib/api';
-import { User } from '@/types/user.types';
-import axios from 'axios';
+import makeRequest, { API_URL } from "@/lib/api";
+import { User } from "@/types/user.types";
+import axios from "axios";
 
 interface LoginResponse {
   access: string;
@@ -36,7 +36,7 @@ interface DashboardLoginResponse {
 }
 
 class AuthService {
-  private transformUser(apiUser: LoginResponse['user']): User {
+  private transformUser(apiUser: LoginResponse["user"]): User {
     return {
       id: apiUser.id,
       firstName: apiUser.first_name,
@@ -46,13 +46,16 @@ class AuthService {
     };
   }
 
-  async login(email: string, password: string): Promise<{ user: User; tokens: { access: string; refresh: string } }> {
+  async login(
+    email: string,
+    password: string
+  ): Promise<{ user: User; tokens: { access: string; refresh: string } }> {
     try {
       const response: LoginResponse = await makeRequest({
-        url: 'auth/login/',
-        method: 'POST',
+        url: "auth/login/",
+        method: "POST",
         data: {
-          username: email, 
+          username: email,
           email,
           password,
         },
@@ -66,9 +69,9 @@ class AuthService {
         },
       };
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       if (error?.response?.data) {
-        console.error('API Error Response:', error.response.data);
+        console.error("API Error Response:", error.response.data);
       }
       throw error;
     }
@@ -96,8 +99,8 @@ class AuthService {
       };
 
       const response: RegisterResponse = await makeRequest({
-        url: 'auth/registration/',
-        method: 'POST',
+        url: "auth/registration/",
+        method: "POST",
         data: requestData,
       });
 
@@ -109,10 +112,10 @@ class AuthService {
         },
       };
     } catch (error: any) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       if (error?.response?.data) {
-        console.error('API Error Response:', error.response.data);
-        Object.keys(error.response.data).forEach(key => {
+        console.error("API Error Response:", error.response.data);
+        Object.keys(error.response.data).forEach((key) => {
           console.error(`${key}:`, error.response.data[key]);
         });
       }
@@ -123,13 +126,13 @@ class AuthService {
   async logout(token: string): Promise<void> {
     try {
       await makeRequest({
-        url: 'auth/logout/',
-        method: 'POST',
+        url: "auth/logout/",
+        method: "POST",
         requireToken: true,
         token,
       });
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error("Error logging out:", error);
       throw error;
     }
   }
@@ -137,15 +140,15 @@ class AuthService {
   async getProfile(token: string): Promise<User> {
     try {
       const response = await makeRequest({
-        url: 'auth/user/',
-        method: 'GET',
+        url: "auth/user/",
+        method: "GET",
         requireToken: true,
         token,
       });
 
       return this.transformUser(response);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error("Error fetching profile:", error);
       throw error;
     }
   }
@@ -153,8 +156,8 @@ class AuthService {
   async updateProfile(token: string, data: Partial<User>): Promise<User> {
     try {
       const response = await makeRequest({
-        url: 'auth/user/',
-        method: 'PATCH',
+        url: "auth/user/",
+        method: "PATCH",
         requireToken: true,
         token,
         data: {
@@ -166,16 +169,20 @@ class AuthService {
 
       return this.transformUser(response);
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error("Error updating profile:", error);
       throw error;
     }
   }
 
-  async changePassword(token: string, newPassword1: string, newPassword2: string): Promise<void> {
+  async changePassword(
+    token: string,
+    newPassword1: string,
+    newPassword2: string
+  ): Promise<void> {
     try {
       await makeRequest({
-        url: 'auth/password/change/',
-        method: 'POST',
+        url: "auth/password/change/",
+        method: "POST",
         requireToken: true,
         token,
         data: {
@@ -184,7 +191,7 @@ class AuthService {
         },
       });
     } catch (error) {
-      console.error('Error changing password:', error);
+      console.error("Error changing password:", error);
       throw error;
     }
   }
@@ -192,21 +199,26 @@ class AuthService {
   async resetPassword(email: string): Promise<void> {
     try {
       await makeRequest({
-        url: 'auth/password/reset/',
-        method: 'POST',
+        url: "auth/password/reset/",
+        method: "POST",
         data: { email },
       });
     } catch (error) {
-      console.error('Error resetting password:', error);
+      console.error("Error resetting password:", error);
       throw error;
     }
   }
 
-  async confirmPasswordReset(uid: string, token: string, newPassword1: string, newPassword2: string): Promise<void> {
+  async confirmPasswordReset(
+    uid: string,
+    token: string,
+    newPassword1: string,
+    newPassword2: string
+  ): Promise<void> {
     try {
       await makeRequest({
-        url: 'auth/password/reset/confirm/',
-        method: 'POST',
+        url: "auth/password/reset/confirm/",
+        method: "POST",
         data: {
           uid,
           token,
@@ -215,16 +227,18 @@ class AuthService {
         },
       });
     } catch (error) {
-      console.error('Error confirming password reset:', error);
+      console.error("Error confirming password reset:", error);
       throw error;
     }
   }
 
-  async refreshToken(refreshToken: string): Promise<{ access: string; refresh: string }> {
+  async refreshToken(
+    refreshToken: string
+  ): Promise<{ access: string; refresh: string }> {
     try {
       const response = await makeRequest({
-        url: 'auth/token/refresh/',
-        method: 'POST',
+        url: "auth/token/refresh/",
+        method: "POST",
         data: { refresh: refreshToken },
       });
 
@@ -233,16 +247,22 @@ class AuthService {
         refresh: response.refresh,
       };
     } catch (error) {
-      console.error('Error refreshing token:', error);
+      console.error("Error refreshing token:", error);
       throw error;
     }
   }
 
-  async dashboardLogin(username: string, password: string): Promise<{ user: DashboardLoginResponse['user']; tokens: { access: string; refresh: string } }> {
+  async dashboardLogin(
+    username: string,
+    password: string
+  ): Promise<{
+    user: DashboardLoginResponse["user"];
+    tokens: { access: string; refresh: string };
+  }> {
     try {
       const response: DashboardLoginResponse = await makeRequest({
         url: `${API_URL}/dashboard/auth/login/`,
-        method: 'POST',
+        method: "POST",
         data: {
           username,
           password,
@@ -257,9 +277,9 @@ class AuthService {
         },
       };
     } catch (error: any) {
-      console.error('Dashboard login error:', error);
+      console.error("Dashboard login error:", error);
       if (error?.response?.data) {
-        console.error('API Error Response:', error.response.data);
+        console.error("API Error Response:", error.response.data);
       }
       throw error;
     }
@@ -267,18 +287,42 @@ class AuthService {
 
   async dashboardPasswordReset(email: string): Promise<void> {
     try {
-      await axios.post(`${API_URL}/dashboard/auth/password-reset/`, {
-        email,
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
+      await axios.post(
+        `${API_URL}/dashboard/auth/password-reset/`,
+        {
+          email,
         },
-      });
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
     } catch (error: any) {
-      console.error('Dashboard password reset error:', error);
+      console.error("Dashboard password reset error:", error);
       if (error?.response?.data) {
-        console.error('API Error Response:', error.response.data);
+        console.error("API Error Response:", error.response.data);
       }
+      throw error;
+    }
+  }
+
+  async adminRefreshToken(
+    refreshToken: string
+  ): Promise<{ access: string; refresh: string }> {
+    try {
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/auth/token/refresh/`,
+        method: "POST",
+        data: { refresh: refreshToken },
+      });
+
+      return {
+        access: response.access,
+        refresh: response.refresh,
+      };
+    } catch (error) {
+      console.error("Error refreshing token:", error);
       throw error;
     }
   }

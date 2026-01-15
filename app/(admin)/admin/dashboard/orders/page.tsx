@@ -28,6 +28,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingOrder, setLoadingOrder] = useState(false);
+  const [updatingOrder, setUpdatingOrder] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -71,10 +72,13 @@ export default function OrdersPage() {
     return "placed"; // Default fallback
   };
 
-  const normalizePaymentStatus = (status: string | undefined): PaymentStatus => {
+  const normalizePaymentStatus = (
+    status: string | undefined
+  ): PaymentStatus => {
     if (!status) return "pending";
     const statusLower = status.toLowerCase();
-    if (statusLower === "paid" || statusLower === "completed") return "completed";
+    if (statusLower === "paid" || statusLower === "completed")
+      return "completed";
     if (statusLower === "pending" || statusLower === "unpaid") return "pending";
     if (statusLower === "failed") return "failed";
     if (statusLower === "refunded") return "refunded";
@@ -92,7 +96,9 @@ export default function OrdersPage() {
         userId = apiOrder.user.id || "";
         userEmail = apiOrder.user.email || "";
         userName =
-          `${apiOrder.user.first_name || ""} ${apiOrder.user.last_name || ""}`.trim() ||
+          `${apiOrder.user.first_name || ""} ${
+            apiOrder.user.last_name || ""
+          }`.trim() ||
           apiOrder.user.email ||
           "";
       } else {
@@ -135,9 +141,7 @@ export default function OrdersPage() {
           : "paystack",
       paymentStatus: normalizePaymentStatus(apiOrder.payment_status),
       deliveryAddress:
-        apiOrder.shipping_full_address ||
-        apiOrder.shipping_address ||
-        "",
+        apiOrder.shipping_full_address || apiOrder.shipping_address || "",
       orderDate: apiOrder.created_at,
       createdAt: apiOrder.created_at,
     };
@@ -185,20 +189,23 @@ export default function OrdersPage() {
   const handleUpdateOrder = async () => {
     if (!selectedOrder) return;
 
+    setUpdatingOrder(true);
     try {
-      // TODO: Implement update order status API endpoint
-      // await dashboardService.updateOrderStatus(selectedOrder.id, tempStatus);
-      setOrders(
-        orders.map((o) =>
-          o.id === selectedOrder.id ? { ...o, status: tempStatus } : o
-        )
-      );
-      setSelectedOrder({ ...selectedOrder, status: tempStatus });
+      await dashboardService.updateOrderStatus(selectedOrder.id, tempStatus);
+
+      const apiOrder = await dashboardService.getOrderById(selectedOrder.id);
+      const transformedOrder = transformApiOrderToOrder(apiOrder);
+
+      await loadOrders();
+
+      setSelectedOrder(transformedOrder);
       handleBackToList();
-      toast.success("Order status updated");
+      toast.success("Order status updated successfully");
     } catch (error) {
       console.error("Error updating order status:", error);
       toast.error("Failed to update order status");
+    } finally {
+      setUpdatingOrder(false);
     }
   };
 
@@ -324,181 +331,192 @@ export default function OrdersPage() {
         </p>
       </div>
 
-            {showOrderDetails ? (
-                <div className="bg-admin-primary/4 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <button
-                            onClick={handleBackToList}
-                            className="flex items-center space-x-2 text-admin-primary hover:text-admin-primary/80 transition-colors"
-                        >
-                            <ChevronLeft size={20} />
-                            <h2 className="text-lg font-medium text-admin-primary">Order Details</h2>
-                        </button>
-                    </div>
+      {showOrderDetails ? (
+        <div className="bg-admin-primary/4 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={handleBackToList}
+              className="flex items-center space-x-2 text-admin-primary hover:text-admin-primary/80 transition-colors"
+            >
+              <ChevronLeft size={20} />
+              <h2 className="text-lg font-medium text-admin-primary">
+                Order Details
+              </h2>
+            </button>
+          </div>
 
           {loadingOrder ? (
             <div className="flex items-center justify-center min-h-[40vh]">
               <LoadingSpinner size="lg" />
             </div>
           ) : selectedOrder ? (
-          <div className="space-y-6">
-            <div>
-              <h3 className="font-semibold text-admin-primary mb-3">
-                Personal Information
-              </h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-grey mb-1">Name</p>
-                  <p className="text-admin-primary font-medium">
-                    {selectedOrder.userName}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-grey mb-1">Email</p>
-                  <p className="text-admin-primary font-medium">
-                    {selectedOrder.userEmail}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold text-admin-primary mb-3">
-                Order Information
-              </h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-grey mb-1">Order ID</p>
-                  <p className="text-admin-primary font-medium">
-                    {selectedOrder.id}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-grey mb-1">Order Date</p>
-                  <p className="text-admin-primary font-medium">
-                    {formatDateTime(selectedOrder.orderDate)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-grey mb-1">Payment Status</p>
-                  <Badge
-                    variant={
-                      selectedOrder.paymentStatus === "completed"
-                        ? "success"
-                        : "warning"
-                    }
-                  >
-                    {selectedOrder.paymentStatus}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-grey mb-1">Payment Method</p>
-                  <p className="text-admin-primary font-medium capitalize">
-                    {selectedOrder.paymentMethod}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-grey mb-1">Delivery Address</p>
-                  <p className="text-admin-primary font-medium">
-                    {selectedOrder.deliveryAddress}
-                  </p>
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold text-admin-primary mb-3">
+                  Personal Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-grey mb-1">Name</p>
+                    <p className="text-admin-primary font-medium">
+                      {selectedOrder.userName}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-grey mb-1">Email</p>
+                    <p className="text-admin-primary font-medium">
+                      {selectedOrder.userEmail}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div>
-              <h3 className="font-semibold text-admin-primary mb-3">
-                Order Items
-              </h3>
-              <div className="border border-accent-2 rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-accent-1">
-                    <tr>
-                      <th className="text-left text-xs font-semibold text-grey px-4 py-3">
-                        Product
-                      </th>
-                      <th className="text-left text-xs font-semibold text-grey px-4 py-3">
-                        Category
-                      </th>
-                      <th className="text-left text-xs font-semibold text-grey px-4 py-3">
-                        Quantity
-                      </th>
-                      <th className="text-left text-xs font-semibold text-grey px-4 py-3">
-                        Price
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedOrder.items.map((item, index) => (
-                      <tr key={index} className="border-t border-accent-2">
-                        <td className="px-4 py-3 text-sm text-admin-primary">
-                          {item.productName}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant="info">{item.category}</Badge>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-admin-primary">
-                          {item.quantity}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium text-admin-primary">
-                          {formatCurrency(item.price)}
-                        </td>
+              <div>
+                <h3 className="font-semibold text-admin-primary mb-3">
+                  Order Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-grey mb-1">Order ID</p>
+                    <p className="text-admin-primary font-medium">
+                      {selectedOrder.id}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-grey mb-1">Order Date</p>
+                    <p className="text-admin-primary font-medium">
+                      {formatDateTime(selectedOrder.orderDate)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-grey mb-1">Payment Status</p>
+                    <Badge
+                      variant={
+                        selectedOrder.paymentStatus === "completed"
+                          ? "success"
+                          : "warning"
+                      }
+                    >
+                      {selectedOrder.paymentStatus}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-grey mb-1">Payment Method</p>
+                    <p className="text-admin-primary font-medium capitalize">
+                      {selectedOrder.paymentMethod}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-grey mb-1">Delivery Address</p>
+                    <p className="text-admin-primary font-medium">
+                      {selectedOrder.deliveryAddress}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-admin-primary mb-3">
+                  Order Items
+                </h3>
+                <div className="border border-accent-2 rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-accent-1">
+                      <tr>
+                        <th className="text-left text-xs font-semibold text-grey px-4 py-3">
+                          Product
+                        </th>
+                        <th className="text-left text-xs font-semibold text-grey px-4 py-3">
+                          Category
+                        </th>
+                        <th className="text-left text-xs font-semibold text-grey px-4 py-3">
+                          Quantity
+                        </th>
+                        <th className="text-left text-xs font-semibold text-grey px-4 py-3">
+                          Price
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {selectedOrder.items.map((item, index) => (
+                        <tr key={index} className="border-t border-accent-2">
+                          <td className="px-4 py-3 text-sm text-admin-primary">
+                            {item.productName}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge variant="info">{item.category}</Badge>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-admin-primary">
+                            {item.quantity}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium text-admin-primary">
+                            {formatCurrency(item.price)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 flex justify-between items-center bg-accent-1 p-4 rounded-lg">
+                  <span className="font-semibold text-admin-primary">
+                    Total Amount
+                  </span>
+                  <span className="text-xl font-bold text-admin-primary">
+                    {formatCurrency(selectedOrder.totalAmount)}
+                  </span>
+                </div>
               </div>
-              <div className="mt-4 flex justify-between items-center bg-accent-1 p-4 rounded-lg">
-                <span className="font-semibold text-admin-primary">
-                  Total Amount
-                </span>
-                <span className="text-xl font-bold text-admin-primary">
-                  {formatCurrency(selectedOrder.totalAmount)}
-                </span>
-              </div>
-            </div>
 
-            <div>
-              <h3 className="font-semibold text-admin-primary mb-3">
-                Update Status
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                {[
-                  { value: "pending", label: "Pending" },
-                  { value: "processing", label: "Processing" },
-                  { value: "shipped", label: "Shipped" },
-                  { value: "delivered", label: "Delivered" },
-                  { value: "cancelled", label: "Cancelled" },
-                ].map((status) => (
-                  <button
-                    key={status.value}
-                    type="button"
-                    onClick={() => setTempStatus(status.value as OrderStatus)}
-                    className={`px-6 py-2 rounded-md border transition-all ${
-                      tempStatus === status.value
-                        ? "border-[#A1CBFF] text-[#3291FF] bg-secondary"
-                        : "border-admin-primary/35 text-admin-primary"
-                    }`}
-                  >
-                    {status.label}
-                  </button>
-                ))}
+              <div>
+                <h3 className="font-semibold text-admin-primary mb-3">
+                  Update Status
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { value: "pending", label: "Pending" },
+                    { value: "processing", label: "Processing" },
+                    { value: "shipped", label: "Shipped" },
+                    { value: "delivered", label: "Delivered" },
+                    { value: "cancelled", label: "Cancelled" },
+                  ].map((status) => (
+                    <button
+                      key={status.value}
+                      type="button"
+                      onClick={() => setTempStatus(status.value as OrderStatus)}
+                      className={`px-6 py-2 rounded-md border transition-all ${
+                        tempStatus === status.value
+                          ? "border-[#A1CBFF] text-[#3291FF] bg-secondary"
+                          : "border-admin-primary/35 text-admin-primary"
+                      }`}
+                    >
+                      {status.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-center space-x-5 pt-5">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleBackToList}
+                  disabled={updatingOrder}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleUpdateOrder}
+                  disabled={updatingOrder}
+                  className="flex items-center gap-2"
+                >
+                  {updatingOrder && (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  )}
+                  {updatingOrder ? "Updating..." : "Update Order"}
+                </Button>
               </div>
             </div>
-
-            <div className="flex justify-center space-x-5 pt-5">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleBackToList}
-              >
-                Cancel
-              </Button>
-              <Button type="button" onClick={handleUpdateOrder}>
-                Update Order
-              </Button>
-            </div>
-          </div>
           ) : (
             <div className="text-center py-8 text-admin-primary">
               <p>Order not found</p>
@@ -679,12 +697,15 @@ export default function OrdersPage() {
             {filteredOrders.length > 0 && totalPages > 1 && (
               <div className="bg-white border-t border-accent-2 px-6 py-4 flex items-center justify-between">
                 <div className="text-sm text-admin-primary">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredOrders.length)} of{" "}
+                  Showing {startIndex + 1} to{" "}
+                  {Math.min(endIndex, filteredOrders.length)} of{" "}
                   {filteredOrders.length} orders
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
                     disabled={currentPage === 1}
                     className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${
                       currentPage === 1
@@ -705,7 +726,8 @@ export default function OrdersPage() {
                       })
                       .map((page, index, array) => {
                         // Add ellipsis if there's a gap
-                        const showEllipsisBefore = index > 0 && array[index - 1] !== page - 1;
+                        const showEllipsisBefore =
+                          index > 0 && array[index - 1] !== page - 1;
                         return (
                           <div key={page} className="flex items-center gap-1">
                             {showEllipsisBefore && (
@@ -726,7 +748,9 @@ export default function OrdersPage() {
                       })}
                   </div>
                   <button
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
                     disabled={currentPage === totalPages}
                     className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${
                       currentPage === totalPages
