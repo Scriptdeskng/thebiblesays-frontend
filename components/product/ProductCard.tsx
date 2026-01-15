@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Heart, ShoppingCart } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Heart, ShoppingCart, Check } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Product } from '@/types/product.types';
@@ -20,12 +20,28 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product }: ProductCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
-  const addItem = useCartStore((state) => state.addItem);
+  const [justAdded, setJustAdded] = useState(false);
+
   const { isInWishlist, toggleItem } = useWishlistStore();
   const { accessToken } = useAuthStore();
   const { currency } = useCurrencyStore();
   const productIdString = product.id.toString();
   const isFavorite = isInWishlist(productIdString);
+
+  const addItem = useCartStore((state) => state.addItem);
+  const items = useCartStore((state) => state.items);
+
+  const isInCart = items.some(item => 
+    item.productId === product.id || 
+    item.productId === product.id.toString()
+  );
+
+  useEffect(() => {
+    if (justAdded) {
+      const timer = setTimeout(() => setJustAdded(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [justAdded]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -37,6 +53,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       color: product.colors[0]?.name || 'default',
       size: product.sizes[0] || 'M',
     });
+    setJustAdded(true);
   };
 
   const handleToggleFavorite = async (e: React.MouseEvent) => {
@@ -81,10 +98,19 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             <Button
               onClick={handleAddToCart}
               disabled={!product.inStock}
-              className="w-full"
-              leftIcon={<ShoppingCart className="w-4 h-4" />}
+              className={cn(
+                "w-full transition-all duration-200",
+                (isInCart || justAdded) && "bg-primary/90"
+              )}
+              leftIcon={
+                (isInCart || justAdded) ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <ShoppingCart className="w-4 h-4" />
+                )
+              }
             >
-              Add to Cart
+              {justAdded ? 'Added!' : isInCart ? 'In Cart' : 'Add to Cart'}
             </Button>
           </div>
         </div>

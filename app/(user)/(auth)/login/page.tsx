@@ -68,17 +68,30 @@ function LoginPage() {
       const redirect = searchParams.get('redirect') || '/';
       router.push(redirect);
     } catch (error: any) {
-      console.error('Login error:', error);
+      let errorMessage = 'Invalid email or password. Please check your credentials and try again.';
 
-      let errorMessage = 'Invalid email or password. Please try again.';
-
-      if (error?.response?.data?.error) {
-        errorMessage = error.response.data.error;
+      if (error?.response?.status === 400) {
+        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (error?.response?.status === 401) {
+        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (error?.response?.status === 404) {
+        errorMessage = 'Account not found. Please check your email or sign up.';
+      } else if (error?.response?.status === 429) {
+        errorMessage = 'Too many login attempts. Please try again later.';
+      } else if (error?.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (error?.response?.data?.error) {
+        const apiError = error.response.data.error;
+        if (typeof apiError === 'string' && apiError.toLowerCase().includes('credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        } else if (typeof apiError === 'string') {
+          errorMessage = apiError;
+        }
       } else if (error?.response?.data?.detail) {
         errorMessage = error.response.data.detail;
       } else if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
-      } else if (error?.message) {
+      } else if (error?.message && !error.message.includes('status code')) {
         errorMessage = error.message;
       }
 

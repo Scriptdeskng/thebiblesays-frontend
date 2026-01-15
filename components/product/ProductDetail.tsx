@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Heart, Minus, Plus, ShoppingCart } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Heart, Minus, Plus, ShoppingCart, Check } from 'lucide-react';
 import Image from 'next/image';
 import { Product, Review, Size } from '@/types/product.types';
 import { Badge } from '@/components/ui/Badge';
@@ -24,16 +24,31 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
   const [selectedColor, setSelectedColor] = useState(product.colors[0].name);
   const [selectedSize, setSelectedSize] = useState<Size>(product.sizes[0]);
   const [quantity, setQuantity] = useState(1);
+  const [justAdded, setJustAdded] = useState(false);
   const { currency } = useCurrencyStore();
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
 
   const addItem = useCartStore((state) => state.addItem);
+  const items = useCartStore((state) => state.items);
   const { isInWishlist, toggleItem } = useWishlistStore();
   const { accessToken } = useAuthStore();
   const productIdString = product.id.toString();
   const isFavorite = isInWishlist(productIdString);
 
+  const isInCart = items.some(item => 
+    (item.productId === product.id || item.productId === product.id.toString()) &&
+    item.color === selectedColor &&
+    item.size === selectedSize
+  );
+
   const currentImage = product.images.find(img => img.color === selectedColor) || product.images[0];
+
+  useEffect(() => {
+    if (justAdded) {
+      const timer = setTimeout(() => setJustAdded(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [justAdded]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -45,6 +60,7 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
       color: selectedColor,
       size: selectedSize,
     });
+    setJustAdded(true);
   };
 
   const handleToggleFavorite = async () => {
@@ -149,10 +165,19 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
             <Button
               onClick={handleAddToCart}
               disabled={!product.inStock}
-              className="flex-1"
-              leftIcon={<ShoppingCart className="w-5 h-5 pr-1" />}
+              className={cn(
+                "flex-1 transition-all duration-200",
+                (isInCart || justAdded) && "bg-primary/90"
+              )}
+              leftIcon={
+                (isInCart || justAdded) ? (
+                  <Check className="w-5 h-5" />
+                ) : (
+                  <ShoppingCart className="w-5 h-5" />
+                )
+              }
             >
-              Add to Cart
+              {justAdded ? 'Added to Cart!' : isInCart ? 'In Cart - Add More' : 'Add to Cart'}
             </Button>
             <Button
               onClick={handleToggleFavorite}
@@ -160,7 +185,7 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
               className={cn(isFavorite && "bg-red-50 border-red-500")}
             >
               <Heart className={cn(
-                "w-5 h-5 pr-1",
+                "w-5 h-5",
                 isFavorite && "fill-red-500 text-red-500"
               )} />
             </Button>
