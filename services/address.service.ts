@@ -13,6 +13,8 @@ interface ApiAddress {
   postal_code: string;
   country: string;
   phone: string;
+  longitude?: number;
+  latitude?: number;
   is_default: boolean;
   full_address: string;
   full_name: string;
@@ -32,6 +34,8 @@ interface CreateAddressData {
   postal_code: string;
   country: string;
   phone: string;
+  longitude?: number;
+  latitude?: number;
   is_default?: boolean;
 }
 
