@@ -11,7 +11,7 @@ import {
   // EyeOff,
   // Filter,
   // ChevronDown,
-  Tag,
+  // Tag,
   X,
 } from "lucide-react";
 import {
@@ -68,7 +68,7 @@ const additionalColors: ProductColor[] = [
   { name: "Lime", hex: "#00FF00" },
   { name: "Indigo", hex: "#4B0082" },
 ];
-const predefinedTags = ["Faith", "Hoodie", "Christian"];
+// const predefinedTags = ["Faith", "Hoodie", "Christian"];
 
 export default function ProductsPage() {
   const [allProducts, setAllProducts] = useState<ApiProduct[]>([]);
@@ -81,22 +81,31 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productDetailLoading, setProductDetailLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   // const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [createdProductName] = useState("");
+  const [createdProductName, setCreatedProductName] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [originalImages, setOriginalImages] = useState<string[]>([]);
+  const [deletingImageIndex, setDeletingImageIndex] = useState<number | null>(
+    null
+  );
 
   const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({
     name: "",
-    category: "Shirts" as ProductCategory,
+    category: "" as ProductCategory,
     price: "",
     stock: "",
     description: "",
-    sizes: sizes,
-    colors: AVAILABLE_COLORS,
-    image: "",
+    sizes: [] as ProductSize[],
+    colors: [] as ProductColor[],
+    images: [] as string[], // Base64 data URLs or image URLs
+    imageFiles: [] as File[], // Store actual file objects for filenames
+    imageIds: [] as (number | null)[], // Track image IDs for existing images (null for new images)
     status: "Active" as ProductStatus,
     tags: [] as string[],
   });
@@ -192,28 +201,31 @@ export default function ProductsPage() {
           );
 
           // Map the full product detail to form data
+          const productImages = productDetail.images.map((img) => img.image);
+          const productImageIds = productDetail.images.map((img) => img.id);
+
+          // Parse sizes and colors from the product detail
+          // Note: The API returns color and size as strings, but the form expects arrays
+          const productSizes: ProductSize[] = productDetail.size
+            ? [productDetail.size as ProductSize]
+            : [];
+          const productColors: ProductColor[] = productDetail.color
+            ? [{ name: productDetail.color, hex: "#000000" }] // Default hex if color name provided
+            : [];
+
+          // Create a Product-like object from ApiProductDetail for editing
           const featuredImage = productDetail.images.find(
             (img) => img.is_featured
           );
           const productImage =
             featuredImage?.image || productDetail.images[0]?.image || "";
 
-          // Parse sizes and colors from the product detail
-          // Note: The API returns color and size as strings, but the form expects arrays
-          const productSizes: ProductSize[] = productDetail.size
-            ? [productDetail.size as ProductSize]
-            : sizes;
-          const productColors: ProductColor[] = productDetail.color
-            ? [{ name: productDetail.color, hex: "#000000" }] // Default hex if color name provided
-            : AVAILABLE_COLORS;
-
-          // Create a Product-like object from ApiProductDetail for editing
           const productForEdit: Product = {
             id: productDetail.id.toString(),
             name: productDetail.name,
             category: productDetail.category_name as ProductCategory,
             price: parseFloat(productDetail.price),
-            stock: 0, // Stock not available in API response
+            stock: productDetail.stock_level || 0,
             description: productDetail.description,
             sizes: productSizes,
             colors: productColors,
@@ -230,14 +242,18 @@ export default function ProductsPage() {
             name: productDetail.name,
             category: productDetail.category_name as ProductCategory,
             price: productDetail.price,
-            stock: "0", // Stock not available
+            stock: productDetail.stock_level?.toString() || "0",
             description: productDetail.description,
             sizes: productSizes,
             colors: productColors,
-            image: productImage,
+            images: productImages,
+            imageFiles: [], // No file objects when editing existing product
+            imageIds: productImageIds, // Store image IDs for existing images
             status: productDetail.is_active ? "Active" : "Inactive",
             tags: [],
           });
+          // Store original images to detect new ones when updating
+          setOriginalImages(productImages);
         } catch (error) {
           console.error("Error fetching product details:", error);
           toast.error("Failed to load product details");
@@ -258,22 +274,28 @@ export default function ProductsPage() {
           description: regularProduct.description,
           sizes: regularProduct.sizes,
           colors: regularProduct.colors,
-          image: regularProduct.image,
+          images: regularProduct.image ? [regularProduct.image] : [],
+          imageFiles: [], // No file objects when editing existing product
+          imageIds: [], // No IDs for Product type
           status: regularProduct.status,
           tags: regularProduct.tags || [],
         });
+        // Store original images to detect new ones when updating
+        setOriginalImages(regularProduct.image ? [regularProduct.image] : []);
       }
     } else {
       setEditingProduct(null);
       setFormData({
         name: "",
-        category: "Shirts",
+        category: "" as ProductCategory,
         price: "",
         stock: "",
         description: "",
-        sizes: sizes,
-        colors: AVAILABLE_COLORS,
-        image: "",
+        sizes: [],
+        colors: [],
+        images: [],
+        imageFiles: [],
+        imageIds: [],
         status: "Active",
         tags: [],
       });
@@ -285,55 +307,149 @@ export default function ProductsPage() {
   const handleCloseForm = () => {
     setShowForm(false);
     setEditingProduct(null);
+    setOriginalImages([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const productData = {
-      ...formData,
-      price: parseFloat(formData.price),
-      stock: parseInt(formData.stock),
-      sales: editingProduct?.sales || 0,
-      revenue: editingProduct?.revenue || 0,
-      createdAt: editingProduct?.createdAt || new Date().toISOString(),
-    };
+    if (submitting) return;
 
+    setSubmitting(true);
     try {
-      if (editingProduct) {
-        // TODO: Implement update product API endpoint
-        // await dashboardService.updateProduct(editingProduct.id, productData);
-        toast.error("Update product functionality not yet implemented");
-        // setProducts(products.map(p => p.id === editingProduct.id ? { ...p, ...productData } : p));
-        // handleCloseForm();
-      } else {
-        // TODO: Implement create product API endpoint
-        // const newProduct = await dashboardService.createProduct(productData);
-        toast.error("Create product functionality not yet implemented");
-        // setProducts([...products, newProduct]);
-        // setCreatedProductName(formData.name);
-        // handleCloseForm();
-        // setShowSuccessModal(true);
+      // Find category ID from category name
+      const selectedCategory = categories.find(
+        (cat) => cat.name === formData.category
+      );
+      if (!selectedCategory) {
+        toast.error("Please select a valid category");
+        return;
       }
-    } catch (error) {
+
+      // Map form data to API schema
+      // Note: API accepts single size/color, so we use the first selected one
+      const apiProductData = {
+        name: formData.name,
+        description: formData.description,
+        price: formData.price,
+        color: formData.colors.length > 0 ? formData.colors[0].name : undefined,
+        size:
+          formData.sizes.length > 0
+            ? (formData.sizes[0] as "S" | "M" | "L" | "XL" | "XXL")
+            : undefined,
+        category: selectedCategory.id,
+        stock_level: parseInt(formData.stock) || 0,
+        is_active: formData.status === "Active",
+        images:
+          formData.imageFiles.length > 0 ? formData.imageFiles : undefined,
+        // tag_ids will be handled separately if needed
+      };
+
+      if (editingProduct) {
+        // Update existing product
+        if (!editingProduct.id) {
+          toast.error("Product ID is missing");
+          setSubmitting(false);
+          return;
+        }
+        const productIdToUpdate = parseInt(editingProduct.id);
+        if (isNaN(productIdToUpdate)) {
+          toast.error("Invalid product ID");
+          setSubmitting(false);
+          return;
+        }
+        await dashboardService.updateProduct(productIdToUpdate, apiProductData);
+
+        // Check if there are new images to upload
+        // New images are those in imageFiles (File objects) that weren't in originalImages
+        if (formData.imageFiles.length > 0) {
+          try {
+            await dashboardService.addProductImages(
+              productIdToUpdate,
+              formData.imageFiles
+            );
+            toast.success(
+              `Successfully added ${formData.imageFiles.length} new image(s)`
+            );
+          } catch (imageError: any) {
+            console.error("Error adding images:", imageError);
+            const imageErrorMessage =
+              imageError?.response?.data?.message ||
+              imageError?.response?.data?.error ||
+              imageError?.message ||
+              "Failed to upload new images";
+            toast.error(imageErrorMessage);
+            // Don't throw - product was updated successfully, just images failed
+          }
+        }
+
+        toast.success("Product updated successfully");
+      } else {
+        // Create new product with images included in multipart form data
+        await dashboardService.createProduct(apiProductData);
+        // const productId = newProduct.id;
+        const imagesCount = formData.imageFiles.length;
+        toast.success(
+          `Product created successfully${
+            imagesCount > 0 ? ` with ${imagesCount} image(s)` : ""
+          }`
+        );
+      }
+
+      // Reload products and close form
+      await loadProducts(false);
+      handleCloseForm();
+
+      if (!editingProduct) {
+        setCreatedProductName(formData.name);
+        setShowSuccessModal(true);
+      }
+    } catch (error: any) {
       console.error("Error saving product:", error);
-      toast.error("Failed to save product");
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to save product";
+      toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // const handleDelete = async (id: string | number) => {
-  //   if (confirm("Are you sure you want to delete this product?")) {
-  //     try {
-  //       // TODO: Implement delete product API endpoint
-  //       // await dashboardService.deleteProduct(id);
-  //       toast.error("Delete product functionality not yet implemented");
-  //       // setProducts(products.filter(p => p.id !== id));
-  //     } catch (error) {
-  //       console.error("Error deleting product:", error);
-  //       toast.error("Failed to delete product");
-  //     }
-  //   }
-  // };
+  const handleDelete = async () => {
+    if (!editingProduct) return;
+
+    if (!editingProduct.id) {
+      toast.error("Product ID is missing");
+      setShowDeleteModal(false);
+      return;
+    }
+
+    const productIdToDelete = parseInt(editingProduct.id);
+    if (isNaN(productIdToDelete)) {
+      toast.error("Invalid product ID");
+      setShowDeleteModal(false);
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await dashboardService.deleteProduct(productIdToDelete);
+      toast.success("Product deleted successfully");
+      setShowDeleteModal(false);
+      handleCloseForm();
+      await loadProducts(false);
+    } catch (error: any) {
+      console.error("Error deleting product:", error);
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to delete product";
+      toast.error(errorMessage);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const toggleSize = (size: ProductSize) => {
     setFormData({
@@ -371,41 +487,101 @@ export default function ProductsPage() {
     }
   };
 
-  const toggleTag = (tag: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.includes(tag)
-        ? formData.tags.filter((t) => t !== tag)
-        : [...formData.tags, tag],
-    });
-  };
+  // const toggleTag = (tag: string) => {
+  //   setFormData({
+  //     ...formData,
+  //     tags: formData.tags.includes(tag)
+  //       ? formData.tags.filter((t) => t !== tag)
+  //       : [...formData.tags, tag],
+  //   });
+  // };
 
-  const addCustomTag = () => {
-    if (customTag.trim() && !formData.tags.includes(customTag.trim())) {
-      setFormData({
-        ...formData,
-        tags: [...formData.tags, customTag.trim()],
-      });
-      setCustomTag("");
-    }
-  };
+  // const addCustomTag = () => {
+  //   if (customTag.trim() && !formData.tags.includes(customTag.trim())) {
+  //     setFormData({
+  //       ...formData,
+  //       tags: [...formData.tags, customTag.trim()],
+  //     });
+  //     setCustomTag("");
+  //   }
+  // };
 
-  const removeTag = (tagToRemove: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.filter((t) => t !== tagToRemove),
-    });
-  };
+  // const removeTag = (tagToRemove: string) => {
+  //   setFormData({
+  //     ...formData,
+  //     tags: formData.tags.filter((t) => t !== tagToRemove),
+  //   });
+  // };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, image: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const fileArray = Array.from(files);
+      const readers = fileArray.map((file) => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      Promise.all(readers).then((results) => {
+        setFormData({
+          ...formData,
+          images: [...formData.images, ...results],
+          imageFiles: [...formData.imageFiles, ...fileArray],
+          // New images don't have IDs yet (null)
+          imageIds: [
+            ...formData.imageIds,
+            ...Array(fileArray.length).fill(null),
+          ],
+        });
+      });
     }
+    // Reset input to allow selecting the same files again
+    e.target.value = "";
+  };
+
+  const removeImage = async (indexToRemove: number) => {
+    const imageId = formData.imageIds[indexToRemove];
+
+    setDeletingImageIndex(indexToRemove);
+
+    // If it's an existing image (has an ID), delete it from the server
+    if (imageId !== null && imageId !== undefined && editingProduct?.id) {
+      try {
+        const productId = parseInt(editingProduct.id);
+        if (!isNaN(productId)) {
+          await dashboardService.deleteProductImage(productId, imageId);
+          toast.success("Image deleted successfully");
+        }
+      } catch (error: any) {
+        console.error("Error deleting image:", error);
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to delete image";
+        toast.error(errorMessage);
+        setDeletingImageIndex(null);
+        return; // Don't remove from UI if deletion failed
+      }
+    }
+
+    // Remove from local state
+    setFormData({
+      ...formData,
+      images: formData.images.filter((_, index) => index !== indexToRemove),
+      imageFiles: formData.imageFiles.filter(
+        (_, index) => index !== indexToRemove
+      ),
+      imageIds: formData.imageIds.filter(
+        (_, index) => index !== indexToRemove
+      ),
+    });
+
+    setDeletingImageIndex(null);
   };
 
   if (initialLoading) {
@@ -467,20 +643,43 @@ export default function ProductsPage() {
                         category: e.target.value as ProductCategory,
                       })
                     }
-                    options={categories.map((cat) => ({
-                      value: cat.name,
-                      label: cat.name,
-                    }))}
+                    options={[
+                      { value: "", label: "Select a category", disabled: true },
+                      ...categories.map((cat) => ({
+                        value: cat.name,
+                        label: cat.name,
+                      })),
+                    ]}
                     required
                   />
 
                   <Input
                     label="Price"
                     type="number"
+                    min="0"
+                    step="0.01"
                     value={formData.price}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow empty string or valid non-negative numbers
+                      if (
+                        value === "" ||
+                        (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)
+                      ) {
+                        setFormData({ ...formData, price: value });
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      // Prevent negative sign, 'e', 'E', '+', '.' (handled by step)
+                      if (
+                        e.key === "-" ||
+                        e.key === "e" ||
+                        e.key === "E" ||
+                        e.key === "+"
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
                     required
                     placeholder="0.00"
                   />
@@ -489,10 +688,30 @@ export default function ProductsPage() {
                 <Input
                   label="Stock Level"
                   type="number"
+                  min="0"
                   value={formData.stock}
-                  onChange={(e) =>
-                    setFormData({ ...formData, stock: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string or valid non-negative integers
+                    if (
+                      value === "" ||
+                      (!isNaN(parseInt(value)) && parseInt(value) >= 0)
+                    ) {
+                      setFormData({ ...formData, stock: value });
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // Prevent negative sign, 'e', 'E', '+', '.'
+                    if (
+                      e.key === "-" ||
+                      e.key === "e" ||
+                      e.key === "E" ||
+                      e.key === "+" ||
+                      e.key === "."
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
                   required
                   placeholder="0"
                 />
@@ -682,47 +901,65 @@ export default function ProductsPage() {
 
                 <div>
                   <label className="block text-admin-primary mb-1">
-                    Product Image
+                    Product Images
                   </label>
-                  {formData.image ? (
-                    <div className="relative flex items-center justify-center">
-                      <img
-                        src={formData.image}
-                        alt="Preview"
-                        className="w-48 h-48 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, image: "" })}
-                        className="absolute top-2 right-2 p-2 bg-red-600/30 text-red-600 rounded-md"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="border-2 border-dashed border-accent-2 rounded-lg p-8 text-center flex flex-col items-center justify-center">
-                      <LuUpload size={30} className="text-admin-primary" />
-                      <p className=" text-admin-primary mt-3">
-                        Click to upload or drag and drop
-                      </p>
-                      <p className="text-sm text-admin-primary/69 mb-4">
-                        PNG, JPG up to 10MB
-                      </p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                        id="image-upload"
-                      />
-                      <label
-                        htmlFor="image-upload"
-                        className="inline-block px-4 py-2 bg-admin-primary text-white rounded-lg cursor-pointer hover:bg-opacity-90"
-                      >
-                        Upload Image
-                      </label>
+                  {formData.images.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+                      {formData.images.map((image, index) => (
+                        <div
+                          key={index}
+                          className="relative flex items-center justify-center"
+                        >
+                          <img
+                            src={image}
+                            alt={`Preview ${index + 1}`}
+                            className={`w-full h-48 object-cover rounded-lg ${
+                              deletingImageIndex === index
+                                ? "opacity-50"
+                                : ""
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            disabled={deletingImageIndex === index}
+                            className="absolute top-2 right-2 p-2 bg-red-600/30 text-red-600 rounded-md hover:bg-red-600/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deletingImageIndex === index ? (
+                              <LoadingSpinner size="sm" />
+                            ) : (
+                              <Trash2 size={16} />
+                            )}
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
+                  <div className="border-2 border-dashed border-accent-2 rounded-lg p-8 text-center flex flex-col items-center justify-center">
+                    <LuUpload size={30} className="text-admin-primary" />
+                    <p className="text-admin-primary mt-3">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="text-sm text-admin-primary/69 mb-4">
+                      PNG, JPG up to 10MB (Multiple images allowed)
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      id="image-upload"
+                      multiple
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="inline-block px-4 py-2 bg-admin-primary text-white rounded-lg cursor-pointer hover:bg-opacity-90"
+                    >
+                      {formData.images.length > 0
+                        ? "Add More Images"
+                        : "Upload Images"}
+                    </label>
+                  </div>
                 </div>
 
                 <div>
@@ -763,7 +1000,7 @@ export default function ProductsPage() {
                   </div>
                 </div>
 
-                <div>
+                {/* <div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-admin-primary mb-1">
@@ -838,18 +1075,38 @@ export default function ProductsPage() {
                       </div>
                     </div>
                   )}
-                </div>
+                </div> */}
 
                 <div className="flex justify-center space-x-5 pt-5">
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={handleCloseForm}
+                    disabled={submitting || deleting}
                   >
                     Cancel
                   </Button>
-                  <Button type="submit">
-                    {editingProduct ? "Update Product" : "Add Product"}
+                  {editingProduct && (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => setShowDeleteModal(true)}
+                      disabled={submitting || deleting}
+                    >
+                      Delete Product
+                    </Button>
+                  )}
+                  <Button type="submit" disabled={submitting || deleting}>
+                    {submitting ? (
+                      <span className="flex items-center gap-2">
+                        <LoadingSpinner size="sm" />
+                        {editingProduct ? "Updating..." : "Creating..."}
+                      </span>
+                    ) : editingProduct ? (
+                      "Update Product"
+                    ) : (
+                      "Add Product"
+                    )}
                   </Button>
                 </div>
               </form>
@@ -1063,6 +1320,52 @@ export default function ProductsPage() {
           <Button onClick={() => setShowSuccessModal(false)} className="mt-4">
             Go to product table
           </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => !deleting && setShowDeleteModal(false)}
+        title="Delete Product"
+        size="md"
+      >
+        <div className="py-6">
+          <div className="mb-6">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-admin-primary mb-2 text-center">
+              Are you sure you want to delete this product?
+            </h3>
+            <p className="text-grey text-center">
+              {editingProduct && (
+                <>
+                  This will permanently delete{" "}
+                  <strong>{editingProduct.name}</strong>. This action cannot be
+                  undone.
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex justify-center space-x-4">
+            <Button
+              variant="secondary"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+              {deleting ? (
+                <span className="flex items-center gap-2">
+                  <LoadingSpinner size="sm" />
+                  Deleting...
+                </span>
+              ) : (
+                "Delete Product"
+              )}
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
