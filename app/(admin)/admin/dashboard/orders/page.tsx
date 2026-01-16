@@ -96,9 +96,8 @@ export default function OrdersPage() {
         userId = apiOrder.user.id || "";
         userEmail = apiOrder.user.email || "";
         userName =
-          `${apiOrder.user.first_name || ""} ${
-            apiOrder.user.last_name || ""
-          }`.trim() ||
+          `${apiOrder.user.first_name || ""} ${apiOrder.user.last_name || ""
+            }`.trim() ||
           apiOrder.user.email ||
           "";
       } else {
@@ -133,12 +132,9 @@ export default function OrdersPage() {
       totalAmount: parseFloat(apiOrder.total) || 0,
       status: normalizeStatus(apiOrder.status),
       paymentMethod:
-        apiOrder.payment_method?.toLowerCase() === "paystack" ||
-        apiOrder.payment_method?.toLowerCase() === "flutterwave"
-          ? (apiOrder.payment_method.toLowerCase() as
-              | "paystack"
-              | "flutterwave")
-          : "paystack",
+        apiOrder.payment_method?.toLowerCase() === "payaza"
+          ? "payaza"
+          : "stripe",
       paymentStatus: normalizePaymentStatus(apiOrder.payment_status),
       deliveryAddress:
         apiOrder.shipping_full_address || apiOrder.shipping_address || "",
@@ -227,9 +223,8 @@ export default function OrdersPage() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `orders-export-${
-        new Date().toISOString().split("T")[0]
-      }.csv`;
+      link.download = `orders-export-${new Date().toISOString().split("T")[0]
+        }.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -483,11 +478,10 @@ export default function OrdersPage() {
                       key={status.value}
                       type="button"
                       onClick={() => setTempStatus(status.value as OrderStatus)}
-                      className={`px-6 py-2 rounded-md border transition-all ${
-                        tempStatus === status.value
+                      className={`px-6 py-2 rounded-md border transition-all ${tempStatus === status.value
                           ? "border-[#A1CBFF] text-[#3291FF] bg-secondary"
                           : "border-admin-primary/35 text-admin-primary"
-                      }`}
+                        }`}
                     >
                       {status.label}
                     </button>
@@ -539,11 +533,10 @@ export default function OrdersPage() {
                   <button
                     key={filter.key}
                     onClick={() => setStatusFilter(filter.key as any)}
-                    className={`px-4 py-2 rounded-sm text-sm transition-all flex items-center ${
-                      statusFilter === filter.key
+                    className={`px-4 py-2 rounded-sm text-sm transition-all flex items-center ${statusFilter === filter.key
                         ? "bg-admin-primary text-white"
                         : "bg-admin-primary/5 text-admin-primary"
-                    }`}
+                      }`}
                   >
                     <span>{filter.label}</span>
                     <span>
@@ -603,11 +596,10 @@ export default function OrdersPage() {
                             setFilterStatus(status);
                             setFilterDropdownOpen(false);
                           }}
-                          className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-accent-1 transition-colors capitalize ${
-                            filterStatus === status
+                          className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-accent-1 transition-colors capitalize ${filterStatus === status
                               ? "bg-accent-1 text-admin-primary font-medium"
                               : "text-grey"
-                          }`}
+                            }`}
                         >
                           {status}
                         </button>
@@ -707,11 +699,10 @@ export default function OrdersPage() {
                       setCurrentPage((prev) => Math.max(1, prev - 1))
                     }
                     disabled={currentPage === 1}
-                    className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${
-                      currentPage === 1
+                    className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${currentPage === 1
                         ? "opacity-50 cursor-not-allowed text-grey"
                         : "text-admin-primary hover:bg-accent-1"
-                    }`}
+                      }`}
                   >
                     <ChevronLeft size={18} />
                     Previous
@@ -735,11 +726,10 @@ export default function OrdersPage() {
                             )}
                             <button
                               onClick={() => setCurrentPage(page)}
-                              className={`px-3 py-2 rounded-lg border transition-colors ${
-                                currentPage === page
+                              className={`px-3 py-2 rounded-lg border transition-colors ${currentPage === page
                                   ? "bg-admin-primary text-white border-admin-primary"
                                   : "border-accent-2 text-admin-primary hover:bg-accent-1"
-                              }`}
+                                }`}
                             >
                               {page}
                             </button>
@@ -752,11 +742,10 @@ export default function OrdersPage() {
                       setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                     }
                     disabled={currentPage === totalPages}
-                    className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${
-                      currentPage === totalPages
+                    className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${currentPage === totalPages
                         ? "opacity-50 cursor-not-allowed text-grey"
                         : "text-admin-primary hover:bg-accent-1"
-                    }`}
+                      }`}
                   >
                     Next
                     <ChevronRight size={18} />
