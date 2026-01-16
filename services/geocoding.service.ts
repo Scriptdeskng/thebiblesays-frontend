@@ -1,6 +1,3 @@
-// const GOOGLE_MAPS_KEY = process.env.GOOGLE_MAPS_API_KEY
-
-const GOOGLE_MAPS_API_KEY = 'AIzaSyCHSVIlzStq44210Ije3TGKvtxhA0achmI';
 
 export interface GeocodeResult {
   latitude: number;
@@ -27,7 +24,7 @@ class GeocodingService {
         address.country
       ].filter(Boolean).join(', ');
 
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&key=${GOOGLE_MAPS_API_KEY}`;
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
       
       const response = await fetch(url);
       const data = await response.json();
