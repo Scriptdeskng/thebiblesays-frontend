@@ -13,7 +13,6 @@ import {
   Role,
   TeamMember,
   DashboardStats,
-  SalesData,
   ProductColor,
 } from '@/types/admin.types';
 
@@ -38,6 +37,11 @@ export const mockDashboardStats: DashboardStats = {
   usersRegistered: 1250,
   usersRegisteredChange: 15.5,
 };
+
+interface SalesData {
+  month: string;
+  amount: number;
+}
 
 export const mockSalesData: SalesData[] = [
   { month: 'Jan', amount: 150000 },
@@ -141,7 +145,7 @@ export const mockOrders: Order[] = [
     ],
     totalAmount: 12000,
     status: 'processing',
-    paymentMethod: 'flutterwave',
+    paymentMethod: 'payaza',
     paymentStatus: 'completed',
     deliveryAddress: '456 Abuja Road, Abuja, Nigeria',
     orderDate: '2025-01-02',
@@ -163,7 +167,7 @@ export const mockOrders: Order[] = [
     ],
     totalAmount: 12000,
     status: 'pending',
-    paymentMethod: 'flutterwave',
+    paymentMethod: 'payaza',
     paymentStatus: 'completed',
     deliveryAddress: '456 Abuja Road, Abuja, Nigeria',
     orderDate: '2025-01-02',
@@ -222,7 +226,7 @@ export const mockTransactions: Transaction[] = [
     userEmail: 'john@example.com',
     amount: 11000,
     method: 'paystack',
-    status: 'completed',
+    status: 'pending',
     dateTime: '2025-01-01T10:30:00Z',
   },
 ];
