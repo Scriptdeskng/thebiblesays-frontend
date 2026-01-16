@@ -121,6 +121,35 @@ class DashboardService {
     }
   }
 
+  async getSubcategories(categoryId?: number): Promise<Array<{ id: number; name: string; category: number }>> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const params: Record<string, any> = {};
+      if (categoryId) {
+        params.category = categoryId;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/subcategories/`,
+        method: "GET",
+        params,
+        requireToken: true,
+        token: accessToken,
+      });
+
+      // API returns array directly
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching subcategories:", error);
+      throw error;
+    }
+  }
+
   async getProductById(id: number): Promise<ApiProductDetail> {
     try {
       const { accessToken } = useAuthStore.getState();
@@ -693,6 +722,213 @@ class DashboardService {
       return response;
     } catch (error) {
       console.error("Error fetching revenue analytics:", error);
+      throw error;
+    }
+  }
+
+  async createProduct(data: {
+    name: string;
+    description: string;
+    price?: string;
+    color?: string;
+    size?: "S" | "M" | "L" | "XL" | "XXL";
+    category?: number | null;
+    subcategory?: number | null;
+    tag_ids?: number[];
+    stock_level?: number;
+    is_active?: boolean;
+    images?: File[];
+  }): Promise<ApiProductDetail> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      // Create FormData for multipart/form-data
+      const formData = new FormData();
+
+      // Append product fields
+      formData.append("name", data.name);
+      formData.append("description", data.description);
+
+      if (data.price) {
+        formData.append("price", data.price);
+      }
+      if (data.color) {
+        formData.append("color", data.color);
+      }
+      if (data.size) {
+        formData.append("size", data.size);
+      }
+      if (data.category !== undefined && data.category !== null) {
+        formData.append("category", data.category.toString());
+      }
+      if (data.subcategory !== undefined && data.subcategory !== null) {
+        formData.append("subcategory", data.subcategory.toString());
+      }
+      if (data.tag_ids && data.tag_ids.length > 0) {
+        data.tag_ids.forEach((tagId) => {
+          formData.append("tag_ids", tagId.toString());
+        });
+      }
+      if (data.stock_level !== undefined) {
+        formData.append("stock_level", data.stock_level.toString());
+      }
+      if (data.is_active !== undefined) {
+        formData.append("is_active", data.is_active.toString());
+      }
+
+      // Append images array
+      if (data.images && data.images.length > 0) {
+        data.images.forEach((image) => {
+          formData.append("images", image, image.name);
+        });
+      }
+
+      // Debug: Log FormData contents
+      console.log("FormData entries:", Array.from(formData.entries()).map(([key, value]) => [
+        key,
+        value instanceof File ? `File: ${value.name} (${value.size} bytes)` : value,
+      ]));
+
+      // Use axios directly for FormData to ensure proper multipart/form-data handling
+      // The Api instance has default Content-Type header which interferes with FormData
+      const response = await axios({
+        method: "POST",
+        url: `${API_URL}/dashboard/products/`,
+        data: formData,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          // Explicitly delete Content-Type to let axios set it automatically with boundary
+        },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+      });
+
+      // API returns { message, product, images_uploaded }
+      // Return the product object
+      return response.data.product || response.data;
+    } catch (error) {
+      console.error("Error creating product:", error);
+      throw error;
+    }
+  }
+
+  async updateProduct(
+    productId: number,
+    data: {
+      name?: string;
+      description?: string;
+      price?: string;
+      color?: string;
+      size?: "S" | "M" | "L" | "XL" | "XXL";
+      category?: number | null;
+      subcategory?: number | null;
+      tag_ids?: number[];
+      stock_level?: number;
+      is_active?: boolean;
+    }
+  ): Promise<ApiProductDetail> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/products/${productId}/`,
+        method: "PATCH",
+        requireToken: true,
+        token: accessToken,
+        data,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error updating product:", error);
+      throw error;
+    }
+  }
+
+  async addProductImages(
+    productId: number,
+    images: File[]
+  ): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      // Create FormData for multipart/form-data
+      const formData = new FormData();
+
+      // Append images array
+      images.forEach((image) => {
+        formData.append("images", image, image.name);
+      });
+
+      // Use axios directly for FormData to ensure proper multipart/form-data handling
+      const response = await axios({
+        method: "POST",
+        url: `${API_URL}/dashboard/products/${productId}/add_images/`,
+        data: formData,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          // Don't set Content-Type - axios will automatically set it with boundary for FormData
+        },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error("Error adding product images:", error);
+      throw error;
+    }
+  }
+
+  async deleteProduct(productId: number): Promise<void> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      await makeRequest({
+        url: `${API_URL}/dashboard/products/${productId}/`,
+        method: "DELETE",
+        requireToken: true,
+        token: accessToken,
+      });
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      throw error;
+    }
+  }
+
+  async deleteProductImage(productId: number, imageId: number): Promise<void> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      await makeRequest({
+        url: `${API_URL}/dashboard/products/${productId}/remove_image/`,
+        method: "DELETE",
+        requireToken: true,
+        token: accessToken,
+        data: { image_id: imageId },
+      });
+    } catch (error) {
+      console.error("Error deleting product image:", error);
       throw error;
     }
   }

@@ -110,9 +110,12 @@ const makeRequest = async ({
   token,
   content_type = "application/json",
 }: ApiRequestParams): Promise<any> => {
-  const headers: any = {
-    "Content-Type": content_type,
-  };
+  const headers: any = {};
+
+  // Only set Content-Type if it's not FormData (browser will set it automatically for FormData with boundary)
+  if (!(data instanceof FormData)) {
+    headers["Content-Type"] = content_type;
+  }
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
