@@ -137,7 +137,7 @@ export function Badge({ children, variant = 'default' }: BadgeProps) {
     };
 
     return (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg ${variants[variant]}`}>
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg capitalize ${variants[variant]}`}>
             {children}
         </span>
     );

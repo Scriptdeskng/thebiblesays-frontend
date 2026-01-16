@@ -61,7 +61,7 @@ export interface Product {
 }
 
 export type OrderStatus = 'placed' | 'payment_confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'backordered' | 'pending';
-export type PaymentMethod = 'paystack' | 'flutterwave';
+export type PaymentMethod = 'paystack' | 'nova' | 'payaza' | 'stripe';
 export type PaymentStatus = 'completed' | 'pending' | 'failed' | 'refunded';
 
 export interface OrderItem {
@@ -88,7 +88,7 @@ export interface Order {
   createdAt: string;
 }
 
-export type CustomMerchStatus = 'approved' | 'pending' | 'rejected';
+export type CustomMerchStatus = 'approved' | 'pending' | 'rejected' | 'draft';
 
 export interface CustomMerch {
   id: string;
@@ -109,7 +109,7 @@ export interface CustomMerch {
   dateCreated: string;
 }
 
-export type TransactionStatus = 'completed' | 'pending' | 'failed' | 'refunded';
+export type TransactionStatus = 'pending' | 'successful' | 'failed';
 
 export interface Transaction {
   id: string;
@@ -215,8 +215,9 @@ export interface DashboardStats {
 }
 
 export interface SalesData {
-  month: string;
-  amount: number;
+  date: string;
+  daily_total: number;
+  order_count: number;
 }
 
 export interface Banner {
@@ -384,23 +385,36 @@ export interface ApiOrderItem {
   total_price: string;
 }
 
+export interface ApiOrderUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name?: string;
+}
+
 export interface ApiOrder {
   id: number;
   order_number: string;
   status: string;
   status_display?: string;
-  user?: string;
+  user?: string | ApiOrderUser;
   user_email?: string;
   user_name?: string;
   guest_email?: string | null;
   payment_method?: string;
+  payment_status?: string;
+  payment_reference?: string;
   subtotal: string;
   shipping_fee?: string;
+  shipping_full_address?: string;
+  shipping_address?: string;
   tax?: string;
   total: string;
+  discount_amount?: string;
+  discount_code?: string;
+  estimated_delivery?: string;
   created_at: string;
   updated_at?: string;
-  shipping_address?: string;
   items?: ApiOrderItem[];
   items_count?: number;
 }
@@ -417,4 +431,38 @@ export interface ApiUser {
   total_orders: string;
   total_spent: string;
   last_order_date?: string;
+}
+
+export interface ApiTransaction {
+  id: number;
+  user_email: string;
+  order_number: string;
+  amount: string;
+  status: string;
+  payment_method: string;
+  reference: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyRevenue {
+  date?: string;
+  revenue?: number | string;
+  [key: string]: any;
+}
+
+export interface PaymentMethodStat {
+  method?: string;
+  count?: number;
+  revenue?: number | string;
+  [key: string]: any;
+}
+
+export interface RevenueAnalytics {
+  average_payment?: number | string;
+  daily_revenue?: DailyRevenue[];
+  payment_count?: number | string;
+  payment_method_stats?: PaymentMethodStat[];
+  total_revenue?: number | string;
+  [key: string]: any; // Allow for additional fields
 }

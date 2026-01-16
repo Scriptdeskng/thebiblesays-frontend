@@ -6,6 +6,7 @@ export interface User {
   phoneNumber: string;
   profileImage?: string;
   address?: Address;
+  role?: string
 }
 
 export interface Address {

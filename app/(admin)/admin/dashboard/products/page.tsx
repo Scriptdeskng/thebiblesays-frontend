@@ -1,15 +1,16 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect } from "react";
 import {
-  Plus,
+  // Plus,
   Search,
-  Edit,
-  Eye,
+  // Edit,
+  // Eye,
   Trash2,
-  EyeOff,
-  Filter,
-  ChevronDown,
+  // EyeOff,
+  // Filter,
+  // ChevronDown,
   Tag,
   X,
 } from "lucide-react";
@@ -30,16 +31,23 @@ import {
   ProductSize,
   ProductStatus,
 } from "@/types/admin.types";
-import type { ApiProduct, ApiCategory, ApiProductDetail } from "@/types/admin.types";
+import type {
+  ApiProduct,
+  ApiCategory,
+  // ApiProductDetail,
+} from "@/types/admin.types";
 import { AVAILABLE_COLORS } from "@/services/mock.service";
 import { dashboardService } from "@/services/dashboard.service";
-import { formatCurrency, getStatusColor } from "@/lib/utils";
-import CategoryDropdown from "@/components/admin/products/CategoryDropdown";
 import {
-  PiEyeLight,
-  PiEyeSlash,
-  PiPencilSimpleLineLight,
-} from "react-icons/pi";
+  formatCurrency,
+  //  getStatusColor
+} from "@/lib/utils";
+import CategoryDropdown from "@/components/admin/products/CategoryDropdown";
+// import {
+//   PiEyeLight,
+//   PiEyeSlash,
+//   PiPencilSimpleLineLight,
+// } from "react-icons/pi";
 import { LuUpload } from "react-icons/lu";
 import toast from "react-hot-toast";
 import { useDebounce } from "@/hooks/useCommon";
@@ -74,9 +82,9 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productDetailLoading, setProductDetailLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  // const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [createdProductName, setCreatedProductName] = useState("");
+  const [createdProductName] = useState("");
 
   const itemsPerPage = 10;
 
@@ -179,19 +187,26 @@ export default function ProductsPage() {
         setShowForm(true); // Show form immediately with loading state
         try {
           // Fetch full product details
-          const productDetail = await dashboardService.getProductById(apiProduct.id);
-          
+          const productDetail = await dashboardService.getProductById(
+            apiProduct.id
+          );
+
           // Map the full product detail to form data
-          const featuredImage = productDetail.images.find(img => img.is_featured);
-          const productImage = featuredImage?.image || productDetail.images[0]?.image || "";
-          
+          const featuredImage = productDetail.images.find(
+            (img) => img.is_featured
+          );
+          const productImage =
+            featuredImage?.image || productDetail.images[0]?.image || "";
+
           // Parse sizes and colors from the product detail
           // Note: The API returns color and size as strings, but the form expects arrays
-          const productSizes: ProductSize[] = productDetail.size ? [productDetail.size as ProductSize] : sizes;
-          const productColors: ProductColor[] = productDetail.color 
+          const productSizes: ProductSize[] = productDetail.size
+            ? [productDetail.size as ProductSize]
+            : sizes;
+          const productColors: ProductColor[] = productDetail.color
             ? [{ name: productDetail.color, hex: "#000000" }] // Default hex if color name provided
             : AVAILABLE_COLORS;
-          
+
           // Create a Product-like object from ApiProductDetail for editing
           const productForEdit: Product = {
             id: productDetail.id.toString(),
@@ -209,7 +224,7 @@ export default function ProductsPage() {
             revenue: parseFloat(productDetail.total_revenue) || 0,
             createdAt: productDetail.created_at || new Date().toISOString(),
           };
-          
+
           setEditingProduct(productForEdit);
           setFormData({
             name: productDetail.name,
@@ -306,19 +321,19 @@ export default function ProductsPage() {
     }
   };
 
-  const handleDelete = async (id: string | number) => {
-    if (confirm("Are you sure you want to delete this product?")) {
-      try {
-        // TODO: Implement delete product API endpoint
-        // await dashboardService.deleteProduct(id);
-        toast.error("Delete product functionality not yet implemented");
-        // setProducts(products.filter(p => p.id !== id));
-      } catch (error) {
-        console.error("Error deleting product:", error);
-        toast.error("Failed to delete product");
-      }
-    }
-  };
+  // const handleDelete = async (id: string | number) => {
+  //   if (confirm("Are you sure you want to delete this product?")) {
+  //     try {
+  //       // TODO: Implement delete product API endpoint
+  //       // await dashboardService.deleteProduct(id);
+  //       toast.error("Delete product functionality not yet implemented");
+  //       // setProducts(products.filter(p => p.id !== id));
+  //     } catch (error) {
+  //       console.error("Error deleting product:", error);
+  //       toast.error("Failed to delete product");
+  //     }
+  //   }
+  // };
 
   const toggleSize = (size: ProductSize) => {
     setFormData({
@@ -432,407 +447,411 @@ export default function ProductsPage() {
                 onSubmit={handleSubmit}
                 className="space-y-6 bg-white p-3 sm:p-6"
               >
-            <Input
-              label="Product Name"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              required
-              placeholder="Enter product name"
-            />
+                <Input
+                  label="Product Name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  required
+                  placeholder="Enter product name"
+                />
 
-            <div className="grid grid-cols-2 gap-4">
-              <Select
-                label="Category"
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    category: e.target.value as ProductCategory,
-                  })
-                }
-                options={categories.map((cat) => ({
-                  value: cat.name,
-                  label: cat.name,
-                }))}
-                required
-              />
-
-              <Input
-                label="Price"
-                type="number"
-                value={formData.price}
-                onChange={(e) =>
-                  setFormData({ ...formData, price: e.target.value })
-                }
-                required
-                placeholder="0.00"
-              />
-            </div>
-
-            <Input
-              label="Stock Level"
-              type="number"
-              value={formData.stock}
-              onChange={(e) =>
-                setFormData({ ...formData, stock: e.target.value })
-              }
-              required
-              placeholder="0"
-            />
-
-            <Textarea
-              label="Description"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              required
-              placeholder="Product description"
-              rows={3}
-            />
-
-            <div className="flex flex-col lg:flex-row gap-6 lg:gap-12">
-              <div>
-                <label className="block text-admin-primary mb-1">
-                  Available Sizes
-                </label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {sizes.map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => toggleSize(size)}
-                      className={`px-4 py-2 rounded-md border transition-all ${
-                        formData.sizes.includes(size)
-                          ? "border-[#A1CBFF] text-[#3291FF] bg-secondary"
-                          : "border-admin-primary/35 text-admin-primary"
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-admin-primary mb-1">
-                  Available Colors
-                </label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {AVAILABLE_COLORS.map((color) => (
-                    <button
-                      key={color.hex}
-                      type="button"
-                      onClick={() => toggleColor(color)}
-                      className={`flex items-center space-x-2 px-3 py-2 rounded-md border transition-all ${
-                        formData.colors.find((c) => c.hex === color.hex)
-                          ? "border-[#A1CBFF] bg-secondary"
-                          : "border-admin-primary/35 text-admin-primary"
-                      }`}
-                    >
-                      <div
-                        className="w-2.5 h-2.5 rounded-full border border-accent-2"
-                        style={{ backgroundColor: color.hex }}
-                      />
-                      <span className="text-sm ">{color.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 flex flex-col lg:flex-row gap-6 lg:gap-12">
-              <div className="flex flex-col w-full">
-                <div>
-                  <label className="block text-admin-primary mb-1">
-                    Add Additional Size
-                  </label>
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        addSizeFromSelect(e.target.value as ProductSize);
-                        e.target.value = "";
-                      }
-                    }}
-                    className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none"
-                  >
-                    <option value="">Add a size</option>
-                    {additionalSizes
-                      .filter((size) => !formData.sizes.includes(size))
-                      .map((size) => (
-                        <option key={size} value={size}>
-                          {size}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="flex flex-wrap gap-2 min-h-[42px] items-center">
-                    {formData.sizes.filter((size) =>
-                      additionalSizes.includes(size)
-                    ).length > 0 &&
-                      formData.sizes
-                        .filter((size) => additionalSizes.includes(size))
-                        .map((size) => (
-                          <div
-                            key={size}
-                            className="flex items-center space-x-1 px-3 py-1 rounded-md bg-[#A1CBFF]/20 border border-[#A1CBFF]"
-                          >
-                            <span className="text-sm text-[#3291FF]">
-                              {size}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => toggleSize(size)}
-                              className="ml-1 hover:text-red-600"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col w-full">
-                <div>
-                  <label className="block text-admin-primary mb-1">
-                    Add Additional Color
-                  </label>
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        const selectedColor = additionalColors.find(
-                          (c) => c.hex === e.target.value
-                        );
-                        if (selectedColor) {
-                          addColorFromSelect(selectedColor);
-                        }
-                        e.target.value = "";
-                      }
-                    }}
-                    className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none"
-                  >
-                    <option value="">Add a color</option>
-                    {additionalColors
-                      .filter(
-                        (color) =>
-                          !formData.colors.find((c) => c.hex === color.hex)
-                      )
-                      .map((color) => (
-                        <option key={color.hex} value={color.hex}>
-                          {color.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="flex flex-wrap gap-2 min-h-[42px] items-center">
-                    {formData.colors.filter((color) =>
-                      additionalColors.find((c) => c.hex === color.hex)
-                    ).length > 0 &&
-                      formData.colors
-                        .filter((color) =>
-                          additionalColors.find((c) => c.hex === color.hex)
-                        )
-                        .map((color) => (
-                          <div
-                            key={color.hex}
-                            className="flex items-center space-x-2 px-3 py-1 rounded-md bg-[#A1CBFF]/20 border border-[#A1CBFF]"
-                          >
-                            <div
-                              className="w-2.5 h-2.5 rounded-full border border-accent-2"
-                              style={{ backgroundColor: color.hex }}
-                            />
-                            <span className="text-sm text-[#3291FF]">
-                              {color.name}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => toggleColor(color)}
-                              className="ml-1 hover:text-red-600"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-admin-primary mb-1">
-                Product Image
-              </label>
-              {formData.image ? (
-                <div className="relative flex items-center justify-center">
-                  <img
-                    src={formData.image}
-                    alt="Preview"
-                    className="w-48 h-48 object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, image: "" })}
-                    className="absolute top-2 right-2 p-2 bg-red-600/30 text-red-600 rounded-md"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-accent-2 rounded-lg p-8 text-center flex flex-col items-center justify-center">
-                  <LuUpload size={30} className="text-admin-primary" />
-                  <p className=" text-admin-primary mt-3">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-sm text-admin-primary/69 mb-4">
-                    PNG, JPG up to 10MB
-                  </p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label
-                    htmlFor="image-upload"
-                    className="inline-block px-4 py-2 bg-admin-primary text-white rounded-lg cursor-pointer hover:bg-opacity-90"
-                  >
-                    Upload Image
-                  </label>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-admin-primary mb-1">
-                Product Status
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="radio"
-                    value="Active"
-                    checked={formData.status === "Active"}
+                <div className="grid grid-cols-2 gap-4">
+                  <Select
+                    label="Category"
+                    value={formData.category}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        status: e.target.value as ProductStatus,
+                        category: e.target.value as ProductCategory,
                       })
                     }
-                    className="mr-2 ring-admin-primary"
+                    options={categories.map((cat) => ({
+                      value: cat.name,
+                      label: cat.name,
+                    }))}
+                    required
                   />
-                  <span className="text-sm text-grey">Active</span>
-                </label>
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="radio"
-                    value="Inactive"
-                    checked={formData.status === "Inactive"}
+
+                  <Input
+                    label="Price"
+                    type="number"
+                    value={formData.price}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        status: e.target.value as ProductStatus,
-                      })
+                      setFormData({ ...formData, price: e.target.value })
                     }
-                    className="mr-2"
-                  />
-                  <span className="text-sm text-grey">Inactive</span>
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-admin-primary mb-1">Tags</label>
-                  <div className="flex flex-wrap gap-2">
-                    {predefinedTags.map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => toggleTag(tag)}
-                        className={`flex items-center space-x-2 px-3 py-2 rounded-md border transition-all ${
-                          formData.tags.includes(tag)
-                            ? "border-[#A1CBFF] bg-secondary text-[#3291FF]"
-                            : "border-admin-primary/35 text-admin-primary"
-                        }`}
-                      >
-                        <Tag size={14} />
-                        <span className="text-sm">{tag}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-admin-primary mb-1">
-                    Add Tags
-                  </label>
-                  <input
-                    type="text"
-                    value={customTag}
-                    onChange={(e) => setCustomTag(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addCustomTag();
-                      }
-                    }}
-                    placeholder="Enter tag name and press Enter"
-                    className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none"
+                    required
+                    placeholder="0.00"
                   />
                 </div>
-              </div>
 
-              {formData.tags.filter((tag) => !predefinedTags.includes(tag))
-                .length > 0 && (
-                <div className="mt-4">
-                  <label className="block text-sm text-grey mb-2">
-                    Custom tags added
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.tags
-                      .filter((tag) => !predefinedTags.includes(tag))
-                      .map((tag) => (
-                        <div
-                          key={tag}
-                          className="flex items-center space-x-2 px-3 py-2 rounded-md bg-[#A1CBFF]/20 border border-[#A1CBFF]"
+                <Input
+                  label="Stock Level"
+                  type="number"
+                  value={formData.stock}
+                  onChange={(e) =>
+                    setFormData({ ...formData, stock: e.target.value })
+                  }
+                  required
+                  placeholder="0"
+                />
+
+                <Textarea
+                  label="Description"
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  required
+                  placeholder="Product description"
+                  rows={3}
+                />
+
+                <div className="flex flex-col lg:flex-row gap-6 lg:gap-12">
+                  <div>
+                    <label className="block text-admin-primary mb-1">
+                      Available Sizes
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {sizes.map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => toggleSize(size)}
+                          className={`px-4 py-2 rounded-md border transition-all ${
+                            formData.sizes.includes(size)
+                              ? "border-[#A1CBFF] text-[#3291FF] bg-secondary"
+                              : "border-admin-primary/35 text-admin-primary"
+                          }`}
                         >
-                          <Tag size={14} className="text-[#3291FF]" />
-                          <span className="text-sm text-[#3291FF]">{tag}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeTag(tag)}
-                            className="ml-1 hover:text-red-600"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
+                          {size}
+                        </button>
                       ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-admin-primary mb-1">
+                      Available Colors
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {AVAILABLE_COLORS.map((color) => (
+                        <button
+                          key={color.hex}
+                          type="button"
+                          onClick={() => toggleColor(color)}
+                          className={`flex items-center space-x-2 px-3 py-2 rounded-md border transition-all ${
+                            formData.colors.find((c) => c.hex === color.hex)
+                              ? "border-[#A1CBFF] bg-secondary"
+                              : "border-admin-primary/35 text-admin-primary"
+                          }`}
+                        >
+                          <div
+                            className="w-2.5 h-2.5 rounded-full border border-accent-2"
+                            style={{ backgroundColor: color.hex }}
+                          />
+                          <span className="text-sm ">{color.name}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
 
-            <div className="flex justify-center space-x-5 pt-5">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleCloseForm}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingProduct ? "Update Product" : "Add Product"}
-              </Button>
-            </div>
+                <div className="flex-1 flex flex-col lg:flex-row gap-6 lg:gap-12">
+                  <div className="flex flex-col w-full">
+                    <div>
+                      <label className="block text-admin-primary mb-1">
+                        Add Additional Size
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            addSizeFromSelect(e.target.value as ProductSize);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none"
+                      >
+                        <option value="">Add a size</option>
+                        {additionalSizes
+                          .filter((size) => !formData.sizes.includes(size))
+                          .map((size) => (
+                            <option key={size} value={size}>
+                              {size}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <div className="flex flex-wrap gap-2 min-h-[42px] items-center">
+                        {formData.sizes.filter((size) =>
+                          additionalSizes.includes(size)
+                        ).length > 0 &&
+                          formData.sizes
+                            .filter((size) => additionalSizes.includes(size))
+                            .map((size) => (
+                              <div
+                                key={size}
+                                className="flex items-center space-x-1 px-3 py-1 rounded-md bg-[#A1CBFF]/20 border border-[#A1CBFF]"
+                              >
+                                <span className="text-sm text-[#3291FF]">
+                                  {size}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSize(size)}
+                                  className="ml-1 hover:text-red-600"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col w-full">
+                    <div>
+                      <label className="block text-admin-primary mb-1">
+                        Add Additional Color
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const selectedColor = additionalColors.find(
+                              (c) => c.hex === e.target.value
+                            );
+                            if (selectedColor) {
+                              addColorFromSelect(selectedColor);
+                            }
+                            e.target.value = "";
+                          }
+                        }}
+                        className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none"
+                      >
+                        <option value="">Add a color</option>
+                        {additionalColors
+                          .filter(
+                            (color) =>
+                              !formData.colors.find((c) => c.hex === color.hex)
+                          )
+                          .map((color) => (
+                            <option key={color.hex} value={color.hex}>
+                              {color.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <div className="flex flex-wrap gap-2 min-h-[42px] items-center">
+                        {formData.colors.filter((color) =>
+                          additionalColors.find((c) => c.hex === color.hex)
+                        ).length > 0 &&
+                          formData.colors
+                            .filter((color) =>
+                              additionalColors.find((c) => c.hex === color.hex)
+                            )
+                            .map((color) => (
+                              <div
+                                key={color.hex}
+                                className="flex items-center space-x-2 px-3 py-1 rounded-md bg-[#A1CBFF]/20 border border-[#A1CBFF]"
+                              >
+                                <div
+                                  className="w-2.5 h-2.5 rounded-full border border-accent-2"
+                                  style={{ backgroundColor: color.hex }}
+                                />
+                                <span className="text-sm text-[#3291FF]">
+                                  {color.name}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleColor(color)}
+                                  className="ml-1 hover:text-red-600"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-admin-primary mb-1">
+                    Product Image
+                  </label>
+                  {formData.image ? (
+                    <div className="relative flex items-center justify-center">
+                      <img
+                        src={formData.image}
+                        alt="Preview"
+                        className="w-48 h-48 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, image: "" })}
+                        className="absolute top-2 right-2 p-2 bg-red-600/30 text-red-600 rounded-md"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-accent-2 rounded-lg p-8 text-center flex flex-col items-center justify-center">
+                      <LuUpload size={30} className="text-admin-primary" />
+                      <p className=" text-admin-primary mt-3">
+                        Click to upload or drag and drop
+                      </p>
+                      <p className="text-sm text-admin-primary/69 mb-4">
+                        PNG, JPG up to 10MB
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <label
+                        htmlFor="image-upload"
+                        className="inline-block px-4 py-2 bg-admin-primary text-white rounded-lg cursor-pointer hover:bg-opacity-90"
+                      >
+                        Upload Image
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-admin-primary mb-1">
+                    Product Status
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        value="Active"
+                        checked={formData.status === "Active"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            status: e.target.value as ProductStatus,
+                          })
+                        }
+                        className="mr-2 ring-admin-primary"
+                      />
+                      <span className="text-sm text-grey">Active</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        value="Inactive"
+                        checked={formData.status === "Inactive"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            status: e.target.value as ProductStatus,
+                          })
+                        }
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-grey">Inactive</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-admin-primary mb-1">
+                        Tags
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {predefinedTags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => toggleTag(tag)}
+                            className={`flex items-center space-x-2 px-3 py-2 rounded-md border transition-all ${
+                              formData.tags.includes(tag)
+                                ? "border-[#A1CBFF] bg-secondary text-[#3291FF]"
+                                : "border-admin-primary/35 text-admin-primary"
+                            }`}
+                          >
+                            <Tag size={14} />
+                            <span className="text-sm">{tag}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-admin-primary mb-1">
+                        Add Tags
+                      </label>
+                      <input
+                        type="text"
+                        value={customTag}
+                        onChange={(e) => setCustomTag(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addCustomTag();
+                          }
+                        }}
+                        placeholder="Enter tag name and press Enter"
+                        className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {formData.tags.filter((tag) => !predefinedTags.includes(tag))
+                    .length > 0 && (
+                    <div className="mt-4">
+                      <label className="block text-sm text-grey mb-2">
+                        Custom tags added
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {formData.tags
+                          .filter((tag) => !predefinedTags.includes(tag))
+                          .map((tag) => (
+                            <div
+                              key={tag}
+                              className="flex items-center space-x-2 px-3 py-2 rounded-md bg-[#A1CBFF]/20 border border-[#A1CBFF]"
+                            >
+                              <Tag size={14} className="text-[#3291FF]" />
+                              <span className="text-sm text-[#3291FF]">
+                                {tag}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => removeTag(tag)}
+                                className="ml-1 hover:text-red-600"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-center space-x-5 pt-5">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleCloseForm}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    {editingProduct ? "Update Product" : "Add Product"}
+                  </Button>
+                </div>
               </form>
             </>
           )}
