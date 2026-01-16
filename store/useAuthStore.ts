@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthState>()(
             password
           );
 
-          if (!adminUser.is_superuser) {
+          if (!adminUser.is_superuser && !adminUser.is_staff) {
             toast.error("Access denied. Admin privileges required.");
             throw new Error("Access denied. Admin privileges required.");
           }
@@ -71,6 +71,7 @@ export const useAuthStore = create<AuthState>()(
             lastName: adminUser.last_name,
             email: adminUser.email,
             phoneNumber: "",
+            role: "admin",
           };
 
           set({

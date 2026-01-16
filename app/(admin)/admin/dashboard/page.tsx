@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { StatsCard, LoadingSpinner, StatsCard2 } from "@/components/admin/ui";
 import { dashboardService } from "@/services/dashboard.service";
 import { formatCurrency, calculatePercentage } from "@/lib/utils";
@@ -20,27 +20,77 @@ import { FaPalette } from "react-icons/fa";
 import { HiUsers } from "react-icons/hi2";
 import { DonutChart } from "@/components/admin/ui/DonutChart";
 import toast from "react-hot-toast";
+import { DayPicker } from "react-day-picker";
+import { format } from "date-fns";
+import "react-day-picker/dist/style.css";
 
 export default function DashboardPage() {
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState("monthly");
+  const [dateFilter, setDateFilter] = useState("");
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
+    null,
+    null,
+  ]);
+  const [selectedRange, setSelectedRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined,
+  });
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+  const [startDate, endDate] = dateRange;
+
+  // Handle click outside to close date picker
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        datePickerRef.current &&
+        !datePickerRef.current.contains(event.target as Node)
+      ) {
+        setIsDatePickerOpen(false);
+      }
+    };
+
+    if (isDatePickerOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDatePickerOpen]);
+
+  const loadData = useCallback(
+    async (customDateRange?: [Date | null, Date | null]) => {
+      try {
+        setLoading(true);
+        const rangeToUse = customDateRange || dateRange;
+        const data = await dashboardService.getOverview(dateFilter, rangeToUse);
+        setOverview(data);
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [dateFilter, dateRange]
+  );
 
   useEffect(() => {
+    // Load data on initial mount or when filter changes
     loadData();
-  }, []);
+  }, [dateFilter, loadData]);
 
-  const loadData = async () => {
-    try {
-      const data = await dashboardService.getOverview();
-      setOverview(data);
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
-      toast.error("Failed to load dashboard data");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    // Load data when date range is selected
+    if (dateRange[0] && dateRange[1]) {
+      loadData();
     }
-  };
+  }, [dateRange, loadData]);
 
   if (loading) {
     return (
@@ -58,23 +108,73 @@ export default function DashboardPage() {
     );
   }
 
-  const placedOrders = overview.recent_orders.filter(
-    (o) => o.status === "placed"
-  ).length;
   const totalRecentOrders = overview.recent_orders.length;
+
+  // Count orders by status
+  const statusCounts = {
+    placed: overview.recent_orders.filter((o) => o.status === "placed").length,
+    processing: overview.recent_orders.filter((o) => o.status === "processing")
+      .length,
+    shipped: overview.recent_orders.filter((o) => o.status === "shipped")
+      .length,
+    delivered: overview.recent_orders.filter((o) => o.status === "delivered")
+      .length,
+    cancelled: overview.recent_orders.filter((o) => o.status === "cancelled")
+      .length,
+    pending: overview.recent_orders.filter((o) => o.status === "pending")
+      .length,
+  };
 
   const orderSummary = [
     {
       name: "Placed",
       value:
         totalRecentOrders > 0
-          ? calculatePercentage(placedOrders, totalRecentOrders)
+          ? calculatePercentage(statusCounts.placed, totalRecentOrders)
           : 0,
       color: "#10b981",
     },
-    { name: "Processing", value: 0, color: "#3b82f6" },
-    { name: "Pending", value: 0, color: "#f97316" },
-  ];
+    {
+      name: "Processing",
+      value:
+        totalRecentOrders > 0
+          ? calculatePercentage(statusCounts.processing, totalRecentOrders)
+          : 0,
+      color: "#8b5cf6",
+    },
+    {
+      name: "Shipped",
+      value:
+        totalRecentOrders > 0
+          ? calculatePercentage(statusCounts.shipped, totalRecentOrders)
+          : 0,
+      color: "#06b6d4",
+    },
+    {
+      name: "Delivered",
+      value:
+        totalRecentOrders > 0
+          ? calculatePercentage(statusCounts.delivered, totalRecentOrders)
+          : 0,
+      color: "#22c55e",
+    },
+    {
+      name: "Cancelled",
+      value:
+        totalRecentOrders > 0
+          ? calculatePercentage(statusCounts.cancelled, totalRecentOrders)
+          : 0,
+      color: "#ef4444",
+    },
+    {
+      name: "Pending",
+      value:
+        totalRecentOrders > 0
+          ? calculatePercentage(statusCounts.pending, totalRecentOrders)
+          : 0,
+      color: "#f97316",
+    },
+  ].filter((item) => item.value > 0);
 
   const bestSellers = overview.top_products.slice(0, 5);
 
@@ -90,10 +190,85 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button className="flex items-center space-x-2 px-4 py-2 bg-accent-3 rounded-lg text-sm transition-all text-admin-primary/90">
-            <BsCalendar2Fill size={16} />
-            <span>Jan 2025 - Dec 2025</span>
-          </button>
+          <div className="relative" ref={datePickerRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsDatePickerOpen(!isDatePickerOpen);
+                // Sync selectedRange with current dateRange when opening
+                if (!isDatePickerOpen) {
+                  setSelectedRange({
+                    from: startDate || undefined,
+                    to: endDate || undefined,
+                  });
+                }
+              }}
+              className="flex items-center space-x-2 px-4 py-2 bg-accent-3 hover:bg-accent-2 rounded-lg text-sm transition-all text-admin-primary/90 hover:text-admin-primary font-medium"
+            >
+              <BsCalendar2Fill size={16} className="shrink-0" />
+              <span className="whitespace-nowrap">
+                {startDate && endDate
+                  ? `${format(startDate, "MMM dd, yyyy")} - ${format(
+                      endDate,
+                      "MMM dd, yyyy"
+                    )}`
+                  : "Select date range"}
+              </span>
+            </button>
+
+            {isDatePickerOpen && (
+              <div className="absolute right-0 top-full mt-2 z-50 bg-white rounded-xl shadow-xl border border-accent-2 p-4">
+                <DayPicker
+                  mode="range"
+                  selected={selectedRange}
+                  onSelect={(range) => {
+                    setSelectedRange({
+                      from: range?.from,
+                      to: range?.to,
+                    });
+                  }}
+                  numberOfMonths={1}
+                  className="custom-day-picker"
+                />
+                <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-accent-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRange({ from: undefined, to: undefined });
+                      const clearedRange: [Date | null, Date | null] = [
+                        null,
+                        null,
+                      ];
+                      setDateRange(clearedRange);
+                      setIsDatePickerOpen(false);
+                      loadData(clearedRange);
+                    }}
+                    className="px-4 py-2 text-sm text-admin-primary hover:bg-accent-2 rounded-lg transition-colors"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedRange.from && selectedRange.to) {
+                        const newRange: [Date | null, Date | null] = [
+                          selectedRange.from,
+                          selectedRange.to,
+                        ];
+                        setDateRange(newRange);
+                        setIsDatePickerOpen(false);
+                        loadData(newRange);
+                      }
+                    }}
+                    disabled={!selectedRange.from || !selectedRange.to}
+                    className="px-4 py-2 text-sm bg-admin-primary text-white rounded-lg transition-colors hover:bg-admin-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => setDateFilter("today")}
             className={`px-4 py-2 rounded-lg text-sm transition-all ${
@@ -123,6 +298,16 @@ export default function DashboardPage() {
             }`}
           >
             Monthly
+          </button>
+          <button
+            onClick={() => setDateFilter("")}
+            className={`px-4 py-2 rounded-lg text-sm transition-all ${
+              dateFilter === ""
+                ? "bg-admin-primary text-white"
+                : "bg-accent-3 text-admin-primary hover:bg-accent-2"
+            }`}
+          >
+            All
           </button>
         </div>
       </div>
@@ -174,12 +359,17 @@ export default function DashboardPage() {
               </h2>
               <p className="text-2xl font-bold text-admin-primary">
                 {formatCurrency(
-                  salesData.reduce((sum, item) => sum + item.amount, 0)
+                  salesData.reduce((sum, item) => sum + item.daily_total, 0)
                 )}
               </p>
             </div>
             <div className="flex items-center gap-2 mt-4 md:mt-0">
-              <span className="text-sm text-grey">Jan 2025 - Dec 2025</span>
+              <span className="text-sm text-grey">
+                {new Date().toLocaleDateString("en-US", {
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
             </div>
           </div>
 
@@ -187,9 +377,16 @@ export default function DashboardPage() {
             <LineChart data={salesData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E9E9EB" />
               <XAxis
-                dataKey="month"
+                dataKey="date"
                 stroke="#5C5F6A"
                 style={{ fontSize: "12px" }}
+                tickFormatter={(value) => {
+                  const date = new Date(value);
+                  return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  });
+                }}
               />
               <YAxis
                 stroke="#5C5F6A"
@@ -203,10 +400,18 @@ export default function DashboardPage() {
                   borderRadius: "8px",
                 }}
                 formatter={(value: any) => [formatCurrency(value), "Sales"]}
+                labelFormatter={(value) => {
+                  const date = new Date(value);
+                  return date.toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  });
+                }}
               />
               <Line
                 type="monotone"
-                dataKey="amount"
+                dataKey="daily_total"
                 stroke="#0E1422"
                 strokeWidth={2}
                 dot={{ fill: "#0E1422", r: 4 }}

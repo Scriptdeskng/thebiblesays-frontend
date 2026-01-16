@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Edit, Trash2, ArrowLeft, ChevronLeft } from 'lucide-react';
-import { Button, Modal, Input, Badge } from '@/components/admin/ui';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Edit, Trash2, ChevronLeft } from 'lucide-react';
+import { Button, Modal, Input, Badge, LoadingSpinner } from '@/components/admin/ui';
+import { dashboardService } from '@/services/dashboard.service';
+import toast from 'react-hot-toast';
 
 type SettingsTab = 'shipping' | 'roles' | 'team' | 'general';
 
@@ -52,11 +54,8 @@ export default function SettingsPage() {
     { id: '3', name: 'Support', membersAssigned: 8, permissionCount: 3, permissions: ['Dashboard', 'Orders', 'Users'], status: 'active' },
   ]);
 
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
-    { id: '1', name: 'John Doe', email: 'john@example.com', role: 'Admin', lastActive: '2 hours ago', status: 'active' },
-    { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'Manager', lastActive: '5 hours ago', status: 'active' },
-    { id: '3', name: 'Mike Johnson', email: 'mike@example.com', role: 'Support', lastActive: '1 day ago', status: 'active' },
-  ]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamMembersLoading, setTeamMembersLoading] = useState(false);
 
   const [appInfo, setAppInfo] = useState({
     name: 'Faith Merch Store',
@@ -84,7 +83,11 @@ export default function SettingsPage() {
     name: '',
     email: '',
     role: '',
+    first_name: '',
+    last_name: '',
+    password: '',
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   const availablePermissions = [
     'Dashboard',
@@ -98,6 +101,61 @@ export default function SettingsPage() {
     'Settings',
   ];
 
+  const loadTeamMembers = useCallback(async () => {
+    setTeamMembersLoading(true);
+    try {
+      const data = await dashboardService.getTeamMembers();
+      // Transform API response to match TeamMember interface
+      const transformedMembers: TeamMember[] = data.map((member: any) => {
+        // Format name from first_name and last_name, fallback to email
+        const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim();
+        const name = fullName || member.email || 'Unknown';
+        
+        // Format last login date
+        let lastActive = 'N/A';
+        if (member.last_login) {
+          const lastLoginDate = new Date(member.last_login);
+          const now = new Date();
+          const diffMs = now.getTime() - lastLoginDate.getTime();
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffHours = Math.floor(diffMs / 3600000);
+          const diffDays = Math.floor(diffMs / 86400000);
+          
+          if (diffMins < 60) {
+            lastActive = `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+          } else if (diffHours < 24) {
+            lastActive = `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+          } else if (diffDays < 7) {
+            lastActive = `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+          } else {
+            lastActive = lastLoginDate.toLocaleDateString();
+          }
+        }
+        
+        return {
+          id: String(member.id || ''),
+          name,
+          email: member.email || '',
+          role: member.role || '',
+          lastActive,
+          status: member.is_active ? 'active' : 'deactivated',
+        };
+      });
+      setTeamMembers(transformedMembers);
+    } catch (error) {
+      console.error('Error loading team members:', error);
+      toast.error('Failed to load team members');
+    } finally {
+      setTeamMembersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'team') {
+      loadTeamMembers();
+    }
+  }, [activeTab, loadTeamMembers]);
+
   const handleAddNew = () => {
     setSelectedItem(null);
     setIsEditMode(false);
@@ -110,7 +168,10 @@ export default function SettingsPage() {
       permissions: [],
       name: '',
       email: '',
-      role: roles.length > 0 ? roles[0].name : '',
+      role: 'admin',
+      first_name: '',
+      last_name: '',
+      password: '',
     });
     setShowDetailsPage(true);
   };
@@ -135,19 +196,27 @@ export default function SettingsPage() {
         status: item.status,
       });
     } else if (activeTab === 'team') {
+      // Split name into first_name and last_name if it contains a space
+      const nameParts = item.name.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
       setFormData({
         ...formData,
         name: item.name,
         email: item.email,
-        role: item.role,
+        role: item.role === 'Super Admin' ? 'superuser' : 'admin',
         status: item.status,
+        first_name: firstName,
+        last_name: lastName,
+        password: '', // Don't populate password for edit
       });
     }
 
     setShowDetailsPage(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (activeTab === 'shipping') {
       if (isEditMode && selectedItem) {
         setShippingRegions(shippingRegions.map(r =>
@@ -165,6 +234,7 @@ export default function SettingsPage() {
         };
         setShippingRegions([...shippingRegions, newRegion]);
       }
+      setShowDetailsPage(false);
     } else if (activeTab === 'roles') {
       if (isEditMode && selectedItem) {
         setRoles(roles.map(r =>
@@ -183,27 +253,46 @@ export default function SettingsPage() {
         };
         setRoles([...roles, newRole]);
       }
+      setShowDetailsPage(false);
     } else if (activeTab === 'team') {
       if (isEditMode && selectedItem) {
+        // TODO: Implement update endpoint if available
         setTeamMembers(teamMembers.map(t =>
           t.id === selectedItem.id
             ? { ...t, name: formData.name, email: formData.email, role: formData.role, status: formData.status as any }
             : t
         ));
+        setShowDetailsPage(false);
       } else {
-        const newMember: TeamMember = {
-          id: String(teamMembers.length + 1),
-          name: formData.name,
-          email: formData.email,
-          role: formData.role,
-          lastActive: 'Just now',
-          status: formData.status as any,
-        };
-        setTeamMembers([...teamMembers, newMember]);
+        // Create new team member
+        if (!formData.email || !formData.password || !formData.first_name || !formData.last_name) {
+          toast.error('Please fill in all required fields');
+          return;
+        }
+
+        setIsSaving(true);
+        try {
+          await dashboardService.createTeamMember({
+            email: formData.email,
+            password: formData.password,
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            role: formData.role as 'admin' | 'superuser',
+          });
+          
+          toast.success('Team member created successfully');
+          setShowDetailsPage(false);
+          // Reload team members
+          await loadTeamMembers();
+        } catch (error: any) {
+          console.error('Error creating team member:', error);
+          const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create team member';
+          toast.error(errorMessage);
+        } finally {
+          setIsSaving(false);
+        }
       }
     }
-
-    setShowDetailsPage(false);
   };
 
   const handleTogglePermission = (permission: string) => {
@@ -330,78 +419,108 @@ export default function SettingsPage() {
             {activeTab === 'team' && (
               <>
                 <Input
-                  label="Name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter name"
+                  label="First Name"
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  placeholder="Enter first name"
+                  required
                 />
-                <div>
-                  <label className="block text-admin-primary font-medium mb-2">Role</label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none focus:border-[#A1CBFF]"
-                  >
-                    {roles.map((role) => (
-                      <option key={role.id} value={role.name}>{role.name}</option>
-                    ))}
-                  </select>
-                </div>
+                <Input
+                  label="Last Name"
+                  value={formData.last_name}
+                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  placeholder="Enter last name"
+                  required
+                />
                 <Input
                   label="Email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="Enter email"
+                  required
                 />
+                {!isEditMode && (
+                  <Input
+                    label="Password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Enter password"
+                    required
+                  />
+                )}
+                <div>
+                  <label className="block text-admin-primary font-medium mb-2">Role</label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none focus:border-[#A1CBFF]"
+                    disabled={isEditMode}
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="superuser">Super Admin</option>
+                  </select>
+                </div>
               </>
             )}
 
-            <div>
-              <label className="block text-admin-primary font-medium mb-3">Status</label>
-              <div className="flex flex-wrap gap-3">
-                {activeTab === 'shipping' ? (
-                  <>
-                    {['expired', 'active', 'deactivated'].map((status) => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, status })}
-                        className={`px-6 py-2 rounded-md border transition-all capitalize ${formData.status === status
-                          ? 'border-[#A1CBFF] text-[#3291FF] bg-secondary'
-                          : 'border-admin-primary/35 text-admin-primary'
-                          }`}
-                      >
-                        {status}
-                      </button>
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    {['active', 'deactivated'].map((status) => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, status })}
-                        className={`px-6 py-2 rounded-md border transition-all capitalize ${formData.status === status
-                          ? 'border-[#A1CBFF] text-[#3291FF] bg-secondary'
-                          : 'border-admin-primary/35 text-admin-primary'
-                          }`}
-                      >
-                        {status}
-                      </button>
-                    ))}
-                  </>
-                )}
+            {(activeTab !== 'team' || isEditMode) && (
+              <div>
+                <label className="block text-admin-primary font-medium mb-3">Status</label>
+                <div className="flex flex-wrap gap-3">
+                  {activeTab === 'shipping' ? (
+                    <>
+                      {['expired', 'active', 'deactivated'].map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, status })}
+                          className={`px-6 py-2 rounded-md border transition-all capitalize ${formData.status === status
+                            ? 'border-[#A1CBFF] text-[#3291FF] bg-secondary'
+                            : 'border-admin-primary/35 text-admin-primary'
+                            }`}
+                        >
+                          {status}
+                        </button>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      {['active', 'deactivated'].map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, status })}
+                          className={`px-6 py-2 rounded-md border transition-all capitalize ${formData.status === status
+                            ? 'border-[#A1CBFF] text-[#3291FF] bg-secondary'
+                            : 'border-admin-primary/35 text-admin-primary'
+                            }`}
+                        >
+                          {status}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex justify-center space-x-5 pt-5">
-              <Button type="button" variant="secondary" onClick={() => setShowDetailsPage(false)}>
+              <Button 
+                type="button" 
+                variant="secondary" 
+                onClick={() => setShowDetailsPage(false)}
+                disabled={isSaving}
+              >
                 Cancel
               </Button>
-              <Button type="button" onClick={handleSave}>
-                Save Changes
+              <Button 
+                type="button" 
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </div>
@@ -526,36 +645,50 @@ export default function SettingsPage() {
 
             {activeTab === 'team' && (
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-accent-1">
-                    <tr>
-                      <th className="text-left font-medium text-admin-primary px-6 py-4">Name</th>
-                      <th className="text-left font-medium text-admin-primary px-6 py-4">Email</th>
-                      <th className="text-left font-medium text-admin-primary px-6 py-4">Role</th>
-                      <th className="text-left font-medium text-admin-primary px-6 py-4">Last Active</th>
-                      <th className="text-left font-medium text-admin-primary px-6 py-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTeam.map((member) => (
-                      <tr
-                        key={member.id}
-                        onClick={() => handleEdit(member)}
-                        className="border-b border-accent-2 transition-colors bg-white cursor-pointer hover:bg-accent-1/50"
-                      >
-                        <td className="px-6 py-4 text-admin-primary font-medium">{member.name}</td>
-                        <td className="px-6 py-4 text-admin-primary">{member.email}</td>
-                        <td className="px-6 py-4 text-admin-primary">{member.role}</td>
-                        <td className="px-6 py-4 text-grey">{member.lastActive}</td>
-                        <td className="px-6 py-4">
-                          <Badge variant={member.status === 'active' ? 'success' : 'danger'}>
-                            {member.status}
-                          </Badge>
-                        </td>
+                {teamMembersLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <LoadingSpinner />
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead className="bg-accent-1">
+                      <tr>
+                        <th className="text-left font-medium text-admin-primary px-6 py-4">Name</th>
+                        <th className="text-left font-medium text-admin-primary px-6 py-4">Email</th>
+                        <th className="text-left font-medium text-admin-primary px-6 py-4">Role</th>
+                        <th className="text-left font-medium text-admin-primary px-6 py-4">Last Active</th>
+                        <th className="text-left font-medium text-admin-primary px-6 py-4">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredTeam.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-8 text-center text-grey">
+                            No team members found
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredTeam.map((member) => (
+                          <tr
+                            key={member.id}
+                            onClick={() => handleEdit(member)}
+                            className="border-b border-accent-2 transition-colors bg-white cursor-pointer hover:bg-accent-1/50"
+                          >
+                            <td className="px-6 py-4 text-admin-primary font-medium">{member.name}</td>
+                            <td className="px-6 py-4 text-admin-primary">{member.email}</td>
+                            <td className="px-6 py-4 text-admin-primary">{member.role}</td>
+                            <td className="px-6 py-4 text-grey">{member.lastActive}</td>
+                            <td className="px-6 py-4">
+                              <Badge variant={member.status === 'active' ? 'success' : 'danger'}>
+                                {member.status}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
 

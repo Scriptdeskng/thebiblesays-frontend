@@ -46,8 +46,7 @@ Api.interceptors.response.use(
     const authStore = useAuthStore.getState();
 
     if (error?.response?.status === 401 && !originalRequest._retry) {
-      
-      if (originalRequest.url.includes('auth/token/refresh/')) {
+      if (originalRequest.url.includes("auth/token/refresh/")) {
         authStore.logout();
         return Promise.reject(error);
       }
@@ -68,18 +67,25 @@ Api.interceptors.response.use(
 
       try {
         const refreshToken = authStore.refreshToken;
+        const userRole = authStore.user?.role;
+
         if (!refreshToken) throw new Error("No refresh token");
 
-        const response = await axios.post(`${API_URL}/api/auth/token/refresh/`, {
-          refresh: refreshToken,
-        });
+        const response = await axios.post(
+          `${API_URL}/${
+            userRole === "admin" ? "dashboard" : "api"
+          }/auth/token/refresh/`,
+          {
+            refresh: refreshToken,
+          }
+        );
 
         const { access } = response.data;
-        
+
         useAuthStore.setState({ accessToken: access });
-        
+
         processQueue(null, access);
-        
+
         originalRequest.headers.Authorization = `Bearer ${access}`;
         return Api(originalRequest);
       } catch (refreshError) {
@@ -100,11 +106,10 @@ const makeRequest = async ({
   url,
   data = null,
   params = {},
-  requireToken, 
+  requireToken,
   token,
   content_type = "application/json",
 }: ApiRequestParams): Promise<any> => {
-  
   const headers: any = {
     "Content-Type": content_type,
   };
