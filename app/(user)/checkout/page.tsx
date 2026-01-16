@@ -9,9 +9,10 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useCurrencyStore } from '@/store/useCurrencyStore';
 import { addressService } from '@/services/address.service';
 import { paymentService, PaymentMethod } from '@/services/payment.service';
+import { geocodingService } from '@/services/geocoding.service';
 import { formatPrice } from '@/utils/format';
 import toast from 'react-hot-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin } from 'lucide-react';
 import PayazaCheckout from 'payaza-web-sdk';
 import { PayazaCheckoutOptionsInterface } from 'payaza-web-sdk/lib/PayazaCheckoutDataInterface';
 import { ConnectionMode } from "payaza-web-sdk/lib/PayazaCheckout";
@@ -29,6 +30,8 @@ interface Address {
   postal_code: string;
   country: string;
   phone: string;
+  longitude?: number;
+  latitude?: number;
   is_default: boolean;
 }
 
@@ -57,6 +60,8 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [saveAddress, setSaveAddress] = useState(true);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
+  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const paymentMethod: PaymentMethod = currency === 'USD' ? 'stripe' : 'payaza';
 
@@ -128,6 +133,13 @@ export default function CheckoutPage() {
           const defaultAddress = fetchedAddresses.find(addr => addr.is_default);
           if (defaultAddress) {
             setSelectedAddressId(defaultAddress.id);
+            // Set coordinates from default address if available
+            if (defaultAddress.latitude && defaultAddress.longitude) {
+              setCoordinates({
+                latitude: defaultAddress.latitude,
+                longitude: defaultAddress.longitude
+              });
+            }
           }
         } catch (error) {
         } finally {
@@ -138,6 +150,41 @@ export default function CheckoutPage() {
 
     loadAddresses();
   }, [isAuthenticated, accessToken]);
+
+  // Geocode address whenever address fields change
+  useEffect(() => {
+    const geocodeAddressDebounced = async () => {
+      // Only geocode if we have all required address fields
+      if (formData.address_line1 && formData.city && formData.state && formData.country) {
+        setIsGeocodingAddress(true);
+        
+        try {
+          const result = await geocodingService.geocodeAddress({
+            address_line1: formData.address_line1,
+            city: formData.city,
+            state: formData.state,
+            country: formData.country,
+            postal_code: formData.postal_code
+          });
+
+          if (result) {
+            setCoordinates({
+              latitude: result.latitude,
+              longitude: result.longitude
+            });
+          }
+        } catch (error) {
+          console.error('Failed to geocode address:', error);
+        } finally {
+          setIsGeocodingAddress(false);
+        }
+      }
+    };
+
+    // Debounce the geocoding to avoid too many API calls
+    const timeoutId = setTimeout(geocodeAddressDebounced, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [formData.address_line1, formData.city, formData.state, formData.country, formData.postal_code]);
 
   const total = getTotal();
 
@@ -217,6 +264,36 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Check if we have coordinates for new addresses
+    if ((useNewAddress || !isAuthenticated || addresses.length === 0) && !coordinates) {
+      toast.loading('Getting address coordinates...', { id: 'geocoding' });
+      
+      try {
+        const result = await geocodingService.geocodeAddress({
+          address_line1: formData.address_line1,
+          city: formData.city,
+          state: formData.state,
+          country: formData.country,
+          postal_code: formData.postal_code
+        });
+
+        if (result) {
+          setCoordinates({
+            latitude: result.latitude,
+            longitude: result.longitude
+          });
+        } else {
+          toast.error('Could not determine location from address. Please verify your address.', { id: 'geocoding' });
+          return;
+        }
+        
+        toast.dismiss('geocoding');
+      } catch (error) {
+        toast.error('Failed to get location. Please try again.', { id: 'geocoding' });
+        return;
+      }
+    }
+
     setIsProcessing(true);
 
     try {
@@ -239,6 +316,8 @@ export default function CheckoutPage() {
           postal_code: formData.postal_code || '000000',
           country: formData.country,
           phone: formData.phoneNumber,
+          longitude: coordinates?.longitude,
+          latitude: coordinates?.latitude,
         };
       }
 
@@ -329,6 +408,8 @@ export default function CheckoutPage() {
             postal_code: orderData.shipping_address.postal_code || '000000',
             country: orderData.shipping_address.country,
             phone: orderData.shipping_address.phone,
+            longitude: orderData.shipping_address.longitude,
+            latitude: orderData.shipping_address.latitude,
             is_default: addresses.length === 0,
           };
 
@@ -371,6 +452,8 @@ export default function CheckoutPage() {
             postal_code: orderData.shipping_address.postal_code || '000000',
             country: orderData.shipping_address.country,
             phone: orderData.shipping_address.phone,
+            longitude: orderData.shipping_address.longitude,
+            latitude: orderData.shipping_address.latitude,
             is_default: addresses.length === 0,
           };
 
@@ -605,7 +688,16 @@ export default function CheckoutPage() {
                           name="address"
                           value={address.id}
                           checked={selectedAddressId === address.id}
-                          onChange={() => setSelectedAddressId(address.id)}
+                          onChange={() => {
+                            setSelectedAddressId(address.id);
+                            // Update coordinates when selecting an address
+                            if (address.latitude && address.longitude) {
+                              setCoordinates({
+                                latitude: address.latitude,
+                                longitude: address.longitude
+                              });
+                            }
+                          }}
                           className="sr-only"
                         />
                         <div>
@@ -650,7 +742,14 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={() => {
                         setUseNewAddress(false);
-                        setSelectedAddressId(addresses.find(a => a.is_default)?.id || null);
+                        const defaultAddr = addresses.find(a => a.is_default);
+                        setSelectedAddressId(defaultAddr?.id || null);
+                        if (defaultAddr?.latitude && defaultAddr?.longitude) {
+                          setCoordinates({
+                            latitude: defaultAddr.latitude,
+                            longitude: defaultAddr.longitude
+                          });
+                        }
                       }}
                       className="mb-4 text-sm text-primary hover:underline"
                     >
@@ -730,6 +829,20 @@ export default function CheckoutPage() {
                       )}
                     </div>
                   </div>
+
+                  {isGeocodingAddress && (
+                    <div className="flex items-center gap-2 text-sm text-grey">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Getting location coordinates...</span>
+                    </div>
+                  )}
+
+                  {coordinates && !isGeocodingAddress && (
+                    <div className="flex items-center gap-2 text-sm text-primary p-3 rounded-lg">
+                      <MapPin className="w-4 h-4" />
+                      <span>Location verified</span>
+                    </div>
+                  )}
 
                   {isAuthenticated && (
                     <div className="flex items-start gap-3 p-4 bg-accent-1 rounded-lg mt-4">

@@ -87,40 +87,16 @@ class ProductService {
     }
   }
 
-
-  // async getProductBySlug(slug: string, currencyParam: string = ''): Promise<Product | null> {
-  //   try {
-  //     const response = await makeRequest({
-  //       url: `products/products/${slug}/${currencyParam}`,
-  //       method: 'GET',
-  //     });
-
-  //     return this.transformProduct(response);
-  //   } catch (error) {
-  //     console.error('Error fetching product:', error);
-  //     return null;
-  //   }
-  // }
-
   async getProductBySlug(slug: string, currencyParam: string = ''): Promise<Product | null> {
     try {
       const response = await makeRequest({
-        url: `products/products/${currencyParam}`,
+        url: `products/products/${slug}/${currencyParam}`,
         method: 'GET',
       });
 
-      const list = Array.isArray(response) ? response : (response?.results || []);
-
-      const apiProduct = list.find((p: ApiProduct) => p.slug === slug);
-
-      if (!apiProduct) {
-        console.warn(`Product with slug "${slug}" not found`);
-        return null;
-      }
-
-      return this.transformProduct(apiProduct);
+      return this.transformProduct(response);
     } catch (error) {
-      console.error('Error fetching product by slug:', error);
+      console.error('Error fetching product:', error);
       return null;
     }
   }
