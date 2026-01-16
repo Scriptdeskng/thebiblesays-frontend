@@ -2,6 +2,16 @@ export const formatCurrency = (amount: number): string => {
   return `₦${amount.toLocaleString('en-NG')}`;
 };
 
+export const formatCompactCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    notation: 'compact', 
+    compactDisplay: 'short',
+    maximumFractionDigits: 1,
+  }).format(amount);
+};
+
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-NG', {

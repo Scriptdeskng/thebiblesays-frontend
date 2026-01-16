@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { StatsCard, LoadingSpinner, StatsCard2 } from "@/components/admin/ui";
 import { dashboardService } from "@/services/dashboard.service";
-import { formatCurrency, calculatePercentage } from "@/lib/utils";
+import { calculatePercentage, formatCompactCurrency } from "@/lib/utils";
 import {
   LineChart,
   Line,
@@ -316,7 +316,7 @@ export default function DashboardPage() {
         <StatsCard
           icon={RiTShirtFill}
           title="Total Sales"
-          value={formatCurrency(overview.total_sales)}
+          value={formatCompactCurrency(overview.total_sales)}
           change={0}
           iconBgColor="bg-white"
           iconColor="text-admin-primary/25"
@@ -358,7 +358,7 @@ export default function DashboardPage() {
                 Total sales
               </h2>
               <p className="text-2xl font-bold text-admin-primary">
-                {formatCurrency(
+                {formatCompactCurrency(
                   salesData.reduce((sum, item) => sum + item.daily_total, 0)
                 )}
               </p>
@@ -399,7 +399,7 @@ export default function DashboardPage() {
                   border: "1px solid #E9E9EB",
                   borderRadius: "8px",
                 }}
-                formatter={(value: any) => [formatCurrency(value), "Sales"]}
+                formatter={(value: any) => [formatCompactCurrency(value), "Sales"]}
                 labelFormatter={(value) => {
                   const date = new Date(value);
                   return date.toLocaleDateString("en-US", {
@@ -458,7 +458,7 @@ export default function DashboardPage() {
                         {product.total_quantity}
                       </td>
                       <td className="py-4 text-[#2AA31F]">
-                        {formatCurrency(product.total_sales)}
+                        {formatCompactCurrency(product.total_sales)}
                       </td>
                     </tr>
                   ))}
