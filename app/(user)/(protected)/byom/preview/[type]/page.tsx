@@ -13,7 +13,6 @@ import { formatPrice } from '@/utils/format';
 import { cn } from '@/utils/cn';
 import toast from 'react-hot-toast';
 
-// Base prices in NGN - backend will convert for USD
 const BASE_PRICES: Record<MerchType, number> = {
     tshirt: 15000,
     longsleeve: 20000,
@@ -30,17 +29,24 @@ const stickers = Array.from({ length: 13 }, (_, i) => ({
     isCustom: false
 }));
 
+interface UploadedImage {
+  id: string;
+  url: string;
+  name: string;
+  base64: string;
+}
+
 export default function PreviewPage({ params }: { params: Promise<{ type: MerchType }> }) {
     const resolvedParams = use(params);
     const router = useRouter();
     const { accessToken, user } = useAuthStore();
     const { currency, getCurrencyParam } = useCurrencyStore();
-    const [customization, setCustomization] = useState<BYOMCustomization & {
-        uploadedImages?: any[],
+    const [customization, setCustomization] = useState<(BYOMCustomization & {
+        uploadedStickers?: UploadedImage[],
         requiresApproval?: boolean
-    } | null>(null);
+    }) | null>(null);
     const [currentView, setCurrentView] = useState<PlacementZone>('front');
-    const [uploadedImages, setUploadedImages] = useState<any[]>([]);
+    const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [draggedItem, setDraggedItem] = useState<{ type: 'text' | 'sticker', id: string } | null>(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -54,34 +60,24 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
     useEffect(() => {
         const stored = localStorage.getItem('byom-customization');
         if (stored) {
-            const parsedData = JSON.parse(stored);
+            try {
+                const parsedData = JSON.parse(stored);
 
-            const normalizedData = {
-                ...parsedData,
-                front: parsedData.front || { texts: [], stickers: [] },
-                back: parsedData.back || { texts: [], stickers: [] },
-                side: parsedData.side || { texts: [], stickers: [] },
-                requiresApproval: true
-            };
+                const normalizedData = {
+                    ...parsedData,
+                    front: parsedData.front || { texts: [], stickers: [] },
+                    back: parsedData.back || { texts: [], stickers: [] },
+                    side: parsedData.side || { texts: [], stickers: [] },
+                    requiresApproval: true
+                };
 
-            setCustomization(normalizedData);
+                setCustomization(normalizedData);
 
-            if (typeof window !== 'undefined' && (window as any).__byom_uploaded_images) {
-                const images = (window as any).__byom_uploaded_images;
-                setUploadedImages(images);
-
-                delete (window as any).__byom_uploaded_images;
-            }
-            else {
-                const storedMetadata = sessionStorage.getItem('byom-image-metadata');
-                if (storedMetadata) {
-                    try {
-                        const metadata = JSON.parse(storedMetadata);
-                        console.warn('Image files were lost. User may need to go back and re-upload.');
-                    } catch (error) {
-                        console.error('Failed to parse image metadata:', error);
-                    }
+                if (parsedData.uploadedStickers && Array.isArray(parsedData.uploadedStickers)) {
+                    setUploadedImages(parsedData.uploadedStickers);
                 }
+            } catch (error) {
+                router.push('/byom');
             }
         } else {
             router.push('/byom');
@@ -165,7 +161,7 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
         if (draggedItem && customization) {
             const customizationData = {
                 ...customization,
-                uploadedImages: uploadedImages,
+                uploadedStickers: uploadedImages,
                 requiresApproval: true
             };
             localStorage.setItem('byom-customization', JSON.stringify(customizationData));
@@ -185,7 +181,7 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
 
             const customizationData = {
                 ...newState,
-                uploadedImages: uploadedImages,
+                uploadedStickers: uploadedImages,
                 requiresApproval: true
             };
             localStorage.setItem('byom-customization', JSON.stringify(customizationData));
@@ -212,40 +208,6 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
             return;
         }
 
-        const uploadedFiles: File[] = [];
-        if (uploadedImages && uploadedImages.length > 0) {
-            for (let index = 0; index < uploadedImages.length; index++) {
-                const image = uploadedImages[index];
-
-                if (image.file instanceof File) {
-                    uploadedFiles.push(image.file);
-                } else if (image.url && image.url.startsWith('data:')) {
-                    try {
-                        const file = byomService['base64ToFile'](image.url, image.name || `custom-image-${index + 1}.png`);
-                        uploadedFiles.push(file);
-                    } catch (error) {
-                        console.error(`Failed to reconstruct file ${index + 1}:`, error);
-                    }
-                } else {
-                    console.warn(`Image ${index + 1} has no valid File object or base64 data`);
-                }
-            }
-        }
-
-        if (uploadedFiles.length > 0) {
-            for (const file of uploadedFiles) {
-                if (file.size > 10 * 1024 * 1024) {
-                    toast.error('One or more images exceed 10MB. Please use smaller images.');
-                    return;
-                }
-            }
-        } else if (uploadedImages && uploadedImages.length > 0) {
-            console.warn('Had uploaded images but could not extract any valid files');
-            toast.error('Failed to process uploaded images. Please try uploading again.');
-            setIsProcessing(false);
-            return;
-        }
-
         setIsProcessing(true);
         setShowSubmitModal(true);
         setSubmitProgress(0);
@@ -253,6 +215,28 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
         setSubmitError('');
 
         try {
+            const uploadedFiles: File[] = [];
+
+            if (uploadedImages && uploadedImages.length > 0) {
+                for (const image of uploadedImages) {
+                    if (image.base64) {
+                        const file = byomService['base64ToFile'](image.base64, image.name);
+                        uploadedFiles.push(file);
+                    }
+                }
+            }
+
+            if (uploadedFiles.length > 0) {
+                for (const file of uploadedFiles) {
+                    if (file.size > 10 * 1024 * 1024) {
+                        toast.error('One or more images exceed 10MB. Please use smaller images.');
+                        setIsProcessing(false);
+                        setShowSubmitModal(false);
+                        return;
+                    }
+                }
+            }
+
             const currencyParam = getCurrencyParam();
             const payload = byomService.prepareDesignPayload(customization);
 
@@ -276,12 +260,8 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             localStorage.removeItem('byom-customization');
-            sessionStorage.removeItem('byom-uploaded-images');
             router.push('/profile?tab=drafts');
         } catch (error: any) {
-            console.error('Error submitting design:', error);
-            console.error('Error response:', error?.response?.data);
-
             const errorData = error?.response?.data;
             let errorMessage = 'Failed to submit design. Please try again.';
 

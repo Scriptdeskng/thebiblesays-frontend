@@ -7,12 +7,6 @@ import { CartItem } from '@/types/product.types';
 import { useCurrencyStore } from '@/store/useCurrencyStore';
 import { formatPrice } from '@/utils/format';
 
-const stickers = Array.from({ length: 13 }, (_, i) => ({
-  id: `sticker-${i + 1}`,
-  url: `/stickers/sticker-${i + 1}.png`,
-  name: `Sticker ${i + 1}`
-}));
-
 interface BYOMCartItemProps {
   item: CartItem;
   compact?: boolean;
@@ -25,8 +19,15 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
 
   if (!customization) return null;
 
-  const textCount = customization.front.texts.length + customization.back.texts.length;
-  const stickerCount = customization.front.stickers.length + customization.back.stickers.length;
+  const frontTextCount = customization.front?.texts?.length || 0;
+  const frontStickerCount = customization.front?.stickers?.length || 0;
+  const backTextCount = customization.back?.texts?.length || 0;
+  const backStickerCount = customization.back?.stickers?.length || 0;
+  const sideTextCount = customization.side?.texts?.length || 0;
+  const sideStickerCount = customization.side?.stickers?.length || 0;
+
+  const totalTexts = frontTextCount + backTextCount + sideTextCount;
+  const totalStickers = frontStickerCount + backStickerCount + sideStickerCount;
 
   return (
     <div className="bg-accent-1 rounded-lg p-4 mt-3">
@@ -37,7 +38,7 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
         <div>
           <p className="text-sm font-semibold text-primary mb-1">Custom Design Details</p>
           <p className="text-xs text-grey">
-            {textCount} text element(s), {stickerCount} sticker(s)
+            {totalTexts} text element(s), {totalStickers} sticker(s)
           </p>
         </div>
         {showDetails ? (
@@ -66,7 +67,7 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
             </div>
           </div>
 
-          {customization.front.texts.length > 0 && (
+          {frontTextCount > 0 && (
             <div>
               <p className="text-sm font-semibold text-primary mb-2">Front - Text Elements:</p>
               <div className="space-y-2">
@@ -88,27 +89,15 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
             </div>
           )}
 
-          {customization.front.stickers.length > 0 && (
+          {frontStickerCount > 0 && (
             <div>
-              <p className="text-sm font-semibold text-primary mb-2">Front - Stickers:</p>
-              <div className="flex flex-wrap gap-2">
-                {customization.front.stickers.map((sticker) => (
-                  <div key={sticker.id} className="w-12 h-12 bg-white rounded border border-accent-2 p-1">
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={stickers.find(s => s.id === sticker.stickerId)?.url || ''}
-                        alt="Sticker"
-                        fill
-                        className="object-contain"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm font-semibold text-primary mb-2">
+                Front - {frontStickerCount} Sticker(s)
+              </p>
             </div>
           )}
 
-          {customization.back.texts.length > 0 && (
+          {backTextCount > 0 && (
             <div>
               <p className="text-sm font-semibold text-primary mb-2">Back - Text Elements:</p>
               <div className="space-y-2">
@@ -130,23 +119,41 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
             </div>
           )}
 
-          {customization.back.stickers.length > 0 && (
+          {backStickerCount > 0 && (
             <div>
-              <p className="text-sm font-semibold text-primary mb-2">Back - Stickers:</p>
-              <div className="flex flex-wrap gap-2">
-                {customization.back.stickers.map((sticker) => (
-                  <div key={sticker.id} className="w-12 h-12 bg-white rounded border border-accent-2 p-1">
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={stickers.find(s => s.id === sticker.stickerId)?.url || ''}
-                        alt="Sticker"
-                        fill
-                        className="object-contain"
-                      />
+              <p className="text-sm font-semibold text-primary mb-2">
+                Back - {backStickerCount} Sticker(s)
+              </p>
+            </div>
+          )}
+
+          {sideTextCount > 0 && (
+            <div>
+              <p className="text-sm font-semibold text-primary mb-2">Side - Text Elements:</p>
+              <div className="space-y-2">
+                {customization.side.texts.map((text) => (
+                  <div key={text.id} className="bg-white rounded p-2 text-xs">
+                    <p className="font-medium text-primary mb-1" style={{ color: text.color }}>
+                      "{text.content}"
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-grey">
+                      <span>Font: {text.fontFamily}</span>
+                      <span>Size: {text.fontSize}px</span>
+                      {text.bold && <span className="font-bold">Bold</span>}
+                      {text.italic && <span className="italic">Italic</span>}
+                      {text.underline && <span className="underline">Underline</span>}
                     </div>
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {sideStickerCount > 0 && (
+            <div>
+              <p className="text-sm font-semibold text-primary mb-2">
+                Side - {sideStickerCount} Sticker(s)
+              </p>
             </div>
           )}
 

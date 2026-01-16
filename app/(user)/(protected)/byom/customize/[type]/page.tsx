@@ -4,8 +4,6 @@ import { use, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
-  Undo,
-  RotateCcw,
   ChevronLeft,
   Bold,
   Italic,
@@ -15,8 +13,6 @@ import {
   AlignRight,
   ZoomIn,
   ZoomOut,
-  Upload,
-  ImageIcon,
   Minus,
   Plus as PlusIcon,
   Strikethrough,
@@ -52,32 +48,26 @@ const stickers = Array.from({ length: 13 }, (_, i) => ({
 }));
 
 const fonts = [
-  'Roboto',
-  'Open Sans',
-  'Lato',
-  'Montserrat',
-  'Poppins',
-  'Raleway',
-  'Ubuntu',
-  'Playfair Display',
-  'Merriweather',
-  'Oswald',
-  'PT Sans',
-  'Nunito',
-  'Bebas Neue',
-  'Pacifico',
-  'Lobster',
-  'Dancing Script',
-  'Anton',
-  'Righteous',
-  'Satisfy',
-  'Permanent Marker'
+  'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Raleway',
+  'Ubuntu', 'Playfair Display', 'Merriweather', 'Oswald', 'PT Sans',
+  'Nunito', 'Bebas Neue', 'Pacifico', 'Lobster', 'Dancing Script',
+  'Anton', 'Righteous', 'Satisfy', 'Permanent Marker'
 ];
+
+interface UploadedImage {
+  id: string;
+  url: string;
+  name: string;
+  base64: string;
+}
+
+const MAX_IMAGE_SIZE_MB = 2;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 
 export default function CustomizePage({ params }: { params: Promise<{ type: MerchType }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { accessToken, user } = useAuthStore();
+  const { accessToken } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -85,14 +75,10 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
   const [selectedColorName, setSelectedColorName] = useState(colors[0].name.toLowerCase());
   const [selectedSize, setSelectedSize] = useState<Size>('M');
   const [placement, setPlacement] = useState<PlacementZone>('front');
-  const [uploadedImages, setUploadedImages] = useState<Array<{
-    id: string;
-    url: string;
-    name: string;
-    file: File;
-  }>>([]);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [hasUsedStickers, setHasUsedStickers] = useState(false);
 
-  const [customization, setCustomization] = useState<BYOMCustomization>({
+  const [customization, setCustomization] = useState<BYOMCustomization & { uploadedStickers?: UploadedImage[] }>({
     merchType: resolvedParams.type,
     color: colors[0].hex,
     colorName: colors[0].name.toLowerCase(),
@@ -100,9 +86,10 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     front: { texts: [], stickers: [] },
     back: { texts: [], stickers: [] },
     side: { texts: [], stickers: [] },
+    uploadedStickers: []
   });
 
-  const [history, setHistory] = useState<BYOMCustomization[]>([customization]);
+  const [history, setHistory] = useState<(BYOMCustomization & { uploadedStickers?: UploadedImage[] })[]>([customization]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const [textInput, setTextInput] = useState('');
@@ -149,7 +136,30 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const addToHistory = (newState: BYOMCustomization) => {
+  useEffect(() => {
+    const stored = localStorage.getItem('byom-customization');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.uploadedStickers && Array.isArray(parsed.uploadedStickers)) {
+          setUploadedImages(parsed.uploadedStickers);
+          setCustomization(parsed);
+          
+          const allStickers = [
+            ...(parsed.front?.stickers || []),
+            ...(parsed.back?.stickers || []),
+            ...(parsed.side?.stickers || [])
+          ];
+          const hasDefault = allStickers.some(s => s.stickerId.startsWith('sticker-'));
+          setHasUsedStickers(hasDefault);
+        }
+      } catch (error) {
+        localStorage.removeItem('byom-customization');
+      }
+    }
+  }, []);
+
+  const addToHistory = (newState: BYOMCustomization & { uploadedStickers?: UploadedImage[] }) => {
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(newState);
     setHistory(newHistory);
@@ -160,12 +170,16 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
   const handleUndo = () => {
     if (historyIndex > 0) {
       setHistoryIndex(historyIndex - 1);
-      setCustomization(history[historyIndex - 1]);
+      const previousState = history[historyIndex - 1];
+      setCustomization(previousState);
+      if (previousState.uploadedStickers) {
+        setUploadedImages(previousState.uploadedStickers);
+      }
     }
   };
 
   const handleReset = () => {
-    const resetState: BYOMCustomization = {
+    const resetState: BYOMCustomization & { uploadedStickers?: UploadedImage[] } = {
       merchType: resolvedParams.type,
       color: selectedColor,
       colorName: selectedColorName,
@@ -173,10 +187,13 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
       front: { texts: [], stickers: [] },
       back: { texts: [], stickers: [] },
       side: { texts: [], stickers: [] },
+      uploadedStickers: []
     };
     addToHistory(resetState);
     setTextInput('');
     setUploadedImages([]);
+    setHasUsedStickers(false);
+    localStorage.removeItem('byom-customization');
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,6 +201,31 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     if (!file) return;
 
     setUploadError('');
+
+    if (hasUsedStickers) {
+      setUploadError('You have already used stickers. Please remove them first to upload a custom image.');
+      toast.error('Cannot use both custom images and stickers. Please remove stickers first.', {
+        duration: 5000,
+        position: 'top-center',
+      });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      setUploadError(`File too large (${fileSizeMB}MB). Maximum size is ${MAX_IMAGE_SIZE_MB}MB. Please compress or resize your image.`);
+      toast.error(`File too large! Maximum size is ${MAX_IMAGE_SIZE_MB}MB. Please use a smaller image.`, {
+        duration: 6000,
+        position: 'top-center',
+      });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
 
     const fileValidation = byomService.validateImageFile(file);
 
@@ -223,15 +265,33 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     const reader = new FileReader();
 
     reader.onload = (event) => {
+      const base64Data = event.target?.result as string;
+      
+      const base64Size = (base64Data.length * 0.75) / (1024 * 1024);
+      if (base64Size > MAX_IMAGE_SIZE_MB * 1.5) {
+        setUploadError(`File too large after processing. Please use an image under ${MAX_IMAGE_SIZE_MB}MB.`);
+        toast.error(`File too large! Please compress your image to under ${MAX_IMAGE_SIZE_MB}MB.`, {
+          duration: 6000,
+          position: 'top-center',
+        });
+        setIsUploading(false);
+        setUploadProgress(0);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+
       const newImageId = `custom-${Date.now()}`;
-      const newImage = {
+      const newImage: UploadedImage = {
         id: newImageId,
-        url: event.target?.result as string,
+        url: base64Data,
         name: file.name,
-        file: file
+        base64: base64Data
       };
 
-      setUploadedImages([...uploadedImages, newImage]);
+      const updatedImages = [...uploadedImages, newImage];
+      setUploadedImages(updatedImages);
 
       const placedSticker: CustomSticker = {
         id: `placed-${Date.now()}`,
@@ -241,7 +301,10 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
         scale: 1,
       };
 
-      const newState = { ...customization };
+      const newState = { 
+        ...customization,
+        uploadedStickers: updatedImages
+      };
       newState[placement]!.stickers.push(placedSticker);
       addToHistory(newState);
 
@@ -254,6 +317,10 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
         duration: 3000,
         position: 'top-center',
       });
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     };
 
     reader.onerror = () => {
@@ -274,9 +341,13 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
   };
 
   const handleDeleteUploadedImage = (imageId: string) => {
-    setUploadedImages(uploadedImages.filter(img => img.id !== imageId));
+    const updatedImages = uploadedImages.filter(img => img.id !== imageId);
+    setUploadedImages(updatedImages);
 
-    const newState = { ...customization };
+    const newState = { 
+      ...customization,
+      uploadedStickers: updatedImages
+    };
     (['front', 'back', 'side'] as PlacementZone[]).forEach(zone => {
       newState[zone]!.stickers = newState[zone]!.stickers.filter(
         s => s.stickerId !== imageId
@@ -288,6 +359,14 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
   };
 
   const handleAddSticker = (stickerId: string) => {
+    if (uploadedImages.length > 0) {
+      toast.error('Cannot use both custom images and stickers. Please remove custom images first.', {
+        duration: 5000,
+        position: 'top-center',
+      });
+      return;
+    }
+
     const newSticker: CustomSticker = {
       id: `placed-${Date.now()}`,
       stickerId,
@@ -299,6 +378,7 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     const newState = { ...customization };
     newState[placement]!.stickers.push(newSticker);
     addToHistory(newState);
+    setHasUsedStickers(true);
   };
 
   const handleRemoveText = (textId: string) => {
@@ -312,6 +392,14 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     newState[placement]!.stickers = newState[placement]!.stickers.filter(s => s.id !== stickerId);
     addToHistory(newState);
     if (selectedSticker === stickerId) setSelectedSticker(null);
+    
+    const allStickers = [
+      ...(newState.front?.stickers || []),
+      ...(newState.back?.stickers || []),
+      ...(newState.side?.stickers || [])
+    ];
+    const hasDefault = allStickers.some(s => s.stickerId.startsWith('sticker-'));
+    setHasUsedStickers(hasDefault);
   };
 
   const handleStickerScale = (stickerId: string, delta: number) => {
@@ -503,6 +591,8 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
       }
     });
 
+    finalCustomization.uploadedStickers = uploadedImages;
+
     const customizationData = {
       ...finalCustomization,
       requiresApproval: true
@@ -510,23 +600,16 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
 
     try {
       localStorage.setItem('byom-customization', JSON.stringify(customizationData));
-
-      if (uploadedImages.length > 0) {
-        const imageMetadata = uploadedImages.map(img => ({
-          id: img.id,
-          name: img.name,
-        }));
-        sessionStorage.setItem('byom-image-metadata', JSON.stringify(imageMetadata));
-      }
-
       router.push(`/byom/preview/${resolvedParams.type}`);
-
-      if (typeof window !== 'undefined') {
-        (window as any).__byom_uploaded_images = uploadedImages;
+    } catch (error: any) {
+      if (error.name === 'QuotaExceededError') {
+        toast.error('Storage limit exceeded. Please use a smaller image (under 2MB).', {
+          duration: 6000,
+          position: 'top-center',
+        });
+      } else {
+        toast.error('Failed to save design. Please try again.');
       }
-    } catch (error) {
-      console.error('Storage error:', error);
-      toast.error('Failed to save design. Please try again.');
     }
   };
 
@@ -547,6 +630,9 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     const defaultSticker = stickers.find(s => s.id === stickerId);
     return defaultSticker?.url || '';
   };
+
+  const canUploadImage = uploadedImages.length === 0 && !hasUsedStickers;
+  const canUseStickers = uploadedImages.length === 0;
 
   return (
     <>
@@ -612,8 +698,19 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
                 </div>
               </div>
 
-              <div className="border-2 border-dashed border-accent-2 rounded-lg p-6 text-center">
+              <div className={cn(
+                "border-2 border-dashed rounded-lg p-6 text-center",
+                canUploadImage ? "border-accent-2" : "border-grey/30 bg-grey/5"
+              )}>
                 <h3 className="text-primary font-semibold mb-4">Upload Your Image</h3>
+
+                {!canUploadImage && hasUsedStickers && (
+                  <div className="mb-4 p-3 bg-secondary border border-blue-200 rounded-lg">
+                    <p className="text-xs text-primary font-medium">
+                      You're using stickers. Remove them first to upload a custom image.
+                    </p>
+                  </div>
+                )}
 
                 {uploadedImages.length > 0 && (
                   <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-3">
@@ -640,9 +737,8 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
                 <div className="mb-4">
                   <RiUploadCloud2Line className="w-7 h-7 text-primary mx-auto mb-2" />
                   <p className="text-xs text-grey">
-                    JPG or PNG only, Max 10MB<br />
-                    Minimum 1500 x 1500px <br />
-                    (You can only upload one Image)
+                    JPG or PNG only, Max {MAX_IMAGE_SIZE_MB}MB<br />
+                    Minimum 1500 x 1500px
                   </p>
                 </div>
 
@@ -670,13 +766,13 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
                   accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                   onChange={handleFileUpload}
                   className="hidden"
-                  disabled={isUploading}
+                  disabled={isUploading || !canUploadImage}
                 />
                 <Button
                   onClick={() => fileInputRef.current?.click()}
                   size="sm"
                   className="w-full border-accent-2"
-                  disabled={isUploading}
+                  disabled={isUploading || !canUploadImage}
                 >
                   {isUploading ? 'Uploading...' : 'Upload Image'}
                 </Button>
@@ -878,7 +974,6 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
                 )}
               </div>
 
-
               <div className="border border-accent-2 rounded-lg h-14 p-2 flex items-center justify-center">
                 <div className='w-full'>
                   <p className="text-xs text-grey mb-1">Text Size</p>
@@ -991,6 +1086,7 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
                 </div>
               </div>
             </div>
+            
             <div className="">
               <p className="text-xs text-grey mb-2">Styling</p>
               <div className="grid grid-cols-4 gap-1 mb-2">
@@ -1062,7 +1158,6 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
               </div>
             </div>
 
-
             <div className="bg-white border border-accent-2 rounded-lg p-2 sm:p-6">
               <h3 className="text-primary font-semibold mb-4 pb-3 border-b border-accent-2">
                 Featured Text
@@ -1074,7 +1169,7 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
                   setIsEditingText(true);
                 }}
                 onFocus={() => setIsEditingText(true)}
-                placeholder="Type your text here... (Please click on the Done button to save your text to the design)"
+                placeholder="Type your text here... (Click Done to save)"
                 className="w-full min-h-[120px] px-4 py-3 border border-accent-2 rounded-lg focus:outline-none resize-none text-black placeholder:text-grey mb-3"
               />
               <div className="flex gap-2">
@@ -1100,16 +1195,30 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
               </div>
             </div>
 
-            <div className="bg-white border border-accent-2 rounded-lg p-6">
-              <h3 className="text-primary font-semibold mb-4 pb-3 border-b border-accent-2">
-                Add a Sticker
-              </h3>
+            <div className={cn(
+              "bg-white border border-accent-2 rounded-lg p-6",
+              !canUseStickers && "opacity-50"
+            )}>
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-accent-2">
+                <h3 className="text-primary font-semibold">
+                  Add a Sticker
+                </h3>
+                {!canUseStickers && uploadedImages.length > 0 && (
+                  <span className="text-xs text-primary font-medium">
+                    Remove custom image to use stickers
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
                 {stickers.map((sticker) => (
                   <button
                     key={sticker.id}
                     onClick={() => handleAddSticker(sticker.id)}
-                    className="aspect-square border-2 border-accent-2 rounded-lg hover:border-secondary hover:shadow-md transition-all p-2 relative"
+                    disabled={!canUseStickers}
+                    className={cn(
+                      "aspect-square border-2 border-accent-2 rounded-lg transition-all p-2 relative",
+                      canUseStickers ? "hover:border-secondary hover:shadow-md cursor-pointer" : "cursor-not-allowed"
+                    )}
                   >
                     <div className="relative w-full h-full">
                       <Image

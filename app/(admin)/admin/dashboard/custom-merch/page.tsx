@@ -28,7 +28,6 @@ export default function CustomMerchPage() {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter] = useState<string>("all");
-  // const [durationFilter, setDurationFilter] = useState<string>("monthly");
   const [selectedMerch, setSelectedMerch] = useState<CustomMerch | null>(null);
   const [selectedMerchConfig, setSelectedMerchConfig] = useState<any>(null);
   const [showMerchDetails, setShowMerchDetails] = useState(false);
@@ -61,7 +60,7 @@ export default function CustomMerchPage() {
     if (statusLower === "draft") {
       return "draft";
     }
-    return "pending"; // Default fallback
+    return "pending";
   };
 
   const inferProductCategory = (productName: string): ProductCategory => {
@@ -73,12 +72,11 @@ export default function CustomMerchPage() {
     if (nameLower.includes("hat") || nameLower.includes("headband"))
       return "Hat";
     if (nameLower.includes("jacket")) return "Jackets";
-    return "Shirts"; // Default fallback
+    return "Shirts";
   };
 
   const transformApiDesignToCustomMerch = useCallback(
     (apiDesign: any): CustomMerch => {
-      // Parse configuration_json if it exists
       let configuration: any = {};
       try {
         configuration = apiDesign.configuration_json
@@ -87,10 +85,9 @@ export default function CustomMerchPage() {
             : apiDesign.configuration_json
           : {};
       } catch (e) {
-        console.error("Error parsing configuration_json:", e);
+        configuration = {};
       }
 
-      // Extract user information - handle both user object and user_email
       let creator = "Unknown";
       let creatorId = "";
       if (apiDesign.user) {
@@ -112,7 +109,6 @@ export default function CustomMerchPage() {
         creatorId = apiDesign.user_id?.toString() || "";
       }
 
-      // Extract product information
       let productType: ProductCategory = "Shirts";
       if (apiDesign.product) {
         if (typeof apiDesign.product === "object") {
@@ -131,7 +127,6 @@ export default function CustomMerchPage() {
         productType = inferProductCategory(apiDesign.product_type);
       }
 
-      // Get image URLs - handle various possible field names
       const uploadedImageUrl =
         apiDesign.uploaded_image_url ||
         apiDesign.uploaded_image ||
@@ -192,7 +187,6 @@ export default function CustomMerchPage() {
       const transformedData = apiData.map(transformApiDesignToCustomMerch);
       setCustomMerch(transformedData);
     } catch (error) {
-      console.error("Error loading custom merch:", error);
       toast.error("Failed to load custom merch designs");
     } finally {
       setLoading(false);
@@ -212,12 +206,9 @@ export default function CustomMerchPage() {
       const apiDesign = await dashboardService.getCustomMerchById(merch.id);
       const transformedMerch = transformApiDesignToCustomMerch(apiDesign);
       setSelectedMerch(transformedMerch);
-      // Store the raw API design with configuration_json for rendering
       setSelectedMerchConfig(apiDesign);
     } catch (error) {
-      console.error("Error loading merch details:", error);
       toast.error("Failed to load design details");
-      // Fallback to the list item data if API call fails
       setSelectedMerch(merch);
       setSelectedMerchConfig(null);
     } finally {
@@ -234,26 +225,22 @@ export default function CustomMerchPage() {
     setApprovalInfo("");
   };
 
-  // Get base image path from merchType and colorName
   const getBaseImagePath = (merchType: string, colorName: string): string => {
     const type = merchType.toLowerCase();
     const color = colorName.toLowerCase();
     return `/byom/${type}-${color}.svg`;
   };
 
-  // Get uploaded sticker URL by ID
   const getStickerUrl = (
     stickerId: string,
     uploadedStickers: any[] = []
   ): string => {
     const sticker = uploadedStickers.find((s) => s.id === stickerId);
-    return sticker?.url || "";
+    return sticker?.url || sticker?.base64 || "";
   };
 
-  // Extract side data from configuration_json
   const getSideDataFromConfig = (side: "front" | "back" | "side") => {
     if (!selectedMerchConfig?.configuration_json) {
-      // Return default empty data structure
       return {
         baseImage: "/byom/tshirt-black.svg",
         texts: [],
@@ -272,7 +259,6 @@ export default function CustomMerchPage() {
           ? JSON.parse(selectedMerchConfig.configuration_json)
           : selectedMerchConfig.configuration_json;
     } catch (e) {
-      console.error("Error parsing configuration_json:", e);
       return {
         baseImage: "/byom/tshirt-black.svg",
         texts: [],
@@ -291,10 +277,8 @@ export default function CustomMerchPage() {
 
     const baseImage = getBaseImagePath(merchType, colorName);
 
-    // Extract texts
     const texts = sideData.texts || [];
 
-    // Extract stickers - map sticker IDs to URLs
     const stickers = (sideData.stickers || []).map((sticker: any) => ({
       ...sticker,
       url: getStickerUrl(sticker.stickerId || sticker.id, uploadedStickers),
@@ -312,7 +296,6 @@ export default function CustomMerchPage() {
     };
   };
 
-  // Compute merchSideData from configuration_json
   const merchSideData = {
     front: getSideDataFromConfig("front"),
     back: getSideDataFromConfig("back"),
@@ -350,7 +333,6 @@ export default function CustomMerchPage() {
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      console.error("Error downloading merch image:", error);
       alert("Failed to download image. Please try again.");
     }
   };
@@ -372,14 +354,12 @@ export default function CustomMerchPage() {
         selectedMerch.id,
         rejectionReason || undefined
       );
-      // Reload data to get updated status
       await loadData();
       toast.success("Design rejected successfully!");
       setShowRejectModal(false);
       setRejectionReason("");
       handleBackToList();
     } catch (error) {
-      console.error("Error rejecting design:", error);
       toast.error("Failed to reject design");
     } finally {
       setRejecting(false);
@@ -392,14 +372,12 @@ export default function CustomMerchPage() {
     setApproving(true);
     try {
       await dashboardService.approveCustomMerch(selectedMerch.id);
-      // Reload data to get updated status
       await loadData();
       toast.success("Design approved successfully!");
       setShowApproveModal(false);
       setApprovalInfo("");
       handleBackToList();
     } catch (error) {
-      console.error("Error approving design:", error);
       toast.error("Failed to approve design");
     } finally {
       setApproving(false);
@@ -411,7 +389,6 @@ export default function CustomMerchPage() {
     try {
       const blob = await dashboardService.exportCustomMerch();
 
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -425,7 +402,6 @@ export default function CustomMerchPage() {
 
       toast.success("Custom merch designs exported successfully");
     } catch (error) {
-      console.error("Error exporting custom merch:", error);
       toast.error("Failed to export custom merch designs");
     } finally {
       setExporting(false);
@@ -445,13 +421,11 @@ export default function CustomMerchPage() {
     return matchesSearch && matchesTab && matchesStatus && matchesType;
   });
 
-  // Pagination calculations
   const totalPages = Math.ceil(filteredMerch.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedMerch = filteredMerch.slice(startIndex, endIndex);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, statusFilter, searchQuery]);
@@ -529,14 +503,14 @@ export default function CustomMerchPage() {
 
                 <div
                   ref={merchImageRef}
-                  className="aspect-square max-w-sm mx-auto bg-admin-primary/7 rounded-3xl overflow-hidden relative flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                  className="w-full max-w-2xl mx-auto aspect-square bg-admin-primary/7 rounded-lg overflow-hidden relative flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
                   onClick={() => setExpandedMerchImage(true)}
                 >
                   {currentSideData.baseImage ? (
                     <img
                       src={currentSideData.baseImage}
                       alt={`${selectedSide} view`}
-                      className="w-full"
+                      className="w-full h-full object-contain"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-grey">
@@ -544,7 +518,6 @@ export default function CustomMerchPage() {
                     </div>
                   )}
 
-                  {/* Render all texts from configuration_json */}
                   {currentSideData.texts?.map((text: any, index: number) => (
                     <div
                       key={text.id || index}
@@ -572,17 +545,17 @@ export default function CustomMerchPage() {
                           : "normal",
                         textShadow: "1px 1px 2px rgba(0,0,0,0.3)",
                         whiteSpace: "nowrap",
+                        maxWidth: "80%",
                       }}
                     >
                       {text.content}
                     </div>
                   ))}
 
-                  {/* Render all stickers from configuration_json */}
                   {currentSideData.stickers?.map(
                     (sticker: any, index: number) => {
                       if (!sticker.url) return null;
-                      const size = (sticker.scale || 1) * 100; // Scale to percentage
+                      const size = (sticker.scale || 1) * 80;
                       return (
                         <img
                           key={sticker.id || index}
@@ -631,13 +604,6 @@ export default function CustomMerchPage() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <p className="text-grey mb-1">Amount</p>
-                      <p className="text-admin-primary font-medium">
-                        {formatCurrency(selectedMerch.amount)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between">
                       <p className="text-grey mb-1">Merch Size</p>
                       <p className="text-admin-primary font-medium">
                         {currentSideData.size || "M"}
@@ -665,7 +631,6 @@ export default function CustomMerchPage() {
                       </p>
                     </div>
 
-                    {/* Design details */}
                     <h3 className="font-semibold text-admin-primary mb-4 mt-10">
                       Design Details
                     </h3>
@@ -677,7 +642,6 @@ export default function CustomMerchPage() {
                       </p>
                     </div>
 
-                    {/* Display all texts for current side */}
                     {currentSideData.texts &&
                       currentSideData.texts.length > 0 && (
                         <>
@@ -726,7 +690,6 @@ export default function CustomMerchPage() {
                         </>
                       )}
 
-                    {/* Display all stickers for current side */}
                     {currentSideData.stickers &&
                       currentSideData.stickers.length > 0 && (
                         <>
@@ -778,7 +741,6 @@ export default function CustomMerchPage() {
                         </>
                       )}
 
-                    {/* Show message if no texts or stickers */}
                     {(!currentSideData.texts ||
                       currentSideData.texts.length === 0) &&
                       (!currentSideData.stickers ||
@@ -923,27 +885,6 @@ export default function CustomMerchPage() {
                 <option value="rejected">Rejected</option>
                 <option value="draft">Draft</option>
               </select>
-              {/* <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-4 py-2 bg-white rounded-lg focus:outline-none"
-              >
-                <option value="all">Type</option>
-                <option value="Shirts">T-Shirt</option>
-                <option value="Hoodie">Hoodie</option>
-                <option value="Caps">Caps</option>
-                <option value="Jackets">Jackets</option>
-              </select>
-              <select
-                value={durationFilter}
-                onChange={(e) => setDurationFilter(e.target.value)}
-                className="px-4 py-2 bg-white rounded-lg focus:outline-none"
-              >
-                <option value="today">Today</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select> */}
             </div>
           </div>
 
@@ -958,7 +899,6 @@ export default function CustomMerchPage() {
                 <table className="w-full">
                   <thead className="bg-accent-1 shadow-md shadow-black">
                     <tr>
-                      {/* <th className="text-left font-medium text-admin-primary px-6 py-4">Image</th> */}
                       <th className="text-left font-medium text-admin-primary px-6 py-4">
                         Design Name
                       </th>
@@ -983,15 +923,6 @@ export default function CustomMerchPage() {
                         onClick={() => handleViewMerch(merch)}
                         className="border-b border-accent-2 bg-white cursor-pointer"
                       >
-                        {/* <td className="px-6 py-4">
-                          <div className="w-12 h-12 bg-accent-1 rounded-lg overflow-hidden">
-                            {merch.image ? (
-                              <img src={merch.image} alt={merch.designName} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-grey text-xs">No Image</div>
-                            )}
-                          </div>
-                        </td> */}
                         <td className="px-6 py-4">
                           <p className=" text-admin-primary">
                             {merch.designName}
@@ -1028,7 +959,6 @@ export default function CustomMerchPage() {
               </div>
             )}
 
-            {/* Pagination Controls */}
             {filteredMerch.length > 0 && (
               <div className="bg-admin-primary/4 p-4 rounded-b-xl flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-sm text-admin-primary/60">
@@ -1054,13 +984,11 @@ export default function CustomMerchPage() {
                   <div className="flex items-center gap-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
                       .filter((page) => {
-                        // Show first page, last page, current page, and pages around current
                         if (page === 1 || page === totalPages) return true;
                         if (Math.abs(page - currentPage) <= 1) return true;
                         return false;
                       })
                       .map((page, index, array) => {
-                        // Add ellipsis if there's a gap
                         const showEllipsisBefore =
                           index > 0 && array[index - 1] !== page - 1;
                         return (
@@ -1132,15 +1060,15 @@ export default function CustomMerchPage() {
           isOpen={expandedMerchImage}
           onClose={() => setExpandedMerchImage(false)}
           title="Merch Design Preview"
-          size="md"
+          size="lg"
         >
           <div className="flex flex-col items-center gap-4">
-            <div className="aspect-square max-w-lg mx-auto bg-admin-primary/7 rounded-3xl overflow-hidden relative flex items-center justify-center">
+            <div className="w-full max-w-2xl mx-auto aspect-square bg-admin-primary/7 rounded-lg overflow-hidden relative flex items-center justify-center">
               {currentSideData.baseImage ? (
                 <img
                   src={currentSideData.baseImage}
                   alt={`${selectedSide} view`}
-                  className="w-full"
+                  className="w-full h-full object-contain"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-grey">
@@ -1148,7 +1076,6 @@ export default function CustomMerchPage() {
                 </div>
               )}
 
-              {/* Render all texts from configuration_json */}
               {currentSideData.texts?.map((text: any, index: number) => (
                 <div
                   key={text.id || index}
@@ -1176,16 +1103,16 @@ export default function CustomMerchPage() {
                       : "normal",
                     textShadow: "1px 1px 2px rgba(0,0,0,0.3)",
                     whiteSpace: "nowrap",
+                    maxWidth: "80%",
                   }}
                 >
                   {text.content}
                 </div>
               ))}
 
-              {/* Render all stickers from configuration_json */}
               {currentSideData.stickers?.map((sticker: any, index: number) => {
                 if (!sticker.url) return null;
-                const size = (sticker.scale || 1) * 100; // Scale to percentage
+                const size = (sticker.scale || 1) * 80;
                 return (
                   <img
                     key={sticker.id || index}
