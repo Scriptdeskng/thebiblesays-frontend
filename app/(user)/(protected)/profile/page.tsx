@@ -678,8 +678,8 @@ export default function ProfilePage() {
                               </p>
 
                               {draft.status === 'rejected' && draft.rejection_reason && (
-                                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-                                  <p className="text-sm text-red-800">
+                                <div className="bg-red-50 border border-red-100 rounded-lg p-3 mb-3">
+                                  <p className="text-sm text-red-400">
                                     <span className="font-semibold">Rejection Reason:</span> {draft.rejection_reason}
                                   </p>
                                 </div>

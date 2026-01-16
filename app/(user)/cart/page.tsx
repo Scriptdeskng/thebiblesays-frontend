@@ -49,9 +49,7 @@ export default function CartPage() {
   }, [currency, getCurrencyParam]);
 
   const subtotal = getTotal();
-  const shipping = subtotal > 0 ? 500 : 0;
-  const tax = subtotal * 0.075;
-  const total = subtotal + shipping + tax;
+  const total = subtotal;
 
   if (items.length === 0) {
     return (
@@ -152,14 +150,6 @@ export default function CartPage() {
               <div className="flex items-center justify-between">
                 <span className="text-grey">Subtotal</span>
                 <span className="font-semibold text-primary">{formatPrice(subtotal, currency)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-grey">Shipping</span>
-                <span className="font-semibold text-primary">{formatPrice(shipping, currency)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-grey">Tax</span>
-                <span className="font-semibold text-primary">{formatPrice(tax, currency)}</span>
               </div>
               <div className="border-t border-accent-2 pt-3 mt-3">
                 <div className="flex items-center justify-between">

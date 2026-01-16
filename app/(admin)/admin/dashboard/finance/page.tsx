@@ -33,7 +33,7 @@ import {
 } from "@/types/admin.types";
 // import { mockSettlements } from "@/services/mock.service";
 import { dashboardService } from "@/services/dashboard.service";
-import { formatCurrency, formatDateTime, formatDate } from "@/lib/utils";
+import { formatCompactCurrency, formatDateTime, formatDate } from "@/lib/utils";
 import { TbMoneybag } from "react-icons/tb";
 import { LuCalendarRange } from "react-icons/lu";
 import { BsCalendar3 } from "react-icons/bs";
@@ -384,7 +384,7 @@ export default function FinancePage() {
             <StatsCard
               icon={TbMoneybag}
               title="Today's Revenue"
-              value={formatCurrency(todayRevenue)}
+              value={(todayRevenue)}
               change={12.5}
               iconBgColor="bg-white"
               iconColor="text-[#626262]"
@@ -392,7 +392,7 @@ export default function FinancePage() {
             <StatsCard
               icon={LuCalendarRange}
               title="This Week"
-              value={formatCurrency(weekRevenue)}
+              value={formatCompactCurrency(weekRevenue)}
               change={8.3}
               iconBgColor="bg-white"
               iconColor="text-[#626262]"
@@ -400,7 +400,7 @@ export default function FinancePage() {
             <StatsCard2
               icon={BsCalendar3}
               title="This Month"
-              value={formatCurrency(monthRevenue)}
+              value={formatCompactCurrency(monthRevenue)}
               change={15.7}
               iconBgColor="bg-white"
               iconColor="text-[#626262]"
@@ -470,7 +470,7 @@ export default function FinancePage() {
                 <div className="flex items-center justify-between">
                   <p className="text-grey mb-1">Amount</p>
                   <p className="text-admin-primary font-medium">
-                    {formatCurrency(selectedTransaction.amount)}
+                    {formatCompactCurrency(selectedTransaction.amount)}
                   </p>
                 </div>
                 <div className="flex items-center justify-between">
@@ -685,7 +685,7 @@ export default function FinancePage() {
                               {transaction.userName}
                             </td>
                             <td className="px-6 py-4 text-admin-primary">
-                              {formatCurrency(transaction.amount)}
+                              {formatCompactCurrency(transaction.amount)}
                             </td>
                             <td className="px-6 py-4 text-admin-primary capitalize">
                               {transaction.method}
@@ -816,19 +816,19 @@ export default function FinancePage() {
                         <div>
                           <p className="text-sm text-grey mb-1">Gross Amount</p>
                           <p className="text-lg font-semibold text-admin-primary">
-                            {formatCurrency(settlement.grossAmount)}
+                            {formatCompactCurrency(settlement.grossAmount)}
                           </p>
                         </div>
                         <div>
                           <p className="text-sm text-grey mb-1">Gateway Fee</p>
                           <p className="text-lg font-semibold text-red-600">
-                            -{formatCurrency(settlement.gatewayFee)}
+                            -{formatCompactCurrency(settlement.gatewayFee)}
                           </p>
                         </div>
                         <div>
                           <p className="text-sm text-grey mb-1">Net Payout</p>
                           <p className="text-lg font-semibold text-green-600">
-                            {formatCurrency(settlement.netPayout)}
+                            {formatCompactCurrency(settlement.netPayout)}
                           </p>
                         </div>
                         <div>
@@ -967,7 +967,7 @@ export default function FinancePage() {
                     <StatsCard
                       icon={TbMoneybag}
                       title="Total Revenue"
-                      value={formatCurrency(totalRevenue)}
+                      value={formatCompactCurrency(totalRevenue)}
                       change={12.5}
                       iconBgColor="bg-white"
                       iconColor="text-[#626262]"
@@ -975,7 +975,7 @@ export default function FinancePage() {
                     <StatsCard2
                       icon={TrendingUp}
                       title="Tax Collected"
-                      value={formatCurrency(taxCollected)}
+                      value={formatCompactCurrency(taxCollected)}
                       change={8.3}
                       iconBgColor="bg-white"
                       iconColor="text-[#626262]"
@@ -983,7 +983,7 @@ export default function FinancePage() {
                     <StatsCard
                       icon={DollarSign}
                       title="Net After Fees"
-                      value={formatCurrency(netAfterFees)}
+                      value={formatCompactCurrency(netAfterFees)}
                       change={15.7}
                       iconBgColor="bg-white"
                       iconColor="text-[#626262]"
@@ -1020,7 +1020,7 @@ export default function FinancePage() {
               <div className="flex items-center justify-between">
                 <p className="text-grey mb-1">Amount</p>
                 <p className="text-admin-primary font-medium">
-                  {formatCurrency(selectedTransaction.amount)}
+                  {formatCompactCurrency(selectedTransaction.amount)}
                 </p>
               </div>
             </div>
