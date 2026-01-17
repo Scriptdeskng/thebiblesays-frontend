@@ -30,10 +30,10 @@ const stickers = Array.from({ length: 13 }, (_, i) => ({
 }));
 
 interface UploadedImage {
-  id: string;
-  url: string;
-  name: string;
-  base64: string;
+    id: string;
+    url: string;
+    name: string;
+    base64: string;
 }
 
 export default function PreviewPage({ params }: { params: Promise<{ type: MerchType }> }) {
@@ -58,7 +58,8 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
     const [submitError, setSubmitError] = useState<string>('');
 
     useEffect(() => {
-        const stored = localStorage.getItem('byom-customization');
+        const storageKey = `byom-customization-${resolvedParams.type}`;
+        const stored = localStorage.getItem(storageKey);
         if (stored) {
             try {
                 const parsedData = JSON.parse(stored);
@@ -82,7 +83,7 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
         } else {
             router.push('/byom');
         }
-    }, [router]);
+    }, [router, resolvedParams.type]);
 
     if (!customization) {
         return (
@@ -164,7 +165,8 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
                 uploadedStickers: uploadedImages,
                 requiresApproval: true
             };
-            localStorage.setItem('byom-customization', JSON.stringify(customizationData));
+            const storageKey = `byom-customization-${resolvedParams.type}`;
+            localStorage.setItem(storageKey, JSON.stringify(customizationData));
             setDraggedItem(null);
         }
     };
@@ -184,7 +186,8 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
                 uploadedStickers: uploadedImages,
                 requiresApproval: true
             };
-            localStorage.setItem('byom-customization', JSON.stringify(customizationData));
+            const storageKey = `byom-customization-${resolvedParams.type}`;
+            localStorage.setItem(storageKey, JSON.stringify(customizationData));
         }
     };
 
@@ -259,7 +262,8 @@ export default function PreviewPage({ params }: { params: Promise<{ type: MerchT
 
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            localStorage.removeItem('byom-customization');
+            const storageKey = `byom-customization-${resolvedParams.type}`;
+            localStorage.removeItem(storageKey);
             router.push('/profile?tab=drafts');
         } catch (error: any) {
             const errorData = error?.response?.data;

@@ -22,7 +22,7 @@ const faqs: FAQ[] = [
         id: 2,
         category: 'Orders & Shipping',
         question: 'Do you ship internationally?',
-        answer: 'Currently, we only ship within Nigeria. However, we are working on expanding our shipping to other African countries. Subscribe to our newsletter to be notified when international shipping becomes available.'
+        answer: 'Yes, we deliver internationally. We ship to countries outside Nigeria, and delivery timelines and fees may vary based on your location. Shipping costs will be calculated at checkout. If you need help confirming delivery to your country, feel free to contact our support team.'
     },
     {
         id: 3,

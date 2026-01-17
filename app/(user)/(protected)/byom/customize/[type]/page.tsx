@@ -137,14 +137,15 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem('byom-customization');
+    const storageKey = `byom-customization-${resolvedParams.type}`;
+    const stored = localStorage.getItem(storageKey);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         if (parsed.uploadedStickers && Array.isArray(parsed.uploadedStickers)) {
           setUploadedImages(parsed.uploadedStickers);
           setCustomization(parsed);
-          
+
           const allStickers = [
             ...(parsed.front?.stickers || []),
             ...(parsed.back?.stickers || []),
@@ -154,10 +155,10 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
           setHasUsedStickers(hasDefault);
         }
       } catch (error) {
-        localStorage.removeItem('byom-customization');
+        localStorage.removeItem(storageKey);
       }
     }
-  }, []);
+  }, [resolvedParams.type]);
 
   const addToHistory = (newState: BYOMCustomization & { uploadedStickers?: UploadedImage[] }) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -193,7 +194,8 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     setTextInput('');
     setUploadedImages([]);
     setHasUsedStickers(false);
-    localStorage.removeItem('byom-customization');
+    const storageKey = `byom-customization-${resolvedParams.type}`;
+    localStorage.removeItem(storageKey);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -266,7 +268,7 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
 
     reader.onload = (event) => {
       const base64Data = event.target?.result as string;
-      
+
       const base64Size = (base64Data.length * 0.75) / (1024 * 1024);
       if (base64Size > MAX_IMAGE_SIZE_MB * 1.5) {
         setUploadError(`File too large after processing. Please use an image under ${MAX_IMAGE_SIZE_MB}MB.`);
@@ -301,7 +303,7 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
         scale: 1,
       };
 
-      const newState = { 
+      const newState = {
         ...customization,
         uploadedStickers: updatedImages
       };
@@ -344,7 +346,7 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     const updatedImages = uploadedImages.filter(img => img.id !== imageId);
     setUploadedImages(updatedImages);
 
-    const newState = { 
+    const newState = {
       ...customization,
       uploadedStickers: updatedImages
     };
@@ -392,7 +394,7 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     newState[placement]!.stickers = newState[placement]!.stickers.filter(s => s.id !== stickerId);
     addToHistory(newState);
     if (selectedSticker === stickerId) setSelectedSticker(null);
-    
+
     const allStickers = [
       ...(newState.front?.stickers || []),
       ...(newState.back?.stickers || []),
@@ -599,7 +601,8 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
     };
 
     try {
-      localStorage.setItem('byom-customization', JSON.stringify(customizationData));
+      const storageKey = `byom-customization-${resolvedParams.type}`;
+      localStorage.setItem(storageKey, JSON.stringify(customizationData));
       router.push(`/byom/preview/${resolvedParams.type}`);
     } catch (error: any) {
       if (error.name === 'QuotaExceededError') {
@@ -1086,7 +1089,7 @@ export default function CustomizePage({ params }: { params: Promise<{ type: Merc
                 </div>
               </div>
             </div>
-            
+
             <div className="">
               <p className="text-xs text-grey mb-2">Styling</p>
               <div className="grid grid-cols-4 gap-1 mb-2">

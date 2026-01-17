@@ -34,6 +34,11 @@ Api.interceptors.request.use(
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+    
     return config;
   },
   (error) => Promise.reject(error)
@@ -114,7 +119,6 @@ const makeRequest = async ({
 }: ApiRequestParams): Promise<any> => {
   const headers: any = {};
 
-  // Only set Content-Type if it's not FormData (browser will set it automatically for FormData with boundary)
   if (!(data instanceof FormData)) {
     headers["Content-Type"] = content_type;
   }

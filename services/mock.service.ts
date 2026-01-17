@@ -119,6 +119,8 @@ export const mockOrders: Order[] = [
         category: 'Shirts',
         quantity: 2,
         price: 5500,
+        color: '',
+        size: ''
       },
     ],
     totalAmount: 11000,
@@ -141,6 +143,8 @@ export const mockOrders: Order[] = [
         category: 'Hoodie',
         quantity: 1,
         price: 12000,
+        color: '',
+        size: ''
       },
     ],
     totalAmount: 12000,
@@ -163,6 +167,8 @@ export const mockOrders: Order[] = [
         category: 'Hoodie',
         quantity: 1,
         price: 12000,
+        color: '',
+        size: ''
       },
     ],
     totalAmount: 12000,
