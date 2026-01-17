@@ -71,11 +71,6 @@ class BYOMService {
     });
   }
 
-  /**
-   * Create a transparent placeholder image for designs without custom uploads
-   * This is needed because the backend requires an uploaded_image field
-   * Must be at least 500x500 pixels to pass backend validation
-   */
   private async createPlaceholderImage(): Promise<File> {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
@@ -84,7 +79,8 @@ class BYOMService {
       const ctx = canvas.getContext('2d');
       
       if (ctx) {
-        ctx.clearRect(0, 0, 500, 500);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, 500, 500);
       }
       
       canvas.toBlob((blob) => {
@@ -92,8 +88,15 @@ class BYOMService {
           const file = new File([blob], 'placeholder.png', { type: 'image/png' });
           resolve(file);
         } else {
-          const emptyBlob = new Blob([], { type: 'image/png' });
-          const file = new File([emptyBlob], 'placeholder.png', { type: 'image/png' });
+          const base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+          const byteString = atob(base64);
+          const arrayBuffer = new ArrayBuffer(byteString.length);
+          const uint8Array = new Uint8Array(arrayBuffer);
+          for (let i = 0; i < byteString.length; i++) {
+            uint8Array[i] = byteString.charCodeAt(i);
+          }
+          const fallbackBlob = new Blob([uint8Array], { type: 'image/png' });
+          const file = new File([fallbackBlob], 'placeholder.png', { type: 'image/png' });
           resolve(file);
         }
       }, 'image/png');
@@ -107,14 +110,10 @@ class BYOMService {
     currencyParam: string = ''
   ): Promise<CustomMerchDesign> {
     let filesToUpload = uploadedFiles;
-    let usingPlaceholder = false;
     
     if (!filesToUpload || filesToUpload.length === 0) {
       const placeholder = await this.createPlaceholderImage();
       filesToUpload = [placeholder];
-      usingPlaceholder = true;
-    } else {
-      usingPlaceholder = false;
     }
 
     const hasFiles = filesToUpload && filesToUpload.length > 0;
@@ -143,8 +142,10 @@ class BYOMService {
         formData.append('is_active', payload.is_active.toString());
       }
 
-      if (filesToUpload[0]) {
+      if (filesToUpload[0] && filesToUpload[0] instanceof File) {
         formData.append('uploaded_image', filesToUpload[0], filesToUpload[0].name);
+      } else {
+        throw new Error('Invalid file object. Please try uploading your image again.');
       }
 
       try {
@@ -154,12 +155,9 @@ class BYOMService {
           data: formData,
           requireToken: true,
           token,
-          content_type: 'multipart/form-data',
         });
         return result;
       } catch (error: any) {
-        console.error('Error creating design with file:', error);
-        
         if (error?.response?.data?.error?.includes('already submitted for approval') ||
             error?.message?.includes('already submitted for approval')) {
           throw new Error('This design has already been submitted for approval. Please check your Drafts section.');
@@ -179,8 +177,6 @@ class BYOMService {
       });
       return result;
     } catch (error: any) {
-      console.error('Error creating design:', error);
-      
       if (error?.response?.data?.error?.includes('already submitted for approval') ||
           error?.message?.includes('already submitted for approval')) {
         throw new Error('This design has already been submitted for approval. Please check your Drafts section.');
@@ -230,8 +226,6 @@ class BYOMService {
       
       return result;
     } catch (error: any) {
-      console.error(' Error submitting for approval:', error);
-      
       if (error?.response?.data?.error) {
         throw new Error(error.response.data.error);
       }
@@ -255,7 +249,6 @@ class BYOMService {
       data: formData,
       requireToken: true,
       token,
-      content_type: 'multipart/form-data',
     });
   }
 
@@ -297,6 +290,7 @@ class BYOMService {
         error: `${fileExtension.toUpperCase()} format is not supported. Please use JPG or PNG only.`
       };
     }
+    
     const unsupportedMimeTypes = [
       'image/avif', 'image/webp', 'image/svg+xml', 
       'image/gif', 'image/bmp', 'image/tiff', 
@@ -343,7 +337,6 @@ class BYOMService {
 
     return { valid: true };
   }
-
 
   async validateImageDimensions(file: File): Promise<{ valid: boolean; error?: string; width?: number; height?: number }> {
     return new Promise((resolve) => {
@@ -449,17 +442,30 @@ class BYOMService {
   }
 
   base64ToFile(dataUrl: string, filename: string): File {
-    const arr = dataUrl.split(',');
-    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
+    try {
+      const arr = dataUrl.split(',');
+      const mimeMatch = arr[0].match(/:(.*?);/);
+      const mime = mimeMatch?.[1] || 'image/png';
+      
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
 
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+
+      const blob = new Blob([u8arr], { type: mime });
+      const file = new File([blob], filename, { type: mime });
+      
+      if (!file || file.size === 0) {
+        throw new Error('Created file is empty or invalid');
+      }
+      
+      return file;
+    } catch (error) {
+      throw new Error('Failed to convert image to file format. Please try uploading your image again.');
     }
-
-    return new File([u8arr], filename, { type: mime });
   }
 }
 
