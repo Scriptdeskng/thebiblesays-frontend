@@ -92,6 +92,8 @@ export interface OrderItem {
   productId: string;
   productName: string;
   category: ProductCategory;
+  color: string;
+  size: string;
   quantity: number;
   price: number;
 }
@@ -445,6 +447,14 @@ export interface ApiOrder {
   items_count?: number;
 }
 
+export interface ApiUserOrder {
+  id: number;
+  total: number;
+  status: string;
+  created_at: string;
+  items_count: number;
+}
+
 export interface ApiUser {
   id: string;
   email: string;
@@ -453,10 +463,12 @@ export interface ApiUser {
   phone?: string;
   is_active: boolean;
   date_joined: string;
-  last_login: string;
+  last_login: string | null;
   total_orders: string;
   total_spent: string;
   last_order_date?: string;
+  orders?: ApiUserOrder[];
+  custom_designs?: any[];
 }
 
 export interface ApiTransaction {

@@ -45,7 +45,9 @@ Api.interceptors.response.use(
     const originalRequest = error.config;
     const authStore = useAuthStore.getState();
 
-    if (error?.response?.status === 401 && !originalRequest._retry) {
+    console.log(originalRequest)
+
+    if (error?.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes("auth/login")) {
       if (originalRequest.url.includes("auth/token/refresh/")) {
         authStore.logout();
         return Promise.reject(error);

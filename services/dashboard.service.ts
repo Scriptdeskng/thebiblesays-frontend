@@ -340,6 +340,50 @@ class DashboardService {
     }
   }
 
+  async getUserById(id: string | number): Promise<ApiUser> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/users/${id}/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      throw error;
+    }
+  }
+
+  async suspendUser(id: string | number): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/users/${id}/suspend_user/`,
+        method: "POST",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error suspending user:", error);
+      throw error;
+    }
+  }
+
   async getCustomMerch(params?: {
     search?: string;
     ordering?: string;
