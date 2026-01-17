@@ -362,7 +362,7 @@ class DashboardService {
     }
   }
 
-  async suspendUser(id: string | number): Promise<any> {
+  async suspendUser(id: string | number, email: string, is_active: boolean): Promise<any> {
     try {
       const { accessToken } = useAuthStore.getState();
 
@@ -375,6 +375,10 @@ class DashboardService {
         method: "POST",
         requireToken: true,
         token: accessToken,
+        data: {
+          email,
+          is_active,
+        },
       });
 
       return response;

@@ -134,7 +134,7 @@ export default function UsersPage() {
 
     setSuspending(true);
     try {
-      await dashboardService.suspendUser(selectedUser.id);
+      await dashboardService.suspendUser(selectedUser.id, selectedUser.email, false);
       
       // Update users list
       setUsers(
