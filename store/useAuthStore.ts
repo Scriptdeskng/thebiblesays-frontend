@@ -84,13 +84,12 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem("authToken", tokens.access);
           localStorage.setItem("refreshToken", tokens.refresh);
         } catch (error: any) {
-          if (!error?.message?.includes("Access denied")) {
             toast.error(
-              error?.response?.data?.detail ||
+              error?.response?.data?.error ||
                 error?.response?.data?.message ||
                 "Login failed"
             );
-          }
+
           throw error;
         }
       },

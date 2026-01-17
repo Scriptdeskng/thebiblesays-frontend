@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import {
   Button,
-  // Modal,
+  Modal,
   Badge,
   LoadingSpinner,
   // Input,
@@ -28,9 +28,10 @@ import {
   User,
   // SupportTicket,
   Order,
+  OrderStatus,
   ApiUser,
 } from "@/types/admin.types";
-import { mockOrders, apiService } from "@/services/mock.service";
+import { apiService } from "@/services/mock.service";
 import { dashboardService } from "@/services/dashboard.service";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -44,13 +45,29 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedApiUser, setSelectedApiUser] = useState<ApiUser | null>(null);
   const [showUserDetails, setShowUserDetails] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(false);
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [suspending, setSuspending] = useState(false);
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const transformApiUserToUser = (apiUser: ApiUser): User => {
+    // Calculate orders count and total spent from orders array if available
+    let ordersCount = parseInt(apiUser.total_orders) || 0;
+    let amountSpent = parseFloat(apiUser.total_spent) || 0;
+
+    if (apiUser.orders && apiUser.orders.length > 0) {
+      ordersCount = apiUser.orders.length;
+      amountSpent = apiUser.orders.reduce((sum, order) => {
+        const orderTotal = typeof order.total === 'number' ? order.total : parseFloat(order.total) || 0;
+        return sum + orderTotal;
+      }, 0);
+    }
+
     return {
       id: apiUser.id,
       name:
@@ -59,8 +76,8 @@ export default function UsersPage() {
       image: undefined, // Not provided by API
       role: "staff", // Default role, not provided by API
       status: apiUser.is_active ? "active" : "inactive",
-      ordersCount: parseInt(apiUser.total_orders) || 0,
-      amountSpent: parseFloat(apiUser.total_spent) || 0,
+      ordersCount,
+      amountSpent,
       lastActive: apiUser.last_login || apiUser.date_joined,
       createdAt: apiUser.date_joined,
     };
@@ -83,30 +100,104 @@ export default function UsersPage() {
     loadData();
   }, [loadData]);
 
-  const handleViewUser = (user: User) => {
-    setSelectedUser(user);
+  const handleViewUser = async (user: User) => {
+    setLoadingUser(true);
     setShowUserDetails(true);
+    try {
+      const apiUser = await dashboardService.getUserById(user.id);
+      const transformedUser = transformApiUserToUser(apiUser);
+      setSelectedUser(transformedUser);
+      setSelectedApiUser(apiUser); // Store full API user data with orders
+    } catch (error) {
+      console.error("Error loading user details:", error);
+      toast.error("Failed to load user details");
+      setShowUserDetails(false);
+    } finally {
+      setLoadingUser(false);
+    }
   };
 
   const handleBackToList = () => {
     setShowUserDetails(false);
     setSelectedUser(null);
+    setSelectedApiUser(null);
   };
 
-  const handleStatusChange = async (userId: string, newStatus: string) => {
+  const handleSuspendUser = () => {
+    if (selectedUser) {
+      setShowSuspendModal(true);
+    }
+  };
+
+  const handleConfirmSuspend = async () => {
+    if (!selectedUser) return;
+
+    setSuspending(true);
     try {
-      await apiService.updateUserStatus(userId, newStatus);
+      await dashboardService.suspendUser(selectedUser.id, selectedUser.email, false);
+      
+      // Update users list
       setUsers(
         users.map((u) =>
-          u.id === userId ? { ...u, status: newStatus as any } : u
+          u.id === selectedUser.id ? { ...u, status: "inactive" as any } : u
         )
       );
-      if (selectedUser?.id === userId) {
-        setSelectedUser({ ...selectedUser, status: newStatus as any });
-        handleBackToList();
+
+      // Reload user details from API to get updated data
+      try {
+        const apiUser = await dashboardService.getUserById(selectedUser.id);
+        const transformedUser = transformApiUserToUser(apiUser);
+        setSelectedUser(transformedUser);
+        setSelectedApiUser(apiUser);
+      } catch (error) {
+        console.error("Error reloading user details:", error);
+        // Fallback to local update if API call fails
+        setSelectedUser({ ...selectedUser, status: "inactive" as any });
       }
+
+      toast.success("User suspended successfully");
+      setShowSuspendModal(false);
+    } catch (error: any) {
+      console.error("Error suspending user:", error);
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to suspend user";
+      toast.error(errorMessage);
+    } finally {
+      setSuspending(false);
+    }
+  };
+
+  const handleActivateUser = async () => {
+    if (!selectedUser) return;
+
+    try {
+      // Note: If there's an activate endpoint, use it here
+      // For now, we'll use the mock service as a fallback
+      await apiService.updateUserStatus(selectedUser.id, "active");
+      
+      setUsers(
+        users.map((u) =>
+          u.id === selectedUser.id ? { ...u, status: "active" as any } : u
+        )
+      );
+
+      // Reload user details from API to get updated data
+      try {
+        const apiUser = await dashboardService.getUserById(selectedUser.id);
+        const transformedUser = transformApiUserToUser(apiUser);
+        setSelectedUser(transformedUser);
+        setSelectedApiUser(apiUser);
+      } catch (error) {
+        console.error("Error reloading user details:", error);
+        setSelectedUser({ ...selectedUser, status: "active" as any });
+      }
+
+      toast.success("User activated successfully");
     } catch (error) {
-      console.error("Error updating user status:", error);
+      console.error("Error activating user:", error);
+      toast.error("Failed to activate user");
     }
   };
 
@@ -167,8 +258,31 @@ export default function UsersPage() {
     setCurrentPage(1);
   }, [statusFilter, searchQuery]);
 
-  const getUserOrders = (userId: string): Order[] => {
-    return mockOrders.filter((o) => o.userId === userId).slice(0, 5);
+  const transformApiOrderToOrder = (apiOrder: any): Order => {
+    return {
+      id: apiOrder.id.toString(),
+      userId: selectedUser?.id || "",
+      userName: selectedUser?.name || "",
+      userEmail: selectedUser?.email || "",
+      items: [],
+      itemsCount: apiOrder.items_count || 0,
+      totalAmount: typeof apiOrder.total === 'number' ? apiOrder.total : parseFloat(apiOrder.total) || 0,
+      status: apiOrder.status as OrderStatus,
+      paymentMethod: "stripe",
+      paymentStatus: "pending",
+      deliveryAddress: "",
+      orderDate: apiOrder.created_at,
+      createdAt: apiOrder.created_at,
+    };
+  };
+
+  const getUserOrders = (): Order[] => {
+    if (selectedApiUser?.orders && selectedApiUser.orders.length > 0) {
+      return selectedApiUser.orders
+        .slice(0, 5)
+        .map(transformApiOrderToOrder);
+    }
+    return [];
   };
 
   const getInitials = (name: string) => {
@@ -205,7 +319,7 @@ export default function UsersPage() {
         </p>
       </div>
 
-      {showUserDetails && selectedUser ? (
+      {showUserDetails ? (
         <div className="bg-admin-primary/4 rounded-xl p-6">
           <div className="flex items-center gap-5 mb-6">
             <button
@@ -217,7 +331,12 @@ export default function UsersPage() {
             <h2 className=" font-medium text-admin-primary">User Details</h2>
           </div>
 
-          <div className="space-y-6">
+          {loadingUser ? (
+            <div className="flex items-center justify-center min-h-[40vh]">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : selectedUser ? (
+            <div className="space-y-6">
             <div className="flex items-center justify-between p-4 bg-accent-1 rounded-lg">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-admin-primary rounded-full flex items-center justify-center">
@@ -252,7 +371,9 @@ export default function UsersPage() {
                   <span className="ml-1 text-sm text-grey">Order</span>
                 </div>
                 <p className="text-2xl font-bold text-admin-primary">
-                  {selectedUser.ordersCount}
+                  {selectedApiUser?.orders 
+                    ? selectedApiUser.orders.length 
+                    : selectedUser.ordersCount}
                 </p>
               </div>
               <div className="p-4 rounded-lg text-center">
@@ -260,7 +381,16 @@ export default function UsersPage() {
                   <span className="ml-2 text-sm text-grey">Total Spent</span>
                 </div>
                 <p className="text-2xl font-bold text-admin-primary">
-                  {formatCurrency(selectedUser.amountSpent)}
+                  {formatCurrency(
+                    selectedApiUser?.orders && selectedApiUser.orders.length > 0
+                      ? selectedApiUser.orders.reduce((sum, order) => {
+                          const orderTotal = typeof order.total === 'number' 
+                            ? order.total 
+                            : parseFloat(order.total) || 0;
+                          return sum + orderTotal;
+                        }, 0)
+                      : selectedUser.amountSpent
+                  )}
                 </p>
               </div>
               <div className="p-4 rounded-lg text-right">
@@ -277,14 +407,15 @@ export default function UsersPage() {
                 Recent Order History
               </h3>
               <div className="space-y-3 bg-[#DADADA]/40">
-                {getUserOrders(selectedUser.id).map((order) => (
+                {getUserOrders().length > 0 ? (
+                  getUserOrders().map((order) => (
                   <div
                     key={order.id}
                     className="flex items-center justify-between p-4 rounded-lg"
                   >
                     <div>
                       <p className="font-medium text-admin-primary mb-2">
-                        {order.id}
+                        #Order {order.id}
                       </p>
                       <p className="text-sm text-grey">
                         {formatDate(order.orderDate)}
@@ -313,7 +444,12 @@ export default function UsersPage() {
                       </Badge>
                     </div>
                   </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-grey">
+                    <p>No orders found</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -324,37 +460,27 @@ export default function UsersPage() {
               <div className="flex gap-4">
                 {selectedUser.status === "active" ? (
                   <button
-                    onClick={() =>
-                      handleStatusChange(selectedUser.id, "inactive")
-                    }
-                    className="flex items-center space-x-2 px-6 py-2 border-2 border-[#CA0F04] text-[#CA0F04] rounded-lg bg-[#CA0F04]/7 transition-colors"
+                    onClick={handleSuspendUser}
+                    className="flex items-center space-x-2 px-6 py-2 border-2 border-[#CA0F04] text-[#CA0F04] rounded-lg bg-[#CA0F04]/7 transition-colors hover:bg-[#CA0F04]/10"
                   >
                     <span>Suspend</span>
                   </button>
                 ) : (
                   <button
-                    onClick={() =>
-                      handleStatusChange(selectedUser.id, "active")
-                    }
-                    className="flex items-center space-x-2 px-6 py-2 border-2 border-admin-primary/35 text-admin-primary rounded-lg transition-colors"
+                    onClick={handleActivateUser}
+                    className="flex items-center space-x-2 px-6 py-2 border-2 border-admin-primary/35 text-admin-primary rounded-lg transition-colors hover:bg-admin-primary/5"
                   >
                     <span>Activate</span>
                   </button>
                 )}
               </div>
             </div>
-
-            <div className="flex justify-center space-x-5 pt-5">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleBackToList}
-              >
-                Cancel
-              </Button>
-              <Button type="button">Edit User</Button>
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8 text-admin-primary">
+              <p>User not found</p>
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -566,6 +692,68 @@ export default function UsersPage() {
           )}
         </>
       )}
+
+      <Modal
+        isOpen={showSuspendModal}
+        onClose={() => !suspending && setShowSuspendModal(false)}
+        title="Suspend User"
+        size="md"
+      >
+        <div className="py-6">
+          <div className="mb-6">
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-yellow-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-admin-primary mb-2 text-center">
+              Are you sure you want to suspend this user?
+            </h3>
+            <p className="text-grey text-center">
+              {selectedUser && (
+                <>
+                  This will suspend <strong>{selectedUser.name}</strong> (
+                  {selectedUser.email}). The user will not be able to access
+                  their account until reactivated.
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex justify-center space-x-4">
+            <Button
+              variant="secondary"
+              onClick={() => setShowSuspendModal(false)}
+              disabled={suspending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmSuspend}
+              disabled={suspending}
+              className="bg-[#CA0F04] hover:bg-[#CA0F04]/90 text-white"
+            >
+              {suspending ? (
+                <span className="flex items-center gap-2">
+                  <LoadingSpinner size="sm" />
+                  Suspending...
+                </span>
+              ) : (
+                "Suspend User"
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

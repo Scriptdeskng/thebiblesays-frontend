@@ -40,7 +40,8 @@ export default function OrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const inferCategory = (productName: string): ProductCategory => {
+  const inferCategory = (productName: string | undefined | null): ProductCategory => {
+    if (!productName) return "Shirts";
     const nameLower = productName.toLowerCase();
     if (nameLower.includes("shirt") || nameLower.includes("tee"))
       return "Shirts";
@@ -123,7 +124,9 @@ export default function OrdersPage() {
       items:
         apiOrder.items?.map((item) => ({
           productId: item.id.toString(),
-          productName: item.product_name,
+          productName: item.product_name || "-",
+          color: item.color || "-",
+          size: item.size || "-",
           category: inferCategory(item.product_name),
           quantity: item.quantity,
           price: parseFloat(item.price) || 0,
@@ -422,7 +425,10 @@ export default function OrdersPage() {
                           Product
                         </th>
                         <th className="text-left text-xs font-semibold text-grey px-4 py-3">
-                          Category
+                          Color
+                        </th>
+                        <th className="text-left text-xs font-semibold text-grey px-4 py-3">
+                          Size
                         </th>
                         <th className="text-left text-xs font-semibold text-grey px-4 py-3">
                           Quantity
@@ -437,6 +443,12 @@ export default function OrdersPage() {
                         <tr key={index} className="border-t border-accent-2">
                           <td className="px-4 py-3 text-sm text-admin-primary">
                             {item.productName}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-admin-primary">
+                            {item.color}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-admin-primary">
+                            {item.size}
                           </td>
                           <td className="px-4 py-3">
                             <Badge variant="info">{item.category}</Badge>
