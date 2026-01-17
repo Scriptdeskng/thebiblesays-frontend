@@ -231,12 +231,20 @@ export default function CustomMerchPage() {
     return `/byom/${type}-${color}.svg`;
   };
 
-  const getStickerUrl = (
+const getStickerUrl = (
     stickerId: string,
     uploadedStickers: any[] = []
   ): string => {
-    const sticker = uploadedStickers.find((s) => s.id === stickerId);
-    return sticker?.url || sticker?.base64 || "";
+    const uploadedSticker = uploadedStickers.find((s) => s.id === stickerId);
+    if (uploadedSticker) {
+      return uploadedSticker.url || uploadedSticker.base64 || "";
+    }
+
+    if (stickerId && stickerId.startsWith('sticker-')) {
+      return `/stickers/${stickerId}.png`;
+    }
+    
+    return "";
   };
 
   const getSideDataFromConfig = (side: "front" | "back" | "side") => {
