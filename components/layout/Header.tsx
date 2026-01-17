@@ -24,10 +24,10 @@ const Header = () => {
 
     return (
         <div className="">
-            <div className="text-white px-5 py-2 w-full bg-primary text-center flex flex-row justify-center text-sm sm:text-base items-center gap-5">
+            {/* <div className="text-white px-5 py-2 w-full bg-primary text-center flex flex-row justify-center text-sm sm:text-base items-center gap-5">
                 <span>Get 25% OFF on your first order.</span>
                 <span className="hidden sm:block"><Link href="/shop">Order Now</Link></span>
-            </div>
+            </div> */}
 
             <div className="hidden xl:flex flex-row py-5 px-10 justify-between items-center w-full max-w-[1536px] mx-auto">
                 <div className="flex flex-row items-center gap-20">
