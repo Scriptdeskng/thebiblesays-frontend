@@ -307,6 +307,36 @@ class AuthService {
     }
   }
 
+  async dashboardPasswordResetConfirm(
+    uid: string,
+    token: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<void> {
+    try {
+      await axios.post(
+        `${API_URL}/dashboard/auth/password-reset-confirm/`,
+        {
+          uid,
+          token,
+          new_password: newPassword,
+          confirm_password: confirmPassword,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } catch (error: any) {
+      console.error("Dashboard password reset confirm error:", error);
+      if (error?.response?.data) {
+        console.error("API Error Response:", error.response.data);
+      }
+      throw error;
+    }
+  }
+
   async adminRefreshToken(
     refreshToken: string
   ): Promise<{ access: string; refresh: string }> {
