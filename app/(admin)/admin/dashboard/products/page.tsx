@@ -92,6 +92,9 @@ export default function ProductsPage() {
   const [deletingImageIndex, setDeletingImageIndex] = useState<number | null>(
     null
   );
+  const [originalStatus, setOriginalStatus] = useState<ProductStatus | null>(null);
+  const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
+  const [pendingUpdateData, setPendingUpdateData] = useState<any>(null);
 
   const itemsPerPage = 10;
 
@@ -237,6 +240,7 @@ export default function ProductsPage() {
             createdAt: productDetail.created_at || new Date().toISOString(),
           };
 
+          const productStatus = productDetail.is_active ? "Active" : "Inactive";
           setEditingProduct(productForEdit);
           setFormData({
             name: productDetail.name,
@@ -249,11 +253,13 @@ export default function ProductsPage() {
             images: productImages,
             imageFiles: [], // No file objects when editing existing product
             imageIds: productImageIds, // Store image IDs for existing images
-            status: productDetail.is_active ? "Active" : "Inactive",
+            status: productStatus,
             tags: [],
           });
           // Store original images to detect new ones when updating
           setOriginalImages(productImages);
+          // Store original status to detect changes
+          setOriginalStatus(productStatus);
         } catch (error) {
           console.error("Error fetching product details:", error);
           toast.error("Failed to load product details");
@@ -282,6 +288,8 @@ export default function ProductsPage() {
         });
         // Store original images to detect new ones when updating
         setOriginalImages(regularProduct.image ? [regularProduct.image] : []);
+        // Store original status to detect changes
+        setOriginalStatus(regularProduct.status);
       }
     } else {
       setEditingProduct(null);
@@ -299,6 +307,7 @@ export default function ProductsPage() {
         status: "Active",
         tags: [],
       });
+      setOriginalStatus(null);
     }
     setCustomTag("");
     setShowForm(true);
@@ -308,6 +317,40 @@ export default function ProductsPage() {
     setShowForm(false);
     setEditingProduct(null);
     setOriginalImages([]);
+    setOriginalStatus(null);
+    setShowStatusChangeModal(false);
+    setPendingUpdateData(null);
+  };
+
+  const performUpdate = async (apiProductData: any, productIdToUpdate: number) => {
+    await dashboardService.updateProduct(productIdToUpdate, apiProductData);
+
+    // Check if there are new images to upload
+    // New images are those in imageFiles (File objects) that weren't in originalImages
+    if (formData.imageFiles.length > 0) {
+      try {
+        await dashboardService.addProductImages(
+          productIdToUpdate,
+          formData.imageFiles
+        );
+        toast.success(
+          `Successfully added ${formData.imageFiles.length} new image(s)`
+        );
+      } catch (imageError: any) {
+        console.error("Error adding images:", imageError);
+        const imageErrorMessage =
+          imageError?.response?.data?.message ||
+          imageError?.response?.data?.error ||
+          imageError?.message ||
+          "Failed to upload new images";
+        toast.error(imageErrorMessage);
+        // Don't throw - product was updated successfully, just images failed
+      }
+    }
+
+    toast.success("Product updated successfully");
+    await loadProducts(false);
+    handleCloseForm();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -323,6 +366,7 @@ export default function ProductsPage() {
       );
       if (!selectedCategory) {
         toast.error("Please select a valid category");
+        setSubmitting(false);
         return;
       }
 
@@ -346,7 +390,16 @@ export default function ProductsPage() {
       };
 
       if (editingProduct) {
-        // Update existing product
+        // Check if status has changed
+        if (originalStatus && originalStatus !== formData.status) {
+          // Status changed - show confirmation modal
+          setPendingUpdateData({ apiProductData, productId: editingProduct.id });
+          setShowStatusChangeModal(true);
+          setSubmitting(false);
+          return;
+        }
+
+        // Update existing product (status hasn't changed)
         if (!editingProduct.id) {
           toast.error("Product ID is missing");
           setSubmitting(false);
@@ -358,32 +411,7 @@ export default function ProductsPage() {
           setSubmitting(false);
           return;
         }
-        await dashboardService.updateProduct(productIdToUpdate, apiProductData);
-
-        // Check if there are new images to upload
-        // New images are those in imageFiles (File objects) that weren't in originalImages
-        if (formData.imageFiles.length > 0) {
-          try {
-            await dashboardService.addProductImages(
-              productIdToUpdate,
-              formData.imageFiles
-            );
-            toast.success(
-              `Successfully added ${formData.imageFiles.length} new image(s)`
-            );
-          } catch (imageError: any) {
-            console.error("Error adding images:", imageError);
-            const imageErrorMessage =
-              imageError?.response?.data?.message ||
-              imageError?.response?.data?.error ||
-              imageError?.message ||
-              "Failed to upload new images";
-            toast.error(imageErrorMessage);
-            // Don't throw - product was updated successfully, just images failed
-          }
-        }
-
-        toast.success("Product updated successfully");
+        await performUpdate(apiProductData, productIdToUpdate);
       } else {
         // Create new product with images included in multipart form data
         await dashboardService.createProduct(apiProductData);
@@ -394,13 +422,9 @@ export default function ProductsPage() {
             imagesCount > 0 ? ` with ${imagesCount} image(s)` : ""
           }`
         );
-      }
-
-      // Reload products and close form
-      await loadProducts(false);
-      handleCloseForm();
-
-      if (!editingProduct) {
+        // Reload products and close form
+        await loadProducts(false);
+        handleCloseForm();
         setCreatedProductName(formData.name);
         setShowSuccessModal(true);
       }
@@ -410,6 +434,38 @@ export default function ProductsPage() {
         error?.response?.data?.message ||
         error?.message ||
         "Failed to save product";
+      toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (!pendingUpdateData || !editingProduct?.id) {
+      setShowStatusChangeModal(false);
+      setPendingUpdateData(null);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const productIdToUpdate = parseInt(editingProduct.id);
+      if (isNaN(productIdToUpdate)) {
+        toast.error("Invalid product ID");
+        setSubmitting(false);
+        setShowStatusChangeModal(false);
+        setPendingUpdateData(null);
+        return;
+      }
+      await performUpdate(pendingUpdateData.apiProductData, productIdToUpdate);
+      setShowStatusChangeModal(false);
+      setPendingUpdateData(null);
+    } catch (error: any) {
+      console.error("Error updating product:", error);
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update product";
       toast.error(errorMessage);
     } finally {
       setSubmitting(false);
@@ -1086,16 +1142,7 @@ export default function ProductsPage() {
                   >
                     Cancel
                   </Button>
-                  {editingProduct && (
-                    <Button
-                      type="button"
-                      variant="danger"
-                      onClick={() => setShowDeleteModal(true)}
-                      disabled={submitting || deleting}
-                    >
-                      Delete Product
-                    </Button>
-                  )}
+
                   <Button type="submit" disabled={submitting || deleting}>
                     {submitting ? (
                       <span className="flex items-center gap-2">
@@ -1363,6 +1410,71 @@ export default function ProductsPage() {
                 </span>
               ) : (
                 "Delete Product"
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showStatusChangeModal}
+        onClose={() => !submitting && setShowStatusChangeModal(false)}
+        title="Confirm Status Change"
+        size="md"
+      >
+        <div className="py-6">
+          <div className="mb-6">
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-yellow-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-admin-primary mb-2 text-center">
+              Are you sure you want to change the product status?
+            </h3>
+            <p className="text-grey text-center">
+              {editingProduct && originalStatus && (
+                <>
+                  The product status will be changed from{" "}
+                  <strong>{originalStatus}</strong> to{" "}
+                  <strong>{formData.status}</strong>. This will affect the
+                  product&apos;s visibility and availability.
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex justify-center space-x-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowStatusChangeModal(false);
+                setPendingUpdateData(null);
+              }}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmStatusChange}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <LoadingSpinner size="sm" />
+                  Updating...
+                </span>
+              ) : (
+                "Confirm Change"
               )}
             </Button>
           </div>
