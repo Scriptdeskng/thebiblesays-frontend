@@ -69,8 +69,8 @@ export function MobileSearchModal({ isOpen, onClose }: MobileSearchModalProps) {
     }
   };
 
-  const handleProductClick = (productId: string) => {
-    router.push(`/product/${productId}`);
+  const handleProductClick = (product: Product) => {
+    router.push(`/shop/${product.slug}`);
     onClose();
   };
 
@@ -122,7 +122,7 @@ export function MobileSearchModal({ isOpen, onClose }: MobileSearchModalProps) {
               {suggestions.map((product) => (
                 <button
                   key={product.id}
-                  onClick={() => handleProductClick(product.id)}
+                  onClick={() => handleProductClick(product)}
                   className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-accent-1 transition-colors text-left"
                 >
                   <div className="relative w-14 h-14 bg-accent-1 rounded shrink-0">

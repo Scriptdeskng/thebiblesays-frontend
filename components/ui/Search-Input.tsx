@@ -19,7 +19,7 @@ export function SearchInput({ className, icon, ...props }: SearchInputProps) {
   const [suggestions, setSuggestions] = useState<Product[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-    const { currency } = useCurrencyStore();
+  const { currency } = useCurrencyStore();
   
   const router = useRouter();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -71,7 +71,8 @@ export function SearchInput({ className, icon, ...props }: SearchInputProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
-        router.push(`/product/${suggestions[highlightedIndex].id}`);
+        const product = suggestions[highlightedIndex];
+        router.push(`/shop/${product.slug}`);
         setQuery('');
         setIsOpen(false);
       } else {
@@ -90,8 +91,8 @@ export function SearchInput({ className, icon, ...props }: SearchInputProps) {
     }
   };
 
-  const handleProductClick = (productId: string) => {
-    router.push(`/product/${productId}`);
+  const handleProductClick = (product: Product) => {
+    router.push(`/shop/${product.slug}`);
     setQuery('');
     setIsOpen(false);
   };
@@ -136,7 +137,7 @@ export function SearchInput({ className, icon, ...props }: SearchInputProps) {
             {suggestions.map((product, index) => (
               <button
                 key={product.id}
-                onClick={() => handleProductClick(product.id)}
+                onClick={() => handleProductClick(product)}
                 className={cn(
                   "w-full flex items-center gap-3 p-3 rounded-lg hover:bg-accent-1 transition-colors text-left",
                   highlightedIndex === index && "bg-accent-1"
