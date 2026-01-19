@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, PackageCheck } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { useCartStore } from '@/store/useCartStore';
@@ -20,7 +20,9 @@ export default function OrderConfirmationPage() {
 
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const orderNumber = searchParams.get('order');
+  const [error, setError] = useState<string | null>(null);
+
+  const orderReference = searchParams.get('reference');
 
   useEffect(() => {
     clearCart();
@@ -28,107 +30,130 @@ export default function OrderConfirmationPage() {
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
-      if (!orderNumber || !accessToken) {
+      if (!orderReference) {
         setIsLoading(false);
+        setError('No order reference provided');
         return;
       }
 
       try {
-        const orderData = await orderService.getOrderByNumber(accessToken, orderNumber);
+        const orderData = await orderService.getOrderByNumber(orderReference, accessToken || undefined);
         setOrder(orderData);
-      } catch (error) {
+        setError(null);
+      } catch (error: any) {
         console.error('Error fetching order details:', error);
+        setError(error?.message || 'Failed to load order details');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchOrderDetails();
-  }, [orderNumber, accessToken]);
+  }, [orderReference, accessToken]);
 
   if (isLoading) {
     return (
+      <div className="max-w-2xl min-h-[60vh] mx-auto px-4 py-32 text-center flex flex-col items-center justify-center">
+        <div className="relative">
+          <Loader2 className="w-16 h-16 text-primary animate-spin opacity-20" />
+          <BsBoxSeam className="w-8 h-8 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce" />
+        </div>
+        <h2 className="text-xl font-semibold mt-6 text-primary">Verifying your payment...</h2>
+        <p className="text-grey mt-2">We are fetching your order details from the server.</p>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
       <div className="max-w-2xl min-h-[50vh] mx-auto px-4 py-16 text-center">
-        <Loader2 className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
-        <p className="text-grey">Loading order details...</p>
+        <h1 className="text-2xl font-bold text-primary mb-4">
+          {error ? 'Unable to Load Order' : 'Order Not Found'}
+        </h1>
+        <p className="text-grey mb-8">
+          {error || `We couldn't find details for order #${orderReference}.`}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {accessToken && (
+            <Button asChild>
+              <Link href="/profile?tab=orders">Go to My Orders</Link>
+            </Button>
+          )}
+          <Button asChild variant={accessToken ? "outline" : "default"}>
+            <Link href="/shop">Continue Shopping</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto px-5 sm:px-10 lg:px-20 py-8 max-w-[1536px]">
-      <div >
-        <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
-          <BsBoxSeam className="w-12 h-12 text-primary" />
+    <div className="mx-auto px-5 sm:px-10 lg:px-20 py-8 max-w-[1536px] animate-in fade-in duration-700">
+      <div className="">
+        <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6">
+          <PackageCheck className="w-12 h-12 text-primary" />
         </div>
 
         <h1 className="text-2xl font-bold text-primary mb-3">
           Thank You! Your Order Has Been Confirmed
         </h1>
-        <p className="text-grey mb-6">
-          We’ve received your order and our team is already preparing it with care
+
+
+        <p className="text-grey mb-10">
+          Order Number: <span className="font-bold text-primary">#{order.order_number}</span>
         </p>
 
-        {order && (
-          <div className="text-left mb-8 space-y-4">
-            <div className="border-b border-accent-2 pb-4">
-              <h3 className="text-lg font-semibold text-primary mb-3">Order Summary</h3>
-              <div className="space-y-2">
-                <div className="flex gap-2 text-sm items-center">
-                  <p className="text-sm text-grey">Order Number</p>
-                  <p className="font-medium text-primary">{orderNumber || `ORD-${Date.now()}`}</p>
-                </div>
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <span className="text-grey">
-                      {item.product_name} ({item.color}, {item.size}) × {item.quantity}
-                    </span>
-                    <span className="text-primary font-medium">
-                      {formatPrice(parseFloat(item.total_price), currency)}
-                    </span>
+        <div className="grid grid-cols-1 gap-12">
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-primary border-b border-accent-2 pb-2">Order Summary</h3>
+            <div className="space-y-4">
+              {order.items.map((item) => (
+                <div key={item.id} className="flex justify-between items-start text-sm">
+                  <div className="max-w-[70%]">
+                    <p className="font-medium text-primary uppercase">{item.product_name}</p>
+                    <p className="text-grey text-xs">{item.color} | {item.size} | Qty: {item.quantity}</p>
                   </div>
-                ))}
+                  <span className="text-primary font-medium">
+                    {formatPrice(parseFloat(item.total_price), currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-accent-1/30 p-6 rounded-xl border border-accent-2 h-fit">
+              <h3 className="text-sm font-semibold text-grey uppercase tracking-wider mb-4">Shipping To</h3>
+              <div className="text-primary space-y-1">
+                <p className="font-bold">{order.shipping_address.first_name} {order.shipping_address.last_name}</p>
+                <p className="text-sm">{order.shipping_address.address_line1}</p>
+                <p className="text-sm">{order.shipping_address.city}, {order.shipping_address.state}</p>
+                <p className="text-sm">{order.shipping_address.country}</p>
+                <p className="text-sm pt-2 text-grey">{order.shipping_address.phone}</p>
               </div>
             </div>
 
-            <div className="border border-accent-2 rounded-lg p-4 max-w-sm">
-              <p className="text-sm text-grey mb-2">Shipping Address</p>
-              <p className="text-lg font-medium text-primary">{order.shipping_address}</p>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
+            <div className="pt-4 space-y-2 border-t border-accent-2">
+              <div className="flex justify-between text-sm">
                 <span className="text-grey">Subtotal</span>
                 <span className="text-primary">{formatPrice(parseFloat(order.subtotal), currency)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between text-sm">
                 <span className="text-grey">Shipping</span>
                 <span className="text-primary">{formatPrice(parseFloat(order.shipping_fee), currency)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-grey">Tax</span>
-                <span className="text-primary">{formatPrice(parseFloat(order.tax), currency)}</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-accent-2">
-                <span className="font-semibold text-primary">Total</span>
+              <div className="flex justify-between pt-2">
+                <span className="font-bold text-primary">Total Paid</span>
                 <span className="font-bold text-primary text-lg">
                   {formatPrice(parseFloat(order.total), currency)}
                 </span>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
-
-
-        <p className="text-sm text-grey mb-8">
-          You will receive an email confirmation shortly with your order details and tracking information.
-        </p>
-
-        <div className="space-y-3 md:flex items-center gap-10 justify-end">
+        <div className="mt-12 flex flex-col sm:flex-row gap-4 justify-end">
           {accessToken && (
-            <Button asChild size="lg" className="w-full">
-              <Link href="/profile?tab=orders">View Order Details</Link>
+            <Button asChild variant="outline" size="lg" className="w-full md:w-52">
+              <Link href="/profile?tab=orders">View Your Orders</Link>
             </Button>
           )}
           <Button asChild size="lg" className="w-full md:w-52">

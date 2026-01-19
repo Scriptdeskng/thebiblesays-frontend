@@ -1,5 +1,17 @@
 import makeRequest from '@/lib/api';
 
+export interface ShippingAddress {
+  first_name: string;
+  last_name: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  phone: string;
+}
+
 export interface OrderItem {
   id: number;
   product_variant: {
@@ -44,7 +56,7 @@ export interface Order {
   created_at: string;
   estimated_delivery: string;
   items: OrderItem[];
-  shipping_address: string;
+  shipping_address: ShippingAddress;
 }
 
 export interface OrderListResponse {
