@@ -25,6 +25,7 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
   const [selectedSize, setSelectedSize] = useState<Size>(product.sizes[0]);
   const [quantity, setQuantity] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { currency } = useCurrencyStore();
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
 
@@ -41,7 +42,7 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
     item.size === selectedSize
   );
 
-  const currentImage = product.images.find(img => img.color === selectedColor) || product.images[0];
+  const currentImage = product.images[currentImageIndex] || product.images[0];
 
   useEffect(() => {
     if (justAdded) {
@@ -69,14 +70,38 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
 
   return (
     <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-      <div className="relative aspect-square bg-accent-1 rounded-lg overflow-hidden">
-        <Image
-          src={currentImage.url}
-          alt={currentImage.alt}
-          fill
-          className="object-cover"
-          priority
-        />
+      <div>
+        <div className="relative aspect-square bg-accent-1 rounded-lg overflow-hidden mb-4">
+          <Image
+            src={currentImage.url}
+            alt={currentImage.alt}
+            fill
+            className="object-cover"
+            priority
+          />
+        </div>
+
+        {product.images.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto">
+            {product.images.map((image, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentImageIndex(index)}
+                className={cn(
+                  "relative w-20 h-20 bg-accent-1 rounded-md overflow-hidden shrink-0 border-2 transition-all",
+                  currentImageIndex === index ? "border-primary" : "border-transparent"
+                )}
+              >
+                <Image
+                  src={image.url}
+                  alt={image.alt}
+                  fill
+                  className="object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div>
@@ -103,25 +128,7 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
           {formatPrice(product.price, currency)}
         </p>
 
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-sm text-primary mb-2 uppercase">Available Colors</h3>
-            <div className="flex gap-2">
-              {product.colors.map((color) => (
-                <button
-                  key={color.name}
-                  onClick={() => setSelectedColor(color.name)}
-                  className={cn(
-                    "w-7 h-7 rounded-full border-2 transition-all",
-                    selectedColor === color.name ? "border-primary scale-110" : "border-accent-2"
-                  )}
-                  style={{ backgroundColor: color.hex }}
-                  title={color.name}
-                />
-              ))}
-            </div>
-          </div>
-
+        <div className="space-y-6">          
           <div>
             <h3 className="text-sm text-primary mb-2 uppercase">Size</h3>
             <div className="flex gap-2">
