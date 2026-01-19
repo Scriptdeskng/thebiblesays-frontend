@@ -32,11 +32,20 @@ export function CurrencySelector({ className }: CurrencySelectorProps) {
         value={currency}
         onChange={handleChange}
       >
-        {Object.entries(currencySymbols).map(([code, symbol]) => (
+        {/* {Object.entries(currencySymbols).map(([code, symbol]) => (
           <option key={code} value={code}>
             {symbol} {code}
           </option>
-        ))}
+        ))} */}
+
+        {/* TEMPORARY: Hide USD */}
+        {Object.entries(currencySymbols)
+          .filter(([code]) => code !== 'USD')
+          .map(([code, symbol]) => (
+            <option key={code} value={code}>
+              {symbol} {code}
+            </option>
+          ))}
       </select>
     </div>
   );
