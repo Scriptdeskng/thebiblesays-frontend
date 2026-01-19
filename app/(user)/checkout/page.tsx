@@ -157,7 +157,7 @@ export default function CheckoutPage() {
       // Only geocode if we have all required address fields
       if (formData.address_line1 && formData.city && formData.state && formData.country) {
         setIsGeocodingAddress(true);
-        
+
         try {
           const result = await geocodingService.geocodeAddress({
             address_line1: formData.address_line1,
@@ -267,7 +267,7 @@ export default function CheckoutPage() {
     // Check if we have coordinates for new addresses
     if ((useNewAddress || !isAuthenticated || addresses.length === 0) && !coordinates) {
       toast.loading('Getting address coordinates...', { id: 'geocoding' });
-      
+
       try {
         const result = await geocodingService.geocodeAddress({
           address_line1: formData.address_line1,
@@ -286,7 +286,7 @@ export default function CheckoutPage() {
           toast.error('Could not determine location from address. Please verify your address.', { id: 'geocoding' });
           return;
         }
-        
+
         toast.dismiss('geocoding');
       } catch (error) {
         toast.error('Failed to get location. Please try again.', { id: 'geocoding' });
@@ -304,7 +304,27 @@ export default function CheckoutPage() {
       };
 
       if (isAuthenticated && selectedAddressId && !useNewAddress) {
-        orderData.shipping_address_id = selectedAddressId;
+        const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+
+        if (!selectedAddress) {
+          toast.error('Selected address not found');
+          setIsProcessing(false);
+          return;
+        }
+
+        orderData.shipping_address = {
+          first_name: selectedAddress.first_name,
+          last_name: selectedAddress.last_name,
+          address_line1: selectedAddress.address_line1,
+          address_line2: selectedAddress.address_line2 || '',
+          city: selectedAddress.city,
+          state: selectedAddress.state,
+          postal_code: selectedAddress.postal_code,
+          country: selectedAddress.country,
+          phone: selectedAddress.phone,
+          longitude: selectedAddress.longitude,
+          latitude: selectedAddress.latitude,
+        };
       } else {
         orderData.shipping_address = {
           first_name: formData.firstName,
@@ -348,6 +368,12 @@ export default function CheckoutPage() {
 
         return orderItem;
       });
+
+      if (!orderData.shipping_address) {
+        toast.error('Shipping address was not set properly');
+        setIsProcessing(false);
+        return;
+      }
 
       if (paymentMethod === 'payaza') {
         await handlePayazaCheckout(orderData, currencyParam);
@@ -395,7 +421,9 @@ export default function CheckoutPage() {
         currencyParam
       );
 
-      if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address) {
+      const isNewAddressMode = useNewAddress || addresses.length === 0;
+
+      if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address && isNewAddressMode) {
         try {
           const addressData: any = {
             label: 'Home',
@@ -422,7 +450,8 @@ export default function CheckoutPage() {
         }
       }
 
-      clearCart();
+      toast.loading('Redirecting to Stripe...', { id: 'stripe-redirect' });
+
       window.location.href = paymentUrl;
     } catch (error) {
       throw error;
@@ -431,15 +460,15 @@ export default function CheckoutPage() {
 
   const handlePayazaCheckout = async (orderData: any, currencyParam: string) => {
     try {
-      const { order, payment, transactionReference, backendReference } = await paymentService.createOrderAndInitializePayaza(
+      const { order, payment, transactionReference, backendReference, callbackUrl } = await paymentService.createOrderAndInitializePayaza(
         orderData,
         accessToken || undefined,
         currencyParam
       );
 
-      const verificationReference = backendReference || order.order_number;
+      const isNewAddressMode = useNewAddress || addresses.length === 0;
 
-      if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address) {
+      if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address && isNewAddressMode) {
         try {
           const addressData: any = {
             label: 'Home',
@@ -483,14 +512,21 @@ export default function CheckoutPage() {
         last_name: shippingAddress.last_name,
         phone_number: shippingAddress.phone || formData.phoneNumber,
         transaction_reference: transactionReference,
+        ...(callbackUrl && { callback_url: callbackUrl }),
         onClose: () => {
           toast('Payment window closed', {
             duration: 3000,
           });
           setIsProcessing(false);
         },
-        callback: async (response: any) => {
-          await handlePayazaCallback(response, order, verificationReference);
+        callback: (response: any) => {
+          if (response.type === 'success') {
+            clearCart();
+            toast.loading('Verifying payment...', { id: 'payment-processing' });
+          } else {
+            toast.error(response.data?.message || 'Payment failed');
+            setIsProcessing(false);
+          }
         },
       };
 
@@ -501,90 +537,6 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePayazaCallback = async (
-    response: any,
-    order: any,
-    paymentReference: string
-  ) => {
-    if (response.type === 'success') {
-      try {
-        const payazaRef = response.data?.payaza_reference;
-        const transactionRef = response.data?.transaction_reference;
-
-        if (!payazaRef || !transactionRef) {
-          toast.error('Payment reference not found. Please contact support with order: ' + order.order_number);
-          setIsProcessing(false);
-          return;
-        }
-
-        toast.loading('Confirming payment...', { id: 'payment-verify' });
-
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        let verificationResult = null;
-        const maxAttempts = 3;
-
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-          try {
-            verificationResult = await paymentService.verifyPayazaPayment(
-              paymentReference,
-              accessToken || undefined
-            );
-
-            if (verificationResult) {
-              break;
-            }
-
-          } catch (error: any) {
-            if (attempt < maxAttempts &&
-              (error?.response?.status === 404 ||
-                error?.response?.data?.error?.toLowerCase().includes('not found'))) {
-              await new Promise(resolve => setTimeout(resolve, attempt * 2000));
-              continue;
-            }
-
-            throw error;
-          }
-        }
-
-        toast.dismiss('payment-verify');
-
-        if (!verificationResult) {
-          toast.error('Payment verification failed after multiple attempts. Please contact support with order: ' + order.order_number);
-          setIsProcessing(false);
-          return;
-        }
-
-        if (verificationResult.status === 'success') {
-          toast.success('Payment successful!');
-          clearCart();
-          router.push(`/order-confirmation?order=${order.order_number}`);
-        } else if (verificationResult.status === 'pending') {
-          toast('Payment is being processed. Check your orders page.', {
-            duration: 5000,
-          });
-          clearCart();
-          router.push(`/profile?tab=orders`);
-        } else {
-          toast.error('Payment verification failed. Please contact support with order: ' + order.order_number);
-        }
-      } catch (error: any) {
-        toast.dismiss('payment-verify');
-
-        const errorMessage = error?.response?.data?.error ||
-          error?.response?.data?.message ||
-          error?.message ||
-          'Failed to verify payment. Please contact support with order: ' + order.order_number;
-
-        toast.error(errorMessage, { duration: 10000 });
-      }
-    } else {
-      const errorData = response.data as any;
-      toast.error(errorData?.message || 'Payment failed');
-    }
-
-    setIsProcessing(false);
-  };
 
   if (items.length === 0) {
     router.push('/cart');
