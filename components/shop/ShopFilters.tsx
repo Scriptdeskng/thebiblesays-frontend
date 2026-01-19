@@ -102,7 +102,7 @@ export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFilters
         </div>
       </div>
 
-      <div>
+      {/* <div>
         <h3 className="font-semibold text-primary mb-3">Colors</h3>
         <div className="flex flex-wrap gap-2">
           {colors.map((color) => (
@@ -126,7 +126,7 @@ export const ShopFilters = ({ filters, onChange, isMobile = false }: ShopFilters
             </button>
           ))}
         </div>
-      </div>
+      </div> */}
 
       <div>
         <h3 className="font-semibold text-primary mb-3">Sizes</h3>
