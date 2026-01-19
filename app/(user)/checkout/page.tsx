@@ -133,7 +133,6 @@ export default function CheckoutPage() {
           const defaultAddress = fetchedAddresses.find(addr => addr.is_default);
           if (defaultAddress) {
             setSelectedAddressId(defaultAddress.id);
-            // Set coordinates from default address if available
             if (defaultAddress.latitude && defaultAddress.longitude) {
               setCoordinates({
                 latitude: defaultAddress.latitude,
@@ -154,7 +153,6 @@ export default function CheckoutPage() {
   // Geocode address whenever address fields change
   useEffect(() => {
     const geocodeAddressDebounced = async () => {
-      // Only geocode if we have all required address fields
       if (formData.address_line1 && formData.city && formData.state && formData.country) {
         setIsGeocodingAddress(true);
 
@@ -181,12 +179,11 @@ export default function CheckoutPage() {
       }
     };
 
-    // Debounce the geocoding to avoid too many API calls
     const timeoutId = setTimeout(geocodeAddressDebounced, 1000);
     return () => clearTimeout(timeoutId);
   }, [formData.address_line1, formData.city, formData.state, formData.country, formData.postal_code]);
 
-  const total = getTotal();
+  const subtotal = getTotal();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -264,7 +261,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Check if we have coordinates for new addresses
     if ((useNewAddress || !isAuthenticated || addresses.length === 0) && !coordinates) {
       toast.loading('Getting address coordinates...', { id: 'geocoding' });
 
@@ -501,10 +497,12 @@ export default function CheckoutPage() {
         phone: formData.phoneNumber,
       };
 
+      const paymentAmount = Number(payment?.amount || subtotal);
+
       const payazaData: PayazaCheckoutOptionsInterface = {
         merchant_key: process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.trim() || '',
         connection_mode: ConnectionMode.LIVE,
-        checkout_amount: total,
+        checkout_amount: paymentAmount,
         currency_code: 'NGN',
         currency: 'NGN',
         email_address: orderData.email,
@@ -652,7 +650,6 @@ export default function CheckoutPage() {
                           checked={selectedAddressId === address.id}
                           onChange={() => {
                             setSelectedAddressId(address.id);
-                            // Update coordinates when selecting an address
                             if (address.latitude && address.longitude) {
                               setCoordinates({
                                 latitude: address.latitude,
@@ -902,10 +899,21 @@ export default function CheckoutPage() {
               ))}
             </div>
 
-            <div className="border-t border-accent-2 pt-4">
-              <div className="flex items-center justify-between">
+            <div className="border-t border-accent-2 pt-4 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-grey">Subtotal</span>
+                <span className="text-primary">{formatPrice(subtotal, currency)}</span>
+              </div>
+              
+              <p className="text-xs text-grey italic">
+                Shipping fee will be calculated based on your delivery address
+              </p>
+
+              <div className="flex items-center justify-between pt-3 border-t border-accent-2">
                 <span className="text-lg font-semibold text-primary">Total</span>
-                <span className="text-2xl font-bold text-primary">{formatPrice(total, currency)}</span>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">{formatPrice(subtotal, currency)}</p>
+                </div>
               </div>
             </div>
           </div>
