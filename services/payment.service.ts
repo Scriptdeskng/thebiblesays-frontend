@@ -167,6 +167,27 @@ class PaymentService {
     }
   }
 
+    async verifyPayazaPayment(
+    reference: string,
+    token?: string
+  ): Promise<PayazaVerifyResponse> {
+    try {
+      const response = await makeRequest({
+        url: 'payments/verify-payaza/',
+        method: 'POST',
+        requireToken: !!token,
+        token,
+        data: {
+          reference: reference,
+        },
+      });
+
+      return response;
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
   async verifyStripePayment(
     sessionId: string,
     token?: string,

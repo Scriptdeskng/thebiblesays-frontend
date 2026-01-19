@@ -519,14 +519,24 @@ export default function CheckoutPage() {
           });
           setIsProcessing(false);
         },
+
         callback: (response: any) => {
-          if (response.type === 'success') {
-            clearCart();
-            toast.loading('Verifying payment...', { id: 'payment-processing' });
-          } else {
-            toast.error(response.data?.message || 'Payment failed');
-            setIsProcessing(false);
-          }
+
+          const ref = response.data?.transaction_reference || "no-reference";
+
+          setTimeout(() => {
+            if (response.type === 'success' || response.status === 201) {
+
+              clearCart();
+
+              const orderId = order?.id || response.data?.metadata?.order_id;
+
+              window.location.href = `/order-confirmation?reference=${orderId}`;
+            } else {
+              setIsProcessing(false);
+              router.push(`/payment-failed?reference=${ref}&payment=failed`);
+            }
+          }, 10);
         },
       };
 
