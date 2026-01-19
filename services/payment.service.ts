@@ -15,6 +15,7 @@ export interface PaymentInitializeResponse {
   authorization_url?: string;
   access_code?: string;
   payment_url?: string;
+  session_id?: string;
   stripe_session_id?: string;
   stripe_session_url?: string;
   data?: {
@@ -29,6 +30,15 @@ export interface PaymentInitializeResponse {
     callback_url?: string;
     description?: string;
     service_type?: string;
+    authorization_url?: string;
+    access_code?: string;
+    payment_url?: string;
+    stripe_session_id?: string;
+    stripe_session_url?: string;
+    session_id?: string;
+    customer_id?: string;
+    stripe_currency?: string;
+    stripe_amount_cents?: number;
   };
   message?: string;
 }
@@ -75,17 +85,28 @@ interface OrderItem {
 interface OrderCreateData {
   payment_method: PaymentMethod;
   shipping_address_id?: number;
-  shipping_address?: ShippingAddress;
+  shipping_address: ShippingAddress;
   items?: OrderItem[];
   email?: string;
 }
 
 class PaymentService {
+  private normalizePaymentResponse(response: any): PaymentInitializeResponse {
+  if (response.data && typeof response.data === 'object') {
+    return {
+      ...response,
+      ...response.data,
+    };
+  }
+  return response;
+}
+
   async createOrder(
     token: string | undefined,
     orderData: OrderCreateData,
     currencyParam: string = ''
   ): Promise<any> {
+
     try {
       const response = await makeRequest({
         url: `orders/${currencyParam}`,
@@ -121,7 +142,7 @@ class PaymentService {
         },
       });
 
-      return response;
+      return this.normalizePaymentResponse(response);
     } catch (error) {
       throw error;
     }
@@ -146,27 +167,6 @@ class PaymentService {
     }
   }
 
-  async verifyPayazaPayment(
-    reference: string,
-    token?: string
-  ): Promise<PayazaVerifyResponse> {
-    try {
-      const response = await makeRequest({
-        url: 'payments/verify-payaza/',
-        method: 'POST',
-        requireToken: !!token,
-        token,
-        data: {
-          reference: reference,
-        },
-      });
-
-      return response;
-    } catch (error: any) {
-      throw error;
-    }
-  }
-
   async verifyStripePayment(
     sessionId: string,
     token?: string,
@@ -174,12 +174,13 @@ class PaymentService {
   ): Promise<PaymentVerifyResponse> {
     try {
       const response = await makeRequest({
-        url: `payments/verify-stripe/${currencyParam}`,
+        url: `payments/verify-general/${currencyParam}`,
         method: 'POST',
         requireToken: !!token,
         token,
         data: {
           session_id: sessionId,
+          payment_method: 'stripe',
         },
       });
 
@@ -210,10 +211,19 @@ class PaymentService {
         currencyParam
       );
 
-      const paymentUrl = payment.authorization_url ||
-        payment.payment_url ||
-        payment.stripe_session_url ||
-        '';
+      let paymentUrl = '';
+
+      if (orderData.payment_method === 'stripe') {
+        paymentUrl = payment.data?.authorization_url ||
+          payment.data?.stripe_session_url ||
+          payment.authorization_url ||
+          payment.stripe_session_url || '';
+      } else {
+        paymentUrl = payment.data?.authorization_url ||
+          payment.data?.payment_url ||
+          payment.authorization_url ||
+          payment.payment_url || '';
+      }
 
       if (!paymentUrl) {
         throw new Error('No payment URL received from payment gateway');
@@ -222,7 +232,10 @@ class PaymentService {
       return {
         order,
         paymentUrl,
-        sessionId: payment.stripe_session_id,
+        sessionId: payment.data?.session_id ||
+          payment.data?.stripe_session_id ||
+          payment.stripe_session_id ||
+          payment.session_id,
       };
     } catch (error) {
       throw error;
@@ -238,6 +251,7 @@ class PaymentService {
     payment: PaymentInitializeResponse;
     transactionReference: string;
     backendReference?: string;
+    callbackUrl?: string;
   }> {
     try {
       const order = await this.createOrder(token, orderData, currencyParam);
@@ -266,11 +280,14 @@ class PaymentService {
         throw new Error('No order number received from backend');
       }
 
+      const callbackUrl = payment.data?.callback_url;
+
       return {
         order,
         payment,
         transactionReference,
         backendReference: backendReference || undefined,
+        callbackUrl,
       };
     } catch (error) {
       throw error;
