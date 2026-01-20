@@ -509,7 +509,7 @@ export default function CheckoutPage() {
         first_name: shippingAddress.first_name,
         last_name: shippingAddress.last_name,
         phone_number: shippingAddress.phone || formData.phoneNumber,
-        transaction_reference: transactionReference,
+        transaction_reference: backendReference || `order-${Date.now()}`,
         ...(callbackUrl && { callback_url: callbackUrl }),
         onClose: () => {
           toast('Payment window closed', {
