@@ -75,7 +75,7 @@ export default function CheckoutPage() {
     city: '',
     state: '',
     postal_code: '',
-    country: '',
+    country: 'Nigeria',
   });
   const [isUpdatingPrices, setIsUpdatingPrices] = useState(false);
 
