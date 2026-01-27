@@ -16,7 +16,6 @@ import "react-day-picker/dist/style.css";
 import { Button, Modal, Badge, LoadingSpinner } from "@/components/admin/ui";
 import {
   Transaction,
-  Settlement,
   ApiTransaction,
   RevenueAnalytics,
 } from "@/types/admin.types";
@@ -32,9 +31,10 @@ import clsx from "clsx";
 
 export default function FinancePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [tableLoading, setTableLoading] = useState(true);
-  const [revenueAnalytics] = useState<RevenueAnalytics | null>(null);
+  const [revenueAnalytics, setRevenueAnalytics] =
+    useState<RevenueAnalytics | null>(null);
+  const [revenueLoading, setRevenueLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
@@ -116,12 +116,11 @@ export default function FinancePage() {
           paymentMethodFilter !== "all" ? paymentMethodFilter : undefined,
         date_filter: durationFilter,
       });
-      // Map API transactions to frontend Transaction type
+
       const mappedTransactions = apiTransactions.map(
         mapApiTransactionToTransaction
       );
       setTransactions(mappedTransactions);
-      setSettlements([]);
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -129,9 +128,46 @@ export default function FinancePage() {
     }
   }, [statusFilter, paymentMethodFilter, durationFilter]);
 
+  const loadRevenueAnalytics = useCallback(async () => {
+    try {
+      setRevenueLoading(true);
+      const params: {
+        date_filter?: string;
+        start_date?: string;
+        end_date?: string;
+      } = {};
+
+      if (dateRange[0] && dateRange[1]) {
+        params.start_date = dateRange[0].toISOString().split("T")[0];
+        params.end_date = dateRange[1].toISOString().split("T")[0];
+      } else if (timePeriodFilter) {
+        const dateFilterMap: Record<string, string> = {
+          today: "today",
+          weekly: "weekly",
+          monthly: "monthly",
+        };
+        if (dateFilterMap[timePeriodFilter]) {
+          params.date_filter = dateFilterMap[timePeriodFilter];
+        }
+      }
+
+      const analytics = await dashboardService.getRevenueAnalytics(params);
+      setRevenueAnalytics(analytics);
+    } catch (error) {
+      console.error("Error loading revenue analytics:", error);
+      toast.error("Failed to load revenue analytics");
+    } finally {
+      setRevenueLoading(false);
+    }
+  }, [timePeriodFilter, dateRange]);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    loadRevenueAnalytics();
+  }, [loadRevenueAnalytics]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -268,26 +304,16 @@ export default function FinancePage() {
 
   const totalRevenue = revenueAnalytics?.total_revenue
     ? parseFloat(String(revenueAnalytics.total_revenue))
-    : transactions
-        .filter((t) => t.status === "successful")
-        .reduce((sum, t) => sum + t.amount, 0);
+    : 0;
 
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekAgo = new Date(today);
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const monthAgo = new Date(today);
-  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  const taxCollected = 0;
+  const platformFees = 0;
+  const netAfterFees = totalRevenue;
 
-  const taxCollected = totalRevenue * 0.075;
-  const gatewayFees = settlements.reduce((sum, s) => sum + s.gatewayFee, 0);
-  const netAfterFees = totalRevenue === 0 ? 0 : totalRevenue - gatewayFees;
-  const platformFees = gatewayFees || totalRevenue * 0.015; // Estimate if not available
-
-  const totalRevenueChange = 10.0;
-  const netRevenueChange = 10.0;
-  const platformFeesChange = -10.0;
-  const taxCollectedChange = 10.0;
+  const totalRevenueChange = 0.0;
+  const netRevenueChange = 0.0;
+  const platformFeesChange = 0.0;
+  const taxCollectedChange = 0.0;
 
   const formatDateRange = () => {
     if (dateRange[0] && dateRange[1]) {
@@ -398,7 +424,11 @@ export default function FinancePage() {
                   {["today", "weekly", "monthly"].map((period) => (
                     <button
                       key={period}
-                      onClick={() => setTimePeriodFilter(period)}
+                      onClick={() => {
+                        setTimePeriodFilter(period);
+                        // Clear date range when selecting a time period filter
+                        setDateRange([null, null]);
+                      }}
                       className={`px-4 py-2 rounded-lg text-sm transition-all capitalize ${
                         timePeriodFilter === period
                           ? "bg-admin-primary text-white"
@@ -427,9 +457,15 @@ export default function FinancePage() {
                     <p className="text-sm mb-1 text-admin-primary/60">
                       Total revenue
                     </p>
-                    <p className="text-3xl font-extrabold text-admin-primary truncate">
-                      {formatCompactCurrency(totalRevenue)}
-                    </p>
+                    {revenueLoading ? (
+                      <div className="flex items-center h-9">
+                        <LoadingSpinner size="sm" />
+                      </div>
+                    ) : (
+                      <p className="text-3xl font-extrabold text-admin-primary truncate">
+                        {formatCompactCurrency(totalRevenue)}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
@@ -453,9 +489,15 @@ export default function FinancePage() {
                     <p className="text-sm mb-1 text-admin-primary/60">
                       Net revenue after fee
                     </p>
-                    <p className="text-3xl font-extrabold text-admin-primary truncate">
-                      {formatCompactCurrency(netAfterFees)}
-                    </p>
+                    {revenueLoading ? (
+                      <div className="flex items-center h-9">
+                        <LoadingSpinner size="sm" />
+                      </div>
+                    ) : (
+                      <p className="text-3xl font-extrabold text-admin-primary truncate">
+                        {formatCompactCurrency(netAfterFees)}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
@@ -479,9 +521,15 @@ export default function FinancePage() {
                     <p className="text-sm mb-1 text-[#ABABAB]">
                       Platform fee/charges
                     </p>
-                    <p className="text-3xl font-extrabold text-white truncate">
-                      {formatCompactCurrency(platformFees)}
-                    </p>
+                    {revenueLoading ? (
+                      <div className="flex items-center h-9">
+                        <LoadingSpinner size="sm" />
+                      </div>
+                    ) : (
+                      <p className="text-3xl font-extrabold text-white truncate">
+                        {formatCompactCurrency(platformFees)}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
@@ -505,9 +553,15 @@ export default function FinancePage() {
                     <p className="text-sm mb-1 text-admin-primary/60">
                       Tax collected
                     </p>
-                    <p className="text-3xl font-extrabold text-admin-primary truncate">
-                      {formatCompactCurrency(taxCollected)}
-                    </p>
+                    {revenueLoading ? (
+                      <div className="flex items-center h-9">
+                        <LoadingSpinner size="sm" />
+                      </div>
+                    ) : (
+                      <p className="text-3xl font-extrabold text-admin-primary truncate">
+                        {formatCompactCurrency(taxCollected)}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">

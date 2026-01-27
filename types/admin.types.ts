@@ -485,12 +485,16 @@ export interface ApiTransaction {
 
 export interface DailyRevenue {
   date?: string;
+  daily_total?: number | string;
   revenue?: number | string;
+  payment_count?: number;
   [key: string]: any;
 }
 
 export interface PaymentMethodStat {
+  payment_method?: string;
   method?: string;
+  total?: number | string;
   count?: number;
   revenue?: number | string;
   [key: string]: any;
