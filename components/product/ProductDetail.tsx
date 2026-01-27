@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Heart, Minus, Plus, ShoppingCart, Check } from 'lucide-react';
+import { Heart, Minus, Plus, ShoppingCart, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { Product, Review, Size } from '@/types/product.types';
 import { Badge } from '@/components/ui/Badge';
@@ -21,11 +21,14 @@ interface ProductDetailsProps {
 }
 
 export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
-  const [selectedColor, setSelectedColor] = useState(product.colors[0].name);
+  const [selectedColor, setSelectedColor] = useState(
+    product.colors.length > 0 ? product.colors[0].name : ''
+  );
   const [selectedSize, setSelectedSize] = useState<Size>(product.sizes[0]);
   const [quantity, setQuantity] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const { currency } = useCurrencyStore();
   const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
 
@@ -43,6 +46,18 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
   );
 
   const currentImage = product.images[currentImageIndex] || product.images[0];
+
+  useEffect(() => {
+    if (!isAutoPlaying || product.images.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => 
+        prev === product.images.length - 1 ? 0 : prev + 1
+      );
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isAutoPlaying, product.images.length]);
 
   useEffect(() => {
     if (justAdded) {
@@ -68,10 +83,29 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
     await toggleItem(productIdString, accessToken || undefined);
   };
 
+  const handlePreviousImage = () => {
+    setIsAutoPlaying(false);
+    setCurrentImageIndex((prev) => 
+      prev === 0 ? product.images.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    setIsAutoPlaying(false);
+    setCurrentImageIndex((prev) => 
+      prev === product.images.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const handleThumbnailClick = (index: number) => {
+    setIsAutoPlaying(false);
+    setCurrentImageIndex(index);
+  };
+
   return (
     <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
       <div>
-        <div className="relative aspect-square bg-accent-1 rounded-lg overflow-hidden mb-4">
+        <div className="relative aspect-square bg-accent-1 rounded-lg overflow-hidden mb-4 group">
           <Image
             src={currentImage.url}
             alt={currentImage.alt}
@@ -79,17 +113,56 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
             className="object-cover"
             priority
           />
+
+          {product.images.length > 1 && (
+            <>
+              <button
+                onClick={handlePreviousImage}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200"
+                aria-label="Previous image"
+              >
+                <ChevronLeft className="w-5 h-5 text-primary" />
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200"
+                aria-label="Next image"
+              >
+                <ChevronRight className="w-5 h-5 text-primary" />
+              </button>
+
+              <div className="absolute bottom-3 right-3 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
+                {currentImageIndex + 1} / {product.images.length}
+              </div>
+
+              <div className="absolute top-3 right-3 flex gap-1">
+                {product.images.map((_, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "h-1 rounded-full transition-all duration-300",
+                      currentImageIndex === index 
+                        ? "w-8 bg-white" 
+                        : "w-1 bg-white/50"
+                    )}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {product.images.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto">
+          <div className="flex gap-2 overflow-x-auto pb-2">
             {product.images.map((image, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentImageIndex(index)}
+                onClick={() => handleThumbnailClick(index)}
                 className={cn(
-                  "relative w-20 h-20 bg-accent-1 rounded-md overflow-hidden shrink-0 border-2 transition-all",
-                  currentImageIndex === index ? "border-primary" : "border-transparent"
+                  "relative w-20 h-20 bg-accent-1 rounded-md overflow-hidden shrink-0 border transition-all hover:border-primary/50",
+                  currentImageIndex === index 
+                    ? "border-primary" 
+                    : "border-transparent"
                 )}
               >
                 <Image
@@ -116,19 +189,46 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
               {product.rating} - {product.reviewCount} reviews
             </span>
           </div>
-
-          {product.inStock ? (
-            <Badge variant="success">In Stock</Badge>
-          ) : (
-            <Badge variant="danger">Out of Stock</Badge>
-          )}
         </div>
 
         <p className="text-xl font-bold text-primary mb-6">
           {formatPrice(product.price, currency)}
         </p>
 
-        <div className="space-y-6">          
+        <div className="space-y-6">
+          {product.colors.length > 0 && (
+            <div>
+              <h3 className="text-sm text-primary mb-2 uppercase">
+                Color: <span className="font-semibold">{selectedColor}</span>
+              </h3>
+              <div className="flex gap-2 flex-wrap">
+                {product.colors.map((color, index) => (
+                  <button
+                    key={`${color.name}-${index}`}
+                    onClick={() => setSelectedColor(color.name)}
+                    className={cn(
+                      "group relative w-6 h-6 rounded-full border transition-all hover:scale-110",
+                      selectedColor === color.name
+                        ? "border-primary scale-110"
+                        : "border-accent-2 hover:border-primary/50"
+                    )}
+                    title={color.name}
+                  >
+                    <div
+                      className="w-full h-full rounded-full"
+                      style={{ backgroundColor: color.hex }}
+                    />
+                    {selectedColor === color.name && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Check className="w-5 h-5 text-white drop-shadow-lg" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <div>
             <h3 className="text-sm text-primary mb-2 uppercase">Size</h3>
             <div className="flex gap-2">
@@ -171,7 +271,6 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
           <div className="flex gap-3">
             <Button
               onClick={handleAddToCart}
-              disabled={!product.inStock}
               className={cn(
                 "flex-1 transition-all duration-200",
                 (isInCart || justAdded) && "bg-primary/90"
@@ -231,14 +330,16 @@ export const ProductDetails = ({ product, reviews }: ProductDetailsProps) => {
             {activeTab === 'description' ? (
               <div>
                 <p className="text-grey mb-4">{product.description}</p>
-                <ul className="space-y-2">
-                  {product.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2 text-grey">
-                      <span className="text-primary mt-1">•</span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                {product.features.length > 0 && (
+                  <ul className="space-y-2">
+                    {product.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2 text-grey">
+                        <span className="text-primary mt-1">•</span>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ) : (
               <ReviewSection
