@@ -9,6 +9,8 @@ import {
   ApiUser,
   ApiTransaction,
   RevenueAnalytics,
+  ApiNotification,
+  GetNotificationsParams,
 } from "@/types/admin.types";
 import { useAuthStore } from "@/store/useAuthStore";
 import axios from "axios";
@@ -977,6 +979,51 @@ class DashboardService {
       });
     } catch (error) {
       console.error("Error deleting product image:", error);
+      throw error;
+    }
+  }
+
+  async getNotifications(params?: GetNotificationsParams): Promise<ApiNotification[]> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const queryParams: Record<string, any> = {};
+
+      if (params?.is_read !== undefined) {
+        queryParams.is_read = params.is_read;
+      }
+      if (params?.ordering) {
+        queryParams.ordering = params.ordering;
+      }
+      if (params?.page !== undefined) {
+        queryParams.page = params.page;
+      }
+      if (params?.priority) {
+        queryParams.priority = params.priority;
+      }
+      if (params?.search) {
+        queryParams.search = params.search;
+      }
+      if (params?.type) {
+        queryParams.type = params.type;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/notifications/`,
+        method: "GET",
+        params: queryParams,
+        requireToken: true,
+        token: accessToken,
+      });
+
+      // API returns array directly
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
       throw error;
     }
   }

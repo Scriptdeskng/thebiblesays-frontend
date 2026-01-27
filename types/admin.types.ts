@@ -504,3 +504,45 @@ export interface RevenueAnalytics {
   total_revenue?: number | string;
   [key: string]: any; // Allow for additional fields
 }
+
+export type NotificationPriority = "low" | "medium" | "high" | "urgent";
+
+export type NotificationType =
+  | "new_order"
+  | "custom_merch_order"
+  | "low_stock"
+  | "out_of_stock"
+  | "new_testimonial"
+  | "failed_transaction"
+  | "refund_request"
+  | "new_user"
+  | "system_alert"
+  | "discount_expiring"
+  | "high_revenue_day";
+
+export interface ApiNotification {
+  id: number;
+  type: NotificationType;
+  type_display: string;
+  title: string;
+  message: string;
+  priority: NotificationPriority;
+  priority_display: string;
+  reference_id: string;
+  content_type_name: string;
+  object_id: number;
+  is_read: boolean;
+  age_in_hours: string;
+  is_expired: string;
+  created_at: string;
+  [key: string]: any; // Allow for additional fields
+}
+
+export interface GetNotificationsParams {
+  is_read?: boolean;
+  ordering?: string;
+  page?: number;
+  priority?: NotificationPriority;
+  search?: string;
+  type?: NotificationType;
+}

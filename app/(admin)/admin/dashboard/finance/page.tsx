@@ -3,11 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Search,
-  // Eye,
-  Download,
-  DollarSign,
   TrendingUp,
-  // ArrowLeft,
+  TrendingDown,
   Calendar,
   ChevronDown,
   ChevronLeft,
@@ -16,15 +13,7 @@ import {
 import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
-import {
-  Button,
-  Modal,
-  Badge,
-  LoadingSpinner,
-  StatsCard,
-  // Textarea,
-  StatsCard2,
-} from "@/components/admin/ui";
+import { Button, Modal, Badge, LoadingSpinner } from "@/components/admin/ui";
 import {
   Transaction,
   Settlement,
@@ -33,22 +22,19 @@ import {
 } from "@/types/admin.types";
 // import { mockSettlements } from "@/services/mock.service";
 import { dashboardService } from "@/services/dashboard.service";
-import { formatCompactCurrency, formatDateTime, formatDate } from "@/lib/utils";
+import { formatCompactCurrency, formatDateTime } from "@/lib/utils";
 import { TbMoneybag } from "react-icons/tb";
-import { LuCalendarRange } from "react-icons/lu";
 import { BsCalendar3 } from "react-icons/bs";
+import { FaCreditCard } from "react-icons/fa";
+import { HiSquare3Stack3D } from "react-icons/hi2";
 import toast from "react-hot-toast";
+import clsx from "clsx";
 
 export default function FinancePage() {
-  const [activeTab, setActiveTab] = useState<
-    "transactions" | "settlements" | "revenue"
-  >("transactions");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [tableLoading, setTableLoading] = useState(true);
-  const [revenueAnalytics, setRevenueAnalytics] =
-    useState<RevenueAnalytics | null>(null);
-  const [revenueLoading, setRevenueLoading] = useState(false);
+  const [revenueAnalytics] = useState<RevenueAnalytics | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
@@ -59,21 +45,26 @@ export default function FinancePage() {
   const [refundReason, setRefundReason] = useState("");
   const [tempStatus, setTempStatus] = useState<string>("pending");
   const [showRefundModal, setShowRefundModal] = useState(false);
-  const [revenueDateFilter, setRevenueDateFilter] = useState<string>("monthly");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [exporting, setExporting] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [revenueDateRange, setRevenueDateRange] = useState<{
+  const datePickerRef = useRef<HTMLDivElement>(null);
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
+    null,
+    null,
+  ]);
+  const [selectedRange, setSelectedRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
   }>({
     from: undefined,
     to: undefined,
   });
-  const datePickerRef = useRef<HTMLDivElement>(null);
+  const [isMainDatePickerOpen, setIsMainDatePickerOpen] = useState(false);
+  const mainDatePickerRef = useRef<HTMLDivElement>(null);
+  const [timePeriodFilter, setTimePeriodFilter] = useState<string>("monthly");
 
-  // Map API transaction to frontend Transaction type
   const mapApiTransactionToTransaction = (
     apiTx: ApiTransaction
   ): Transaction => {
@@ -138,44 +129,10 @@ export default function FinancePage() {
     }
   }, [statusFilter, paymentMethodFilter, durationFilter]);
 
-  const loadRevenueAnalytics = useCallback(async () => {
-    try {
-      setRevenueLoading(true);
-      const params: {
-        date_filter?: string;
-        start_date?: string;
-        end_date?: string;
-      } = {};
-
-      // If a custom date range is selected, use start_date and end_date
-      if (revenueDateRange.from && revenueDateRange.to) {
-        params.start_date = revenueDateRange.from.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-        params.end_date = revenueDateRange.to.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-      } else {
-        // Otherwise, use the date filter
-        params.date_filter = revenueDateFilter;
-      }
-
-      const analytics = await dashboardService.getRevenueAnalytics(params);
-      setRevenueAnalytics(analytics);
-    } catch (error) {
-      console.error("Error loading revenue analytics:", error);
-    } finally {
-      setRevenueLoading(false);
-    }
-  }, [revenueDateFilter, revenueDateRange]);
-
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    if (activeTab === "revenue") {
-      loadRevenueAnalytics();
-    }
-  }, [activeTab, revenueDateFilter, loadRevenueAnalytics]);
-
-  // Handle click outside to close date picker
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -184,16 +141,22 @@ export default function FinancePage() {
       ) {
         setIsDatePickerOpen(false);
       }
+      if (
+        mainDatePickerRef.current &&
+        !mainDatePickerRef.current.contains(event.target as Node)
+      ) {
+        setIsMainDatePickerOpen(false);
+      }
     };
 
-    if (isDatePickerOpen) {
+    if (isDatePickerOpen || isMainDatePickerOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isDatePickerOpen]);
+  }, [isDatePickerOpen, isMainDatePickerOpen]);
 
   const handleViewTransaction = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
@@ -256,15 +219,6 @@ export default function FinancePage() {
         params.payment_method = apiPaymentMethod;
       }
 
-      // If custom date range is selected, use start_date and end_date
-      // Otherwise, use date_filter
-      if (revenueDateRange.from && revenueDateRange.to) {
-        params.start_date = revenueDateRange.from.toISOString().split("T")[0];
-        params.end_date = revenueDateRange.to.toISOString().split("T")[0];
-      } else {
-        params.date_filter = durationFilter;
-      }
-
       const blob = await dashboardService.exportTransactions(params);
 
       // Create download link
@@ -300,7 +254,6 @@ export default function FinancePage() {
     return matchesSearch && matchesStatus && matchesPayment;
   });
 
-  // Pagination calculations
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -309,12 +262,10 @@ export default function FinancePage() {
     endIndex
   );
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, paymentMethodFilter, durationFilter, searchQuery]);
 
-  // Get revenue values from API or use defaults
   const totalRevenue = revenueAnalytics?.total_revenue
     ? parseFloat(String(revenueAnalytics.total_revenue))
     : transactions
@@ -328,83 +279,248 @@ export default function FinancePage() {
   const monthAgo = new Date(today);
   monthAgo.setMonth(monthAgo.getMonth() - 1);
 
-  const dailyRevenue = revenueAnalytics?.daily_revenue || [];
-
-  const todayRevenue = dailyRevenue
-    .filter((day: any) => {
-      if (!day.date) return false;
-      const dayDate = new Date(day.date);
-      return dayDate >= today;
-    })
-    .reduce(
-      (sum: number, day: any) => sum + parseFloat(String(day.revenue || 0)),
-      0
-    );
-
-  const weekRevenue = dailyRevenue
-    .filter((day: any) => {
-      if (!day.date) return false;
-      const dayDate = new Date(day.date);
-      return dayDate >= weekAgo;
-    })
-    .reduce(
-      (sum: number, day: any) => sum + parseFloat(String(day.revenue || 0)),
-      0
-    );
-
-  const monthRevenue = dailyRevenue
-    .filter((day: any) => {
-      if (!day.date) return false;
-      const dayDate = new Date(day.date);
-      return dayDate >= monthAgo;
-    })
-    .reduce(
-      (sum: number, day: any) => sum + parseFloat(String(day.revenue || 0)),
-      0
-    );
-
   const taxCollected = totalRevenue * 0.075;
   const gatewayFees = settlements.reduce((sum, s) => sum + s.gatewayFee, 0);
   const netAfterFees = totalRevenue === 0 ? 0 : totalRevenue - gatewayFees;
+  const platformFees = gatewayFees || totalRevenue * 0.015; // Estimate if not available
+
+  const totalRevenueChange = 10.0;
+  const netRevenueChange = 10.0;
+  const platformFeesChange = -10.0;
+  const taxCollectedChange = 10.0;
+
+  const formatDateRange = () => {
+    if (dateRange[0] && dateRange[1]) {
+      return `${format(dateRange[0], "MMM yyyy")} - ${format(
+        dateRange[1],
+        "MMM yyyy"
+      )}`;
+    }
+    return "Jan 2025 - Dec 2025";
+  };
 
   return (
     <div>
       {!showTransactionDetails && (
         <>
           <div className="mb-6">
-            <h1 className="text-xl lg:text-2xl font-bold text-admin-primary">
-              Finance Management
-            </h1>
-            <p className="text-sm text-admin-primary">
-              Monitor transactions, settlements and revenue insights
-            </p>
-          </div>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h1 className="text-xl lg:text-2xl font-medium text-admin-primary mb-1">
+                  Finance management
+                </h1>
+                <p className="text-sm text-admin-primary/60">
+                  Monitor transactions, settlements, and revenue insights.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative" ref={mainDatePickerRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMainDatePickerOpen(!isMainDatePickerOpen);
+                      if (!isMainDatePickerOpen) {
+                        setSelectedRange({
+                          from: dateRange[0] || undefined,
+                          to: dateRange[1] || undefined,
+                        });
+                      }
+                    }}
+                    className="flex items-center space-x-2 px-4 py-2 bg-white border border-accent-2 rounded-lg text-sm transition-all text-admin-primary hover:bg-accent-1"
+                  >
+                    <Calendar size={16} className="shrink-0" />
+                    <span className="whitespace-nowrap">
+                      {formatDateRange()}
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      className={`transition-transform ${
+                        isMainDatePickerOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <StatsCard
-              icon={TbMoneybag}
-              title="Today's Revenue"
-              value={(todayRevenue)}
-              change={12.5}
-              iconBgColor="bg-white"
-              iconColor="text-[#626262]"
-            />
-            <StatsCard
-              icon={LuCalendarRange}
-              title="This Week"
-              value={formatCompactCurrency(weekRevenue)}
-              change={8.3}
-              iconBgColor="bg-white"
-              iconColor="text-[#626262]"
-            />
-            <StatsCard2
-              icon={BsCalendar3}
-              title="This Month"
-              value={formatCompactCurrency(monthRevenue)}
-              change={15.7}
-              iconBgColor="bg-white"
-              iconColor="text-[#626262]"
-            />
+                  {isMainDatePickerOpen && (
+                    <div className="absolute right-0 top-full mt-2 z-50 bg-white rounded-xl shadow-xl border border-accent-2 p-4">
+                      <DayPicker
+                        mode="range"
+                        selected={selectedRange}
+                        onSelect={(range) => {
+                          setSelectedRange({
+                            from: range?.from,
+                            to: range?.to,
+                          });
+                        }}
+                        numberOfMonths={1}
+                        className="custom-day-picker"
+                      />
+                      <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-accent-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedRange({
+                              from: undefined,
+                              to: undefined,
+                            });
+                            const clearedRange: [Date | null, Date | null] = [
+                              null,
+                              null,
+                            ];
+                            setDateRange(clearedRange);
+                            setIsMainDatePickerOpen(false);
+                          }}
+                          className="px-4 py-2 text-sm text-admin-primary hover:bg-accent-2 rounded-lg transition-colors"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedRange.from && selectedRange.to) {
+                              const newRange: [Date | null, Date | null] = [
+                                selectedRange.from,
+                                selectedRange.to,
+                              ];
+                              setDateRange(newRange);
+                              setIsMainDatePickerOpen(false);
+                            }
+                          }}
+                          disabled={!selectedRange.from || !selectedRange.to}
+                          className="px-4 py-2 text-sm bg-admin-primary text-white rounded-lg transition-colors hover:bg-admin-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {["today", "weekly", "monthly"].map((period) => (
+                    <button
+                      key={period}
+                      onClick={() => setTimePeriodFilter(period)}
+                      className={`px-4 py-2 rounded-lg text-sm transition-all capitalize ${
+                        timePeriodFilter === period
+                          ? "bg-admin-primary text-white"
+                          : "bg-white border border-accent-2 text-admin-primary hover:bg-accent-1"
+                      }`}
+                    >
+                      {period === "today"
+                        ? "Today"
+                        : period === "weekly"
+                        ? "Weekly"
+                        : "Monthly"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              {/* Total revenue */}
+              <div className="bg-admin-primary/4 rounded-xl p-6 border border-accent-2">
+                <div className="flex items-start gap-2 xl:gap-5">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+                    <TbMoneybag className="text-[#626262]" size={20} />
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-sm mb-1 text-admin-primary/60">
+                      Total revenue
+                    </p>
+                    <p className="text-3xl font-extrabold text-admin-primary truncate">
+                      {formatCompactCurrency(totalRevenue)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="flex items-center space-x-1 text-sm rounded-lg py-1 px-2 text-[#2AA31F] bg-[#2AA31F]/15">
+                    <TrendingUp size={16} />
+                    <span className="font-medium">
+                      {Math.abs(totalRevenueChange)}%
+                    </span>
+                  </div>
+                  <p className="text-[#ABABAB] text-sm">vs yesterday</p>
+                </div>
+              </div>
+
+              {/* Net revenue after fee */}
+              <div className="bg-admin-primary/4 rounded-xl p-6 border border-accent-2">
+                <div className="flex items-start gap-2 xl:gap-5">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+                    <FaCreditCard className="text-[#626262]" size={20} />
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-sm mb-1 text-admin-primary/60">
+                      Net revenue after fee
+                    </p>
+                    <p className="text-3xl font-extrabold text-admin-primary truncate">
+                      {formatCompactCurrency(netAfterFees)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="flex items-center space-x-1 text-sm rounded-lg py-1 px-2 text-[#2AA31F] bg-[#2AA31F]/15">
+                    <TrendingUp size={16} />
+                    <span className="font-medium">
+                      {Math.abs(netRevenueChange)}%
+                    </span>
+                  </div>
+                  <p className="text-[#ABABAB] text-sm">vs last week</p>
+                </div>
+              </div>
+
+              {/* Platform fee/charges - Dark background */}
+              <div className="bg-admin-primary rounded-xl p-6">
+                <div className="flex items-start gap-2 xl:gap-5">
+                  <div className="w-10 h-10 bg-white rounded-md flex items-center justify-center">
+                    <BsCalendar3 className="text-black" size={20} />
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-sm mb-1 text-[#ABABAB]">
+                      Platform fee/charges
+                    </p>
+                    <p className="text-3xl font-extrabold text-white truncate">
+                      {formatCompactCurrency(platformFees)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="flex items-center space-x-1 text-sm rounded-lg py-1 px-2 text-red-600 bg-red-50">
+                    <TrendingDown size={16} />
+                    <span className="font-medium">
+                      {Math.abs(platformFeesChange)}%
+                    </span>
+                  </div>
+                  <p className="text-[#ABABAB] text-sm">vs last month</p>
+                </div>
+              </div>
+
+              {/* Tax collected */}
+              <div className="bg-admin-primary/4 rounded-xl p-6 border border-accent-2">
+                <div className="flex items-start gap-2 xl:gap-5">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+                    <HiSquare3Stack3D className="text-[#626262]" size={20} />
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-sm mb-1 text-admin-primary/60">
+                      Tax collected
+                    </p>
+                    <p className="text-3xl font-extrabold text-admin-primary truncate">
+                      {formatCompactCurrency(taxCollected)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="flex items-center space-x-1 text-sm rounded-lg py-1 px-2 text-[#2AA31F] bg-[#2AA31F]/15">
+                    <TrendingUp size={16} />
+                    <span className="font-medium">
+                      {Math.abs(taxCollectedChange)}%
+                    </span>
+                  </div>
+                  <p className="text-[#ABABAB] text-sm">vs last week</p>
+                </div>
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -535,465 +651,222 @@ export default function FinancePage() {
           </div>
         </div>
       ) : (
-        <>
-          <div className="bg-admin-primary/4 rounded-t-xl p-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="flex flex-wrap gap-2 bg-white p-1">
-                <button
-                  onClick={() => setActiveTab("transactions")}
-                  className={`px-4 py-2 rounded-sm text-sm transition-all ${
-                    activeTab === "transactions"
-                      ? "bg-admin-primary text-white"
-                      : "bg-admin-primary/5 text-admin-primary"
-                  }`}
-                >
-                  Transactions
-                </button>
-                <button
-                  onClick={() => setActiveTab("settlements")}
-                  className={`px-4 py-2 rounded-sm text-sm transition-all ${
-                    activeTab === "settlements"
-                      ? "bg-admin-primary text-white"
-                      : "bg-admin-primary/5 text-admin-primary"
-                  }`}
-                >
-                  Settlements
-                </button>
-                <button
-                  onClick={() => setActiveTab("revenue")}
-                  className={`px-4 py-2 rounded-sm text-sm transition-all ${
-                    activeTab === "revenue"
-                      ? "bg-admin-primary text-white"
-                      : "bg-admin-primary/5 text-admin-primary"
-                  }`}
-                >
-                  Revenue
-                </button>
-              </div>
-              <Button onClick={handleExport} disabled={exporting}>
+        <div className="bg-[#1A1A1A0A] rounded-[10px] py-8">
+          <div className="mb-6 px-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+              <h2 className="text-xl lg:text-2xl font-medium text-admin-primary">
+                Transaction History
+              </h2>
+              <Button
+                onClick={handleExport}
+                disabled={exporting}
+                className="bg-admin-primary text-white hover:bg-admin-primary/90"
+              >
                 {exporting ? "Exporting..." : "Export"}
               </Button>
             </div>
-          </div>
 
-          {activeTab === "transactions" && (
-            <>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-admin-primary/4 p-6 gap-4">
-                <div>
-                  <h2 className="text-sm text-admin-primary/60 mb-1">
-                    All Transactions
-                  </h2>
-                  <p className="text-2xl font-bold text-admin-primary">
-                    {filteredTransactions.length}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-4">
-                  <div className="relative">
-                    <Search
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-grey"
-                      size={20}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Search transactions"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:outline-none sm:w-96"
-                    />
-                  </div>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-2 bg-white rounded-lg focus:outline-none"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="successful">Successful</option>
-                    <option value="failed">Failed</option>
-                  </select>
-                  <select
-                    value={paymentMethodFilter}
-                    onChange={(e) => setPaymentMethodFilter(e.target.value)}
-                    className="px-4 py-2 bg-white rounded-lg focus:outline-none"
-                  >
-                    <option value="all">All Methods</option>
-                    <option value="paystack">Paystack</option>
-                    <option value="nova">Nova</option>
-                    <option value="payaza">Payaza</option>
-                    <option value="stripe">Stripe</option>
-                  </select>
-                  <select
-                    value={durationFilter}
-                    onChange={(e) => setDurationFilter(e.target.value)}
-                    className="px-4 py-2 bg-white rounded-lg focus:outline-none flex items-center"
-                  >
-                    <option value="today">Today</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                  </select>
-                </div>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+              <div>
+                <p className="text-sm text-admin-primary/60 mb-1">
+                  All Transaction
+                </p>
+                <p className="text-2xl font-bold text-admin-primary">
+                  {filteredTransactions.length}
+                </p>
               </div>
-
-              <div className="bg-admin-primary/4 rounded-b-xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  {tableLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <LoadingSpinner size="lg" />
-                    </div>
-                  ) : paginatedTransactions.length === 0 ? (
-                    <div className="flex items-center justify-center py-12">
-                      <p className="text-admin-primary/60">
-                        No transactions found
-                      </p>
-                    </div>
-                  ) : (
-                    <table className="w-full">
-                      <thead className="bg-accent-1 shadow-md shadow-black">
-                        <tr>
-                          <th className="text-left font-medium text-admin-primary px-6 py-4">
-                            Transaction ID
-                          </th>
-                          <th className="text-left font-medium text-admin-primary px-6 py-4">
-                            User
-                          </th>
-                          <th className="text-left font-medium text-admin-primary px-6 py-4">
-                            Amount
-                          </th>
-                          <th className="text-left font-medium text-admin-primary px-6 py-4">
-                            Method
-                          </th>
-                          <th className="text-left font-medium text-admin-primary px-6 py-4">
-                            Date & Time
-                          </th>
-                          <th className="text-left font-medium text-admin-primary px-6 py-4">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginatedTransactions.map((transaction) => (
-                          <tr
-                            key={transaction.id}
-                            onClick={() => handleViewTransaction(transaction)}
-                            className="border-b border-accent-2 transition-colors bg-white cursor-pointer"
-                          >
-                            <td className="px-6 py-4 text-admin-primary">
-                              {transaction.id}
-                            </td>
-                            <td className="px-6 py-4 text-admin-primary">
-                              {transaction.userName}
-                            </td>
-                            <td className="px-6 py-4 text-admin-primary">
-                              {formatCompactCurrency(transaction.amount)}
-                            </td>
-                            <td className="px-6 py-4 text-admin-primary capitalize">
-                              {transaction.method}
-                            </td>
-                            <td className="px-6 py-4 text-admin-primary">
-                              {formatDateTime(transaction.dateTime)}
-                            </td>
-                            <td className="px-6 py-4">
-                              <Badge
-                                variant={
-                                  transaction.status === "successful"
-                                    ? "success"
-                                    : transaction.status === "pending"
-                                    ? "warning"
-                                    : transaction.status === "failed"
-                                    ? "danger"
-                                    : "default"
-                                }
-                              >
-                                {transaction.status}
-                              </Badge>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative">
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-grey"
+                    size={20}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search by transaction ID"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white border border-accent-2 rounded-lg focus:outline-none sm:w-64"
+                  />
                 </div>
-              </div>
-
-              {/* Pagination Controls */}
-              {filteredTransactions.length > 0 && (
-                <div className="bg-admin-primary/4 p-4 rounded-b-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="text-sm text-admin-primary/60">
-                    Showing {startIndex + 1} to{" "}
-                    {Math.min(endIndex, filteredTransactions.length)} of{" "}
-                    {filteredTransactions.length} transactions
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(1, prev - 1))
-                      }
-                      disabled={currentPage === 1}
-                      className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${
-                        currentPage === 1
-                          ? "opacity-50 cursor-not-allowed text-grey"
-                          : "text-admin-primary hover:bg-accent-1"
-                      }`}
-                    >
-                      <ChevronLeft size={18} />
-                      Previous
-                    </button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1)
-                        .filter((page) => {
-                          // Show first page, last page, current page, and pages around current
-                          if (page === 1 || page === totalPages) return true;
-                          if (Math.abs(page - currentPage) <= 1) return true;
-                          return false;
-                        })
-                        .map((page, index, array) => {
-                          // Add ellipsis if there's a gap
-                          const showEllipsisBefore =
-                            index > 0 && array[index - 1] !== page - 1;
-                          return (
-                            <div key={page} className="flex items-center gap-1">
-                              {showEllipsisBefore && (
-                                <span className="px-2 text-grey">...</span>
-                              )}
-                              <button
-                                onClick={() => setCurrentPage(page)}
-                                className={`px-3 py-2 rounded-lg border transition-colors ${
-                                  currentPage === page
-                                    ? "bg-admin-primary text-white border-admin-primary"
-                                    : "border-accent-2 text-admin-primary hover:bg-accent-1"
-                                }`}
-                              >
-                                {page}
-                              </button>
-                            </div>
-                          );
-                        })}
-                    </div>
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                      }
-                      disabled={currentPage === totalPages}
-                      className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 ${
-                        currentPage === totalPages
-                          ? "opacity-50 cursor-not-allowed text-grey"
-                          : "text-admin-primary hover:bg-accent-1"
-                      }`}
-                    >
-                      Next
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {activeTab === "settlements" && (
-            <div className="bg-admin-primary/4 rounded-b-xl p-6">
-              <div className="space-y-4">
-                {settlements.length === 0 ? (
-                  <div className="flex items-center justify-center py-12">
-                    <p className="text-admin-primary/60">
-                      No settlements found
-                    </p>
-                  </div>
-                ) : (
-                  settlements.map((settlement) => (
-                    <div
-                      key={settlement.id}
-                      className="bg-white rounded-lg p-6 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-lg font-semibold text-admin-primary capitalize">
-                          {settlement.gateway}
-                        </span>
-                        <Badge variant="success">Settled</Badge>
-                      </div>
-
-                      <div className="grid grid-cols-4 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm text-grey mb-1">Gross Amount</p>
-                          <p className="text-lg font-semibold text-admin-primary">
-                            {formatCompactCurrency(settlement.grossAmount)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-grey mb-1">Gateway Fee</p>
-                          <p className="text-lg font-semibold text-red-600">
-                            -{formatCompactCurrency(settlement.gatewayFee)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-grey mb-1">Net Payout</p>
-                          <p className="text-lg font-semibold text-green-600">
-                            {formatCompactCurrency(settlement.netPayout)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-grey mb-1">
-                            Settlement Date
-                          </p>
-                          <p className="text-lg font-semibold text-admin-primary">
-                            {formatDate(settlement.settlementDate)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex flex-row items-center"
-                      >
-                        <Download size={14} className="mr-2" />
-                        Download Report
-                      </Button>
-                    </div>
-                  ))
-                )}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2 bg-white border border-accent-2 rounded-lg focus:outline-none text-sm"
+                >
+                  <option value="all">All status</option>
+                  <option value="pending">Pending</option>
+                  <option value="successful">Completed</option>
+                  <option value="failed">Failed</option>
+                  <option value="refunded">Refund</option>
+                </select>
+                <select
+                  value={paymentMethodFilter}
+                  onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                  className="px-4 py-2 bg-white border border-accent-2 rounded-lg focus:outline-none text-sm"
+                >
+                  <option value="all">Payment</option>
+                  <option value="paystack">Paystack</option>
+                  <option value="nova">Nova</option>
+                  <option value="payaza">Payaza</option>
+                  <option value="stripe">Stripe</option>
+                </select>
+                <select
+                  value={durationFilter}
+                  onChange={(e) => setDurationFilter(e.target.value)}
+                  className="px-4 py-2 bg-white border border-accent-2 rounded-lg focus:outline-none text-sm"
+                >
+                  <option value="today">Today</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
               </div>
             </div>
-          )}
+          </div>
 
-          {activeTab === "revenue" && (
-            <>
-              <div className="flex items-center justify-between bg-admin-primary/4 p-6">
-                <h2 className="text-lg font-semibold text-admin-primary">
-                  Revenue Overview
-                </h2>
-                <div className="flex items-center space-x-2">
-                  <div className="relative" ref={datePickerRef}>
-                    <button
-                      type="button"
-                      onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-                      className="flex items-center space-x-2 px-4 py-2 bg-white rounded-lg border border-admin-primary/35 hover:bg-accent-1 transition-colors cursor-pointer"
-                    >
-                      <Calendar size={18} className="text-admin-primary" />
-                      <span className="text-admin-primary text-sm">
-                        {revenueDateRange.from && revenueDateRange.to
-                          ? `${format(
-                              revenueDateRange.from,
-                              "MMM dd, yyyy"
-                            )} - ${format(revenueDateRange.to, "MMM dd, yyyy")}`
-                          : "Select Date Range"}
-                      </span>
-                      <ChevronDown
-                        size={16}
-                        className={`text-admin-primary transition-transform ${
-                          isDatePickerOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-
-                    {isDatePickerOpen && (
-                      <div className="absolute right-0 top-full mt-2 z-50 bg-white rounded-xl shadow-xl border border-admin-primary/35 p-4">
-                        <DayPicker
-                          mode="range"
-                          selected={revenueDateRange}
-                          onSelect={(range) => {
-                            setRevenueDateRange({
-                              from: range?.from,
-                              to: range?.to,
-                            });
-                          }}
-                          numberOfMonths={1}
-                          className="custom-day-picker"
-                        />
-                        <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-admin-primary/35">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRevenueDateRange({
-                                from: undefined,
-                                to: undefined,
-                              });
-                              setIsDatePickerOpen(false);
-                              setRevenueDateFilter("monthly");
-                              // Reload analytics with the default filter
-                              loadRevenueAnalytics();
-                            }}
-                            className="px-4 py-2 text-sm text-admin-primary hover:bg-accent-1 rounded-lg transition-colors"
-                          >
-                            Clear
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (
-                                revenueDateRange.from &&
-                                revenueDateRange.to
-                              ) {
-                                setIsDatePickerOpen(false);
-                                // Reload analytics with the new date range
-                                // start_date and end_date will be used instead of date_filter
-                                loadRevenueAnalytics();
-                              }
-                            }}
-                            disabled={
-                              !revenueDateRange.from || !revenueDateRange.to
-                            }
-                            className="px-4 py-2 text-sm bg-admin-primary text-white rounded-lg transition-colors hover:bg-admin-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Apply
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <select
-                    value={revenueDateFilter}
-                    onChange={(e) => {
-                      setRevenueDateFilter(e.target.value);
-                      setRevenueDateRange({ from: undefined, to: undefined });
-                    }}
-                    className="px-4 py-2 bg-white rounded-lg focus:outline-none border border-admin-primary/35"
-                  >
-                    <option value="today">Today</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                  </select>
+          <div className="overflow-hidden">
+            <div className="overflow-x-auto">
+              {tableLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <LoadingSpinner size="lg" />
                 </div>
-              </div>
+              ) : paginatedTransactions.length === 0 ? (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-admin-primary/60">No transactions found</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-accent-2">
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        Transaction ID
+                      </th>
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        User
+                      </th>
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        Amount
+                      </th>
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        Method
+                      </th>
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        Date & Time
+                      </th>
+                      <th className="text-left font-medium text-admin-primary px-6 py-4">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedTransactions.map((transaction, index) => {
+                      let statusVariant:
+                        | "default"
+                        | "success"
+                        | "warning"
+                        | "danger" = "default";
+                      let statusText: string = transaction.status;
 
-              <div className="bg-admin-primary/4 rounded-b-xl p-6">
-                {revenueLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <LoadingSpinner size="lg" />
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <StatsCard
-                      icon={TbMoneybag}
-                      title="Total Revenue"
-                      value={formatCompactCurrency(totalRevenue)}
-                      change={12.5}
-                      iconBgColor="bg-white"
-                      iconColor="text-[#626262]"
-                    />
-                    <StatsCard2
-                      icon={TrendingUp}
-                      title="Tax Collected"
-                      value={formatCompactCurrency(taxCollected)}
-                      change={8.3}
-                      iconBgColor="bg-white"
-                      iconColor="text-[#626262]"
-                    />
-                    <StatsCard
-                      icon={DollarSign}
-                      title="Net After Fees"
-                      value={formatCompactCurrency(netAfterFees)}
-                      change={15.7}
-                      iconBgColor="bg-white"
-                      iconColor="text-[#626262]"
-                    />
-                  </div>
-                )}
+                      if (transaction.status === "successful") {
+                        statusVariant = "success";
+                        statusText = "Completed";
+                      } else if (transaction.status === "pending") {
+                        statusVariant = "warning";
+                        statusText = "Pending";
+                      } else if (transaction.status === "failed") {
+                        statusVariant = "danger";
+                        statusText = "Failed";
+                      } else if (transaction.status === "refunded") {
+                        statusVariant = "warning";
+                        statusText = "Refund";
+                      }
+
+                      return (
+                        <tr
+                          key={transaction.id}
+                          onClick={() => handleViewTransaction(transaction)}
+                          className={clsx(
+                            "not-last:border-b border-accent-2 transition-colors cursor-pointer",
+                            index % 2 === 0 ? "bg-white" : "bg-accent-1"
+                          )}
+                        >
+                          <td className="px-6 py-4 text-admin-primary">
+                            {transaction.id}
+                          </td>
+                          <td className="px-6 py-4 text-admin-primary">
+                            {transaction.userName}
+                          </td>
+                          <td className="px-6 py-4 text-admin-primary">
+                            {formatCompactCurrency(transaction.amount)}
+                          </td>
+                          <td className="px-6 py-4 text-admin-primary capitalize">
+                            {transaction.method}
+                          </td>
+                          <td className="px-6 py-4 text-admin-primary">
+                            {formatDateTime(transaction.dateTime)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant={statusVariant}>{statusText}</Badge>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          {filteredTransactions.length > 0 && (
+            <div className="flex items-center justify-end gap-2 mt-10">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 text-sm ${
+                  currentPage === 1
+                    ? "opacity-50 cursor-not-allowed text-grey"
+                    : "text-admin-primary hover:bg-accent-1"
+                }`}
+              >
+                <ChevronLeft size={18} />
+                Prev
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from(
+                  { length: Math.min(totalPages, 5) },
+                  (_, i) => i + 1
+                ).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-2 rounded-lg border transition-colors text-sm ${
+                      currentPage === page
+                        ? "bg-admin-primary text-white border-admin-primary"
+                        : "border-accent-2 text-admin-primary hover:bg-accent-1"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
               </div>
-            </>
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
+                disabled={currentPage === totalPages}
+                className={`px-3 py-2 rounded-lg border border-accent-2 transition-colors flex items-center gap-1 text-sm ${
+                  currentPage === totalPages
+                    ? "opacity-50 cursor-not-allowed text-grey"
+                    : "text-admin-primary hover:bg-accent-1"
+                }`}
+              >
+                Next
+                <ChevronRight size={18} />
+              </button>
+            </div>
           )}
-        </>
+        </div>
       )}
 
       <Modal
