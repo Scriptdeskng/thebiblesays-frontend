@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,9 +9,8 @@ import Image from "next/image";
 import { authService } from "@/services/auth.service";
 import toast from "react-hot-toast";
 
-export default function PasswordResetPage() {
+function PasswordResetForm() {
   const router = useRouter();
-
   const searchParams = useSearchParams();
 
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -285,5 +285,27 @@ export default function PasswordResetPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PasswordResetLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white px-4">
+      <div className="w-full max-w-md">
+        <div className="bg-secondary rounded-2xl shadow-sm p-8 border border-accent-2">
+          <div className="flex items-center justify-center">
+            <Loader2 className="animate-spin" size={40} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function PasswordResetPage() {
+  return (
+    <Suspense fallback={<PasswordResetLoading />}>
+      <PasswordResetForm />
+    </Suspense>
   );
 }
