@@ -142,6 +142,7 @@ export interface Transaction {
   userId: string;
   userName: string;
   userEmail: string;
+  orderNumber: string;
   amount: number;
   method: PaymentMethod;
   status: TransactionStatus;

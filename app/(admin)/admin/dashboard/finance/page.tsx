@@ -68,14 +68,12 @@ export default function FinancePage() {
   const mapApiTransactionToTransaction = (
     apiTx: ApiTransaction
   ): Transaction => {
-    // Extract name from email (before @) or use fallback
     const userEmail = apiTx.user_email || "";
     const emailName = userEmail ? userEmail.split("@")[0] : "Unknown";
     const userName = emailName
       ? emailName.charAt(0).toUpperCase() + emailName.slice(1)
       : "Unknown User";
 
-    // Normalize payment method
     const paymentMethod = (apiTx.payment_method || "").toLowerCase();
     const normalizedMethod: "paystack" | "nova" | "payaza" | "stripe" =
       paymentMethod === "paystack" ||
@@ -85,7 +83,6 @@ export default function FinancePage() {
         ? paymentMethod
         : "paystack"; // Default fallback
 
-    // Normalize status: API uses 'successful', frontend uses 'successful'
     const apiStatus = (apiTx.status || "pending").toLowerCase();
     const normalizedStatus: "pending" | "successful" | "failed" =
       apiStatus === "pending" ||
@@ -96,9 +93,10 @@ export default function FinancePage() {
 
     return {
       id: apiTx.id?.toString() || "",
-      userId: "", // API doesn't provide userId
+      userId: "",
       userName: userName,
       userEmail: userEmail,
+      orderNumber: apiTx.order_number || "",
       amount: parseFloat(apiTx.amount || "0"),
       method: normalizedMethod,
       status: normalizedStatus,
@@ -606,6 +604,12 @@ export default function FinancePage() {
                   </p>
                 </div>
                 <div className="flex items-center justify-between">
+                  <p className="text-grey mb-1">Order Number</p>
+                  <p className="text-admin-primary font-medium">
+                    {selectedTransaction.orderNumber}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between">
                   <p className="text-grey mb-1">Email</p>
                   <p className="text-admin-primary font-medium">
                     {selectedTransaction.userEmail || "N/A"}
@@ -797,7 +801,7 @@ export default function FinancePage() {
                         Transaction ID
                       </th>
                       <th className="text-left font-medium text-admin-primary px-6 py-4">
-                        User
+                        Order Number
                       </th>
                       <th className="text-left font-medium text-admin-primary px-6 py-4">
                         Amount
@@ -849,7 +853,7 @@ export default function FinancePage() {
                             {transaction.id}
                           </td>
                           <td className="px-6 py-4 text-admin-primary">
-                            {transaction.userName}
+                            {transaction.orderNumber}
                           </td>
                           <td className="px-6 py-4 text-admin-primary">
                             {formatCompactCurrency(transaction.amount)}

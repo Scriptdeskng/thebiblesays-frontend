@@ -678,6 +678,28 @@ class DashboardService {
     }
   }
 
+  async getTransactionById(id: string | number): Promise<ApiTransaction> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/transactions/${id}/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error fetching transaction:", error);
+      throw error;
+    }
+  }
+
   async exportTransactions(params?: {
     search?: string;
     status?: string;
