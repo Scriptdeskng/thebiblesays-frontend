@@ -11,6 +11,9 @@ import {
   RevenueAnalytics,
   ApiNotification,
   GetNotificationsParams,
+  AuditLog,
+  UserActivityResponse,
+  GetAuditLogsParams,
 } from "@/types/admin.types";
 import { useAuthStore } from "@/store/useAuthStore";
 import axios from "axios";
@@ -123,7 +126,9 @@ class DashboardService {
     }
   }
 
-  async getSubcategories(categoryId?: number): Promise<Array<{ id: number; name: string; category: number }>> {
+  async getSubcategories(
+    categoryId?: number
+  ): Promise<Array<{ id: number; name: string; category: number }>> {
     try {
       const { accessToken } = useAuthStore.getState();
 
@@ -364,7 +369,11 @@ class DashboardService {
     }
   }
 
-  async suspendUser(id: string | number, email: string, is_active: boolean): Promise<any> {
+  async suspendUser(
+    id: string | number,
+    email: string,
+    is_active: boolean
+  ): Promise<any> {
     try {
       const { accessToken } = useAuthStore.getState();
 
@@ -606,7 +615,7 @@ class DashboardService {
     password: string;
     first_name: string;
     last_name: string;
-    role: 'admin' | 'superuser';
+    role: "admin" | "superuser";
   }): Promise<any> {
     try {
       const { accessToken } = useAuthStore.getState();
@@ -860,10 +869,15 @@ class DashboardService {
       }
 
       // Debug: Log FormData contents
-      console.log("FormData entries:", Array.from(formData.entries()).map(([key, value]) => [
-        key,
-        value instanceof File ? `File: ${value.name} (${value.size} bytes)` : value,
-      ]));
+      console.log(
+        "FormData entries:",
+        Array.from(formData.entries()).map(([key, value]) => [
+          key,
+          value instanceof File
+            ? `File: ${value.name} (${value.size} bytes)`
+            : value,
+        ])
+      );
 
       // Use axios directly for FormData to ensure proper multipart/form-data handling
       // The Api instance has default Content-Type header which interferes with FormData
@@ -925,10 +939,7 @@ class DashboardService {
     }
   }
 
-  async addProductImages(
-    productId: number,
-    images: File[]
-  ): Promise<any> {
+  async addProductImages(productId: number, images: File[]): Promise<any> {
     try {
       const { accessToken } = useAuthStore.getState();
 
@@ -1005,7 +1016,9 @@ class DashboardService {
     }
   }
 
-  async getNotifications(params?: GetNotificationsParams): Promise<ApiNotification[]> {
+  async getNotifications(
+    params?: GetNotificationsParams
+  ): Promise<ApiNotification[]> {
     try {
       const { accessToken } = useAuthStore.getState();
 
@@ -1046,6 +1059,150 @@ class DashboardService {
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error("Error fetching notifications:", error);
+      throw error;
+    }
+  }
+
+  async getAuditLogs(params?: GetAuditLogsParams): Promise<AuditLog[]> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const queryParams: Record<string, any> = {};
+
+      if (params?.search) {
+        queryParams.search = params.search;
+      }
+      if (params?.user) {
+        queryParams.user = params.user;
+      }
+      if (params?.action_type) {
+        queryParams.action_type = params.action_type;
+      }
+      if (params?.success !== undefined) {
+        queryParams.success = params.success;
+      }
+      if (params?.is_critical !== undefined) {
+        queryParams.is_critical = params.is_critical;
+      }
+      if (params?.start_date) {
+        queryParams.start_date = params.start_date;
+      }
+      if (params?.end_date) {
+        queryParams.end_date = params.end_date;
+      }
+      if (params?.page) {
+        queryParams.page = params.page;
+      }
+      if (params?.ordering) {
+        queryParams.ordering = params.ordering;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/audit-logs/`,
+        method: "GET",
+        params: queryParams,
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      throw error;
+    }
+  }
+
+  async getUserActivity(params?: {
+    search?: string;
+    status?: string;
+    page?: number;
+  }): Promise<UserActivityResponse> {
+    try {
+      const { accessToken, user } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+      if (!user?.id) {
+        throw new Error("No logged-in user available");
+      }
+
+      const queryParams: Record<string, any> = {
+        user_id: user.id,
+      };
+
+      if (params?.search) {
+        queryParams.search = params.search;
+      }
+      if (params?.status) {
+        queryParams.status = params.status;
+      }
+      if (params?.page) {
+        queryParams.page = params.page;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/audit-logs/user_activity/`,
+        method: "GET",
+        params: queryParams,
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response as UserActivityResponse;
+    } catch (error) {
+      console.error("Error fetching user activity:", error);
+      throw error;
+    }
+  }
+
+  async exportAuditLogs(params?: GetAuditLogsParams): Promise<Blob> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const queryParams: Record<string, any> = {};
+
+      if (params?.search) {
+        queryParams.search = params.search;
+      }
+      if (params?.user) {
+        queryParams.user = params.user;
+      }
+      if (params?.action_type) {
+        queryParams.action_type = params.action_type;
+      }
+      if (params?.success !== undefined) {
+        queryParams.success = params.success;
+      }
+      if (params?.is_critical !== undefined) {
+        queryParams.is_critical = params.is_critical;
+      }
+      if (params?.start_date) {
+        queryParams.start_date = params.start_date;
+      }
+      if (params?.end_date) {
+        queryParams.end_date = params.end_date;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/audit-logs/export/`,
+        method: "GET",
+        params: queryParams,
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response as Blob;
+    } catch (error) {
+      console.error("Error exporting audit logs:", error);
       throw error;
     }
   }
