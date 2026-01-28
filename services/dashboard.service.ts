@@ -12,6 +12,7 @@ import {
   ApiNotification,
   GetNotificationsParams,
   AuditLog,
+  AuditLogDetail,
   UserActivityResponse,
   GetAuditLogsParams,
 } from "@/types/admin.types";
@@ -1112,6 +1113,28 @@ class DashboardService {
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error("Error fetching audit logs:", error);
+      throw error;
+    }
+  }
+
+  async getAuditLogDetail(id: number | string): Promise<AuditLogDetail> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/audit-logs/${id}/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response as AuditLogDetail;
+    } catch (error) {
+      console.error("Error fetching audit log detail:", error);
       throw error;
     }
   }

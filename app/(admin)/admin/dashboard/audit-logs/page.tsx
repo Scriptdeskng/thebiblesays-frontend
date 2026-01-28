@@ -12,15 +12,16 @@ import {
 import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
 import "react-day-picker/dist/style.css";
-import { Button, LoadingSpinner } from "@/components/admin/ui";
+import { Button, LoadingSpinner, Badge } from "@/components/admin/ui";
 import {
   AuditLog,
+  AuditLogDetail,
   UserActivityResponse,
   GetAuditLogsParams,
   AUDIT_LOG_ACTION_TYPES,
   AuditLogActionType,
 } from "@/types/admin.types";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatCurrency } from "@/lib/utils";
 import { dashboardService } from "@/services/dashboard.service";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -72,6 +73,11 @@ export default function AuditLogsPage() {
     to: Date | undefined;
   }>({ from: undefined, to: undefined });
   const userIssuesDatePickerRef = useRef<HTMLDivElement>(null);
+
+  /** Log detail view (row click) */
+  const [showLogDetail, setShowLogDetail] = useState(false);
+  const [logDetail, setLogDetail] = useState<AuditLogDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const uniqueUsers = Array.from(
     new Map(
@@ -312,6 +318,53 @@ export default function AuditLogsPage() {
     }
   };
 
+  const handleViewLog = async (id: number) => {
+    setShowLogDetail(true);
+    setDetailLoading(true);
+    setLogDetail(null);
+    try {
+      const detail = await dashboardService.getAuditLogDetail(id);
+      setLogDetail(detail);
+    } catch (error) {
+      console.error("Error loading log detail:", error);
+      toast.error("Failed to load log details");
+      setShowLogDetail(false);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleBackToList = () => {
+    setShowLogDetail(false);
+    setLogDetail(null);
+  };
+
+  const getDetailEmail = (d: AuditLogDetail): string => {
+    if (d.details?.admin_email && d.details.admin_email !== "Anonymous")
+      return d.details.admin_email;
+    if (typeof d.object_name === "string" && d.object_name.includes("@"))
+      return d.object_name;
+    return "-";
+  };
+
+  const getActionDescription = (d: AuditLogDetail): string => {
+    if (d.error_message) return d.error_message;
+    const det = d.details;
+    if (det?.username_used) {
+      const method = det.login_method ? ` via ${det.login_method}` : "";
+      return `${d.action_display}${method} for ${det.username_used}`;
+    }
+    if (det?.model === "Product" && det?.updated_fields?.length) {
+      const fields = det.updated_fields.map((f) => f.replace(/_/g, " ")).join(", ");
+      return `${d.action_display}: ${fields}`;
+    }
+    const amount = det?.amount;
+    const amt = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (amt != null && !Number.isNaN(amt) && d.action_display)
+      return `${d.action_display} of ${formatCurrency(amt)}`;
+    return d.action_display || "-";
+  };
+
   return (
     <div>
       <div className="mb-6">
@@ -326,6 +379,199 @@ export default function AuditLogsPage() {
           </div>
         </div>
 
+        {showLogDetail ? (
+          <div className="bg-white rounded-xl">
+            <div className="flex items-center gap-5 mb-6">
+              <button
+                type="button"
+                onClick={handleBackToList}
+                className="flex items-center text-admin-primary hover:text-admin-primary/80 transition-colors"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <h2 className="font-medium text-admin-primary text-lg">
+                Log details
+              </h2>
+            </div>
+
+            {detailLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <LoadingSpinner size="lg" />
+              </div>
+            ) : logDetail ? (
+              <div className="space-y-6 bg-admin-primary/4 p-6 rounded-xl">
+                <div>
+                  <h3 className="font-semibold text-admin-primary mb-3">
+                    Personal Information
+                  </h3>
+                  <div className="space-y-4 text-sm">
+                    <div className="flex items-center justify-between">
+                      <p className="text-admin-primary/60">Name</p>
+                      <p className="text-admin-primary font-medium">
+                        {logDetail.details?.model === "Product"
+                          ? (logDetail.details.admin_name || logDetail.user_name || "-")
+                          : (logDetail.user_name || logDetail.details?.admin_name || "-")}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-admin-primary/60">Email</p>
+                      <p className="text-admin-primary font-medium">
+                        {getDetailEmail(logDetail)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-admin-primary/60">Action</p>
+                      <Badge
+                        variant={
+                          logDetail.success ? "success" : "danger"
+                        }
+                      >
+                        {logDetail.action_display}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-admin-primary mb-3">
+                    Audit Log Information
+                  </h3>
+                  <div className="space-y-4 text-sm bg-white/60 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <p className="text-admin-primary/60">Entity type</p>
+                      <p className="text-admin-primary font-medium capitalize">
+                        {logDetail.content_type_name || "-"}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-admin-primary/60">Entity ID</p>
+                      <p className="text-admin-primary font-medium">
+                        {logDetail.object_id || "-"}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-admin-primary/60">Object name</p>
+                      <p className="text-admin-primary font-medium">
+                        {logDetail.object_name || "-"}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-admin-primary/60">Timestamp</p>
+                      <p className="text-admin-primary font-medium">
+                        {formatDateTime(logDetail.timestamp)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-admin-primary/60">Status</p>
+                      <p className="text-admin-primary font-medium">
+                        {logDetail.success ? "Success" : "Failed"}
+                      </p>
+                    </div>
+                    {logDetail.ip_address && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-admin-primary/60">IP address</p>
+                        <p className="text-admin-primary font-medium">
+                          {logDetail.ip_address}
+                        </p>
+                      </div>
+                    )}
+                    {(logDetail.user_agent || logDetail.details?.user_agent) && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-admin-primary/60">User agent</p>
+                        <p className="text-admin-primary font-medium text-right max-w-[70%] truncate" title={logDetail.user_agent || logDetail.details?.user_agent}>
+                          {logDetail.user_agent || logDetail.details?.user_agent}
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <p className="text-admin-primary/60">Is critical</p>
+                      <p className="text-admin-primary font-medium">
+                        {logDetail.is_critical ? "Yes" : "No"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {logDetail.details?.model === "Product" && (
+                  <div>
+                    <h3 className="font-semibold text-admin-primary mb-3">
+                      Product details
+                    </h3>
+                    <div className="space-y-4 text-sm bg-white/60 p-4 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <p className="text-admin-primary/60">Model</p>
+                        <p className="text-admin-primary font-medium">
+                          {logDetail.details.model || "-"}
+                        </p>
+                      </div>
+                      {(logDetail.details.admin_name || logDetail.details.admin_email) && (
+                        <>
+                          {logDetail.details.admin_name && (
+                            <div className="flex items-center justify-between">
+                              <p className="text-admin-primary/60">Admin name</p>
+                              <p className="text-admin-primary font-medium">
+                                {logDetail.details.admin_name}
+                              </p>
+                            </div>
+                          )}
+                          {logDetail.details.admin_email && (
+                            <div className="flex items-center justify-between">
+                              <p className="text-admin-primary/60">Admin email</p>
+                              <p className="text-admin-primary font-medium">
+                                {logDetail.details.admin_email}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {logDetail.details.timestamp_iso && (
+                        <div className="flex items-center justify-between">
+                          <p className="text-admin-primary/60">Timestamp (ISO)</p>
+                          <p className="text-admin-primary font-medium">
+                            {formatDateTime(logDetail.details.timestamp_iso)}
+                          </p>
+                        </div>
+                      )}
+                      {logDetail.details.updated_fields?.length ? (
+                        <div>
+                          <p className="text-admin-primary/60 mb-2">
+                            Updated fields
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {logDetail.details.updated_fields.map((f) => (
+                              <span
+                                key={f}
+                                className="inline-flex items-center px-2.5 py-1 rounded-lg bg-admin-primary/8 text-admin-primary text-sm"
+                              >
+                                {f.replace(/_/g, " ")}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="font-semibold text-admin-primary mb-3">
+                    Action description
+                  </h3>
+                  <div className="flex items-center justify-between text-sm">
+                    <p className="text-admin-primary/60">Description</p>
+                    <p className="text-admin-primary font-medium text-right max-w-[70%]">
+                      {getActionDescription(logDetail)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-16">
+                <p className="text-admin-primary/60">Unable to load log details</p>
+              </div>
+            )}
+          </div>
+        ) : (
         <div className="bg-[#1A1A1A0A] rounded-[10px] py-8">
           <div className="flex items-center justify-between mb-6 px-6">
             <div className="flex gap-2">
@@ -526,8 +772,14 @@ export default function AuditLogsPage() {
                         return (
                           <tr
                             key={log.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => handleViewLog(log.id)}
+                            onKeyDown={(e) =>
+                              e.key === "Enter" && handleViewLog(log.id)
+                            }
                             className={clsx(
-                              "not-last:border-b border-accent-2",
+                              "not-last:border-b border-accent-2 cursor-pointer transition-colors hover:bg-accent-1",
                               index % 2 === 0 ? "bg-white" : "bg-accent-1"
                             )}
                           >
@@ -728,8 +980,14 @@ export default function AuditLogsPage() {
                           {paginatedUserActivity.map((item, index) => (
                             <tr
                               key={item.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => handleViewLog(item.id)}
+                              onKeyDown={(e) =>
+                                e.key === "Enter" && handleViewLog(item.id)
+                              }
                               className={clsx(
-                                "not-last:border-b border-accent-2",
+                                "not-last:border-b border-accent-2 cursor-pointer transition-colors hover:bg-accent-1",
                                 index % 2 === 0 ? "bg-white" : "bg-accent-1"
                               )}
                             >
@@ -874,6 +1132,7 @@ export default function AuditLogsPage() {
               </div>
             )}
         </div>
+        )}
       </div>
     </div>
   );

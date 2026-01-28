@@ -733,3 +733,37 @@ export interface GetAuditLogsParams {
   page?: number;
   ordering?: string;
 }
+
+/** GET /dashboard/audit-logs/{id}/ response */
+export interface AuditLogDetailDetails {
+  admin_name?: string;
+  admin_email?: string;
+  user_agent?: string;
+  login_method?: string;
+  login_success?: boolean;
+  timestamp_iso?: string;
+  username_used?: string;
+  updated_fields?: string[];
+  amount?: number | string;
+  model?: string;
+  [key: string]: unknown;
+}
+
+export interface AuditLogDetail {
+  id: number;
+  timestamp: string;
+  user: string | null;
+  user_name: string;
+  action_type: string;
+  action_display: string;
+  content_type: number;
+  object_id: string;
+  content_type_name: string;
+  object_name: string;
+  details?: AuditLogDetailDetails;
+  ip_address: string;
+  user_agent?: string;
+  success: boolean;
+  error_message: string;
+  is_critical: boolean;
+}
