@@ -142,6 +142,7 @@ export interface Transaction {
   userId: string;
   userName: string;
   userEmail: string;
+  orderNumber: string;
   amount: number;
   method: PaymentMethod;
   status: TransactionStatus;
@@ -485,12 +486,16 @@ export interface ApiTransaction {
 
 export interface DailyRevenue {
   date?: string;
+  daily_total?: number | string;
   revenue?: number | string;
+  payment_count?: number;
   [key: string]: any;
 }
 
 export interface PaymentMethodStat {
+  payment_method?: string;
   method?: string;
+  total?: number | string;
   count?: number;
   revenue?: number | string;
   [key: string]: any;
@@ -503,4 +508,262 @@ export interface RevenueAnalytics {
   payment_method_stats?: PaymentMethodStat[];
   total_revenue?: number | string;
   [key: string]: any; // Allow for additional fields
+}
+
+export type NotificationPriority = "low" | "medium" | "high" | "urgent";
+
+export type NotificationType =
+  | "new_order"
+  | "custom_merch_order"
+  | "low_stock"
+  | "out_of_stock"
+  | "new_testimonial"
+  | "failed_transaction"
+  | "refund_request"
+  | "new_user"
+  | "system_alert"
+  | "discount_expiring"
+  | "high_revenue_day";
+
+export interface ApiNotification {
+  id: number;
+  type: NotificationType;
+  type_display: string;
+  title: string;
+  message: string;
+  priority: NotificationPriority;
+  priority_display: string;
+  reference_id: string;
+  content_type_name: string;
+  object_id: number;
+  is_read: boolean;
+  age_in_hours: string;
+  is_expired: string;
+  created_at: string;
+  [key: string]: any; // Allow for additional fields
+}
+
+export interface GetNotificationsParams {
+  is_read?: boolean;
+  ordering?: string;
+  page?: number;
+  priority?: NotificationPriority;
+  search?: string;
+  type?: NotificationType;
+}
+
+// Audit Log Types
+export type AuditLogActionType =
+  | "admin_login"
+  | "admin_logout"
+  | "banner_create"
+  | "banner_delete"
+  | "banner_status_change"
+  | "banner_update"
+  | "blog_create"
+  | "blog_delete"
+  | "blog_publish_toggle"
+  | "blog_update"
+  | "category_create"
+  | "category_delete"
+  | "category_status_change"
+  | "category_update"
+  | "design_approve"
+  | "design_reject"
+  | "discount_bulk_action"
+  | "discount_create"
+  | "discount_delete"
+  | "discount_status_change"
+  | "discount_update"
+  | "export_data"
+  | "failed_login"
+  | "order_cancel"
+  | "order_status_update"
+  | "password_reset_confirm"
+  | "password_reset_request"
+  | "permission_denied"
+  | "product_bulk_action"
+  | "product_create"
+  | "product_delete"
+  | "product_featured_toggle"
+  | "product_status_change"
+  | "product_update"
+  | "profile_access"
+  | "settings_update"
+  | "suspicious_activity"
+  | "team_member_list"
+  | "testimonial_create"
+  | "testimonial_delete"
+  | "testimonial_status_change"
+  | "testimonial_update"
+  | "user_activate"
+  | "user_create"
+  | "user_delete"
+  | "user_suspend"
+  | "user_update";
+
+export const AUDIT_LOG_ACTION_TYPES: AuditLogActionType[] = [
+  "admin_login",
+  "admin_logout",
+  "banner_create",
+  "banner_delete",
+  "banner_status_change",
+  "banner_update",
+  "blog_create",
+  "blog_delete",
+  "blog_publish_toggle",
+  "blog_update",
+  "category_create",
+  "category_delete",
+  "category_status_change",
+  "category_update",
+  "design_approve",
+  "design_reject",
+  "discount_bulk_action",
+  "discount_create",
+  "discount_delete",
+  "discount_status_change",
+  "discount_update",
+  "export_data",
+  "failed_login",
+  "order_cancel",
+  "order_status_update",
+  "password_reset_confirm",
+  "password_reset_request",
+  "permission_denied",
+  "product_bulk_action",
+  "product_create",
+  "product_delete",
+  "product_featured_toggle",
+  "product_status_change",
+  "product_update",
+  "profile_access",
+  "settings_update",
+  "suspicious_activity",
+  "team_member_list",
+  "testimonial_create",
+  "testimonial_delete",
+  "testimonial_status_change",
+  "testimonial_update",
+  "user_activate",
+  "user_create",
+  "user_delete",
+  "user_suspend",
+  "user_update",
+];
+
+export interface AuditLog {
+  id: number;
+  timestamp: string;
+  user_name: string;
+  /** UUID of the user (for filtering) */
+  user?: string;
+  action_type: string;
+  action_display: string;
+  object_name: string;
+  content_type_name?: string;
+  success: boolean;
+  ip_address: string;
+  is_critical: boolean;
+}
+
+/** @deprecated Use UserActivityResponse for user_activity endpoint */
+export interface UserIssue {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  issueType: string;
+  description: string;
+  status: "pending" | "resolved" | "escalated";
+  timestamp: string;
+}
+
+/** User activity / user_activity endpoint response */
+export interface UserActivityStatistics {
+  total_actions: number;
+  critical_actions: number;
+  failed_actions: number;
+}
+
+export interface UserActivityItemDetails {
+  model?: string;
+  admin_name?: string;
+  admin_email?: string;
+  timestamp_iso?: string;
+  updated_fields?: string[];
+  [key: string]: unknown;
+}
+
+export interface UserActivityItem {
+  id: number;
+  timestamp: string;
+  user: string;
+  user_email: string;
+  user_name: string;
+  action_type: string;
+  action_display: string;
+  content_type: number;
+  object_id: string;
+  content_type_name: string;
+  object_name: string;
+  details?: UserActivityItemDetails;
+  ip_address: string;
+  user_agent?: string;
+  success: boolean;
+  error_message: string;
+  is_critical: boolean;
+}
+
+export interface UserActivityResponse {
+  user_id: string;
+  statistics: UserActivityStatistics;
+  recent_activity: UserActivityItem[];
+}
+
+export interface GetAuditLogsParams {
+  search?: string;
+  /** UUID of the user */
+  user?: string;
+  action_type?: AuditLogActionType;
+  success?: boolean;
+  is_critical?: boolean;
+  start_date?: string;
+  end_date?: string;
+  page?: number;
+  ordering?: string;
+}
+
+/** GET /dashboard/audit-logs/{id}/ response */
+export interface AuditLogDetailDetails {
+  admin_name?: string;
+  admin_email?: string;
+  user_agent?: string;
+  login_method?: string;
+  login_success?: boolean;
+  timestamp_iso?: string;
+  username_used?: string;
+  updated_fields?: string[];
+  amount?: number | string;
+  model?: string;
+  [key: string]: unknown;
+}
+
+export interface AuditLogDetail {
+  id: number;
+  timestamp: string;
+  user: string | null;
+  user_name: string;
+  action_type: string;
+  action_display: string;
+  content_type: number;
+  object_id: string;
+  content_type_name: string;
+  object_name: string;
+  details?: AuditLogDetailDetails;
+  ip_address: string;
+  user_agent?: string;
+  success: boolean;
+  error_message: string;
+  is_critical: boolean;
 }
