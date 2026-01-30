@@ -17,6 +17,7 @@ import {
   GetAuditLogsParams,
   ApiFaq,
   ApiTestimonial,
+  ApiNotificationSettings,
 } from "@/types/admin.types";
 import { useAuthStore } from "@/store/useAuthStore";
 import axios from "axios";
@@ -1423,7 +1424,7 @@ class DashboardService {
       formData.append("name", name);
       formData.append("message", message);
       formData.append("is_approved", String(is_approved));
-      
+
       if (buyer_image) {
         formData.append("buyer_image", buyer_image);
       }
@@ -1461,7 +1462,7 @@ class DashboardService {
       formData.append("name", name);
       formData.append("message", message);
       formData.append("is_approved", String(is_approved));
-      
+
       if (buyer_image) {
         formData.append("buyer_image", buyer_image);
       }
@@ -1495,6 +1496,45 @@ class DashboardService {
       });
     } catch (error) {
       console.error("Error deleting testimonial:", error);
+      throw error;
+    }
+  }
+
+  // Notification Settings
+  async getNotificationSettings(): Promise<ApiNotificationSettings> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/notification-settings/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error fetching notification settings:", error);
+      throw error;
+    }
+  }
+
+  async updateNotificationSettings(
+    id: number,
+    payload: Partial<ApiNotificationSettings>
+  ): Promise<ApiNotificationSettings> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/notification-settings/${id}/`,
+        method: "PATCH",
+        data: payload,
+        requireToken: true,
+        token: accessToken,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
       throw error;
     }
   }
