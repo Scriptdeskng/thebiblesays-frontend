@@ -1064,6 +1064,53 @@ class DashboardService {
     }
   }
 
+  async markNotificationAsRead(id: number): Promise<unknown> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/notifications/${id}/mark_as_read/`,
+        method: "POST",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      throw error;
+    }
+  }
+
+  async markAllNotificationsAsRead(
+    notificationIds: number[]
+  ): Promise<unknown> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/notifications/mark_all_as_read/`,
+        method: "POST",
+        requireToken: true,
+        token: accessToken,
+        data: { notification_ids: notificationIds },
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      throw error;
+    }
+  }
+
   async getAuditLogs(params?: GetAuditLogsParams): Promise<AuditLog[]> {
     try {
       const { accessToken } = useAuthStore.getState();
