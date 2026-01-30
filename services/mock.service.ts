@@ -234,6 +234,7 @@ export const mockTransactions: Transaction[] = [
     method: 'paystack',
     status: 'pending',
     dateTime: '2025-01-01T10:30:00Z',
+    orderNumber: ''
   },
 ];
 

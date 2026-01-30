@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Menu } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Menu, X } from "lucide-react";
 import { useClickOutside } from "@/hooks/useCommon";
 import { FaBell } from "react-icons/fa6";
 import { useAuthStore } from "@/store/useAuthStore";
+import { dashboardService } from "@/services/dashboard.service";
+import { ApiNotification } from "@/types/admin.types";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -12,34 +14,39 @@ interface HeaderProps {
 
 // const currencies = ["NGN (₦)"];
 
-const notifications = [
-  {
-    id: 1,
-    title: "New Order #ORD-2024-003",
-    message: "Order received from John Doe",
-    time: "5 mins ago",
-    unread: true,
-  },
-  {
-    id: 2,
-    title: "Low Stock Alert",
-    message: "Faith Over Fear T-Shirt is running low",
-    time: "1 hour ago",
-    unread: true,
-  },
-  {
-    id: 3,
-    title: "Custom Merch Pending",
-    message: "2 new custom designs awaiting review",
-    time: "2 hours ago",
-    unread: false,
-  },
-];
+// Helper function to format time ago
+const formatTimeAgo = (dateString?: string): string => {
+  if (!dateString) return "";
+
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} seconds ago`;
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} ${minutes === 1 ? "min" : "mins"} ago`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+    } else {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days} ${days === 1 ? "day" : "days"} ago`;
+    }
+  } catch {
+    return dateString;
+  }
+};
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCurrency, setShowCurrency] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("Today");
+  const [notifications, setNotifications] = useState<ApiNotification[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   // const [selectedCurrency, setSelectedCurrency] = useState(currencies[0]);
 
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -52,7 +59,39 @@ export default function Header({ onMenuClick }: HeaderProps) {
   useClickOutside(currencyRef, () => setShowCurrency(false));
   useClickOutside(profileRef, () => setShowProfile(false));
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  // Fetch notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        setLoadingNotifications(true);
+
+        const orderingMap: Record<string, string> = {
+          Today: "-created_at",
+          Yesterday: "-created_at",
+          "Last week": "-created_at",
+          Older: "-created_at",
+        };
+
+        const ordering = orderingMap[activeFilter] || "-created_at";
+
+        const data = await dashboardService.getNotifications({
+          ordering,
+        });
+        setNotifications(data);
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+        setNotifications([]);
+      } finally {
+        setLoadingNotifications(false);
+      }
+    };
+
+    fetchNotifications();
+  }, [isAuthenticated, activeFilter]);
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-71.5 z-30 bg-white lg:pt-5">
@@ -81,35 +120,90 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </button>
 
             {showNotifications && (
-              <div className="absolute -right-15 sm:right-0 mt-2 w-80 bg-white border border-accent-2 rounded-lg shadow-lg z-50">
-                <div className="p-4 border-b border-accent-2">
-                  <h3 className="font-semibold text-primary">Notifications</h3>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`p-4 border-b border-accent-2 hover:bg-accent-1 transition-colors cursor-pointer ${
-                        notification.unread ? "bg-blue-50" : ""
-                      }`}
-                    >
-                      <h4 className="text-sm font-semibold text-primary mb-1">
-                        {notification.title}
-                      </h4>
-                      <p className="text-xs text-grey mb-1">
-                        {notification.message}
-                      </p>
-                      <span className="text-xs text-grey">
-                        {notification.time}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="p-3 text-center border-t border-accent-2">
-                  <button className="text-sm text-primary hover:underline font-medium">
-                    View All Notifications
+              <div className="absolute -right-15 sm:right-0 mt-2 w-[490px] bg-white rounded-lg shadow-lg z-50">
+                {/* Header */}
+                <div className="p-4 flex items-center justify-between border-b border-gray-100">
+                  <h3 className="font-semibold text-lg text-gray-900">
+                    Notifications
+                  </h3>
+                  <button
+                    onClick={() => setShowNotifications(false)}
+                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <X size={18} className="text-gray-500" />
                   </button>
                 </div>
+
+                {/* Filter Buttons and Mark All as Read */}
+                <div className="px-4 pt-4 pb-3 flex items-end justify-between border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    {["Today", "Yesterday", "Last week", "Older"].map(
+                      (filter) => (
+                        <button
+                          key={filter}
+                          onClick={() => setActiveFilter(filter)}
+                          className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                            activeFilter === filter
+                              ? "bg-gray-900 text-white"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          }`}
+                        >
+                          {filter}
+                        </button>
+                      )
+                    )}
+                  </div>
+                  <button className="text-sm text-gray-900 hover:underline">
+                    Mark all as read
+                  </button>
+                </div>
+
+                {/* Notifications List */}
+                <div className="max-h-96 overflow-y-auto">
+                  {loadingNotifications ? (
+                    <div className="px-4 py-8 text-center text-gray-500">
+                      Loading notifications...
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-gray-500">
+                      No notifications found
+                    </div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`px-4 py-3 relative ${
+                          !notification.is_read ? "bg-blue-50" : "bg-white"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                              {notification.title}
+                            </h4>
+                            <p className="text-sm text-gray-600 mb-1">
+                              {notification.message}
+                            </p>
+                            <span className="text-sm text-gray-600">
+                              {notification.age_in_hours ||
+                                formatTimeAgo(notification.created_at)}
+                            </span>
+                          </div>
+                          {!notification.is_read && (
+                            <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Footer */}
+                {notifications.length > 0 && <div className="p-4 text-center border-t border-gray-100">
+                  <button className="text-sm text-gray-900 font-medium hover:text-gray-700">
+                    View All Notifications
+                  </button>
+                </div>}
               </div>
             )}
           </div>

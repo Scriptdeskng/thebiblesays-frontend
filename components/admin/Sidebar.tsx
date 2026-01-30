@@ -15,6 +15,7 @@ import { BiSolidCoinStack } from "react-icons/bi";
 import { BsFillBagHeartFill } from "react-icons/bs";
 import { FaPalette } from "react-icons/fa";
 import { FaFileLines } from "react-icons/fa6";
+import { HiShieldCheck } from "react-icons/hi2";
 import { useAuthStore } from "@/store/useAuthStore";
 
 interface SidebarProps {
@@ -58,6 +59,11 @@ const menuItems = [
     icon: RiGiftFill,
     label: "Loyalty Program",
     href: "/admin/dashboard/loyalty",
+  },
+  {
+    icon: HiShieldCheck,
+    label: "Audit Logs",
+    href: "/admin/dashboard/audit-logs",
   },
   {
     icon: RiSettings5Fill,
