@@ -1,14 +1,36 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Plus, Edit, Trash2, ArrowLeft, X } from 'lucide-react';
-import { Button, Modal, Input, Textarea, Badge } from '@/components/admin/ui';
-import { PiDotsSixVertical } from 'react-icons/pi';
-import { mockProducts } from '@/services/mock.service';
-import { Product } from '@/types/admin.types';
+import { useState, useEffect } from "react";
+import { Plus, Edit, Trash2, ArrowLeft, X } from "lucide-react";
+import {
+  Button,
+  Modal,
+  Input,
+  Textarea,
+  Badge,
+  LoadingSpinner,
+} from "@/components/admin/ui";
+import { PiDotsSixVertical } from "react-icons/pi";
+import { mockProducts } from "@/services/mock.service";
+import { dashboardService } from "@/services/dashboard.service";
+import { Product, ApiFaq, ApiTestimonial } from "@/types/admin.types";
+import toast from "react-hot-toast";
 
-type ContentTab = 'homepage' | 'about' | 'byom' | 'faqs' | 'testimonials';
-type SectionType = 'hero' | 'featured' | 'banner' | 'bestsellers' | 'explore' | 'about' | 'story' | 'movement' | 'byom-section' | 'custom-images' | 'custom-price' | 'custom-text' | 'uploaded-image';
+type ContentTab = "homepage" | "about" | "byom" | "faqs" | "testimonials";
+type SectionType =
+  | "hero"
+  | "featured"
+  | "banner"
+  | "bestsellers"
+  | "explore"
+  | "about"
+  | "story"
+  | "movement"
+  | "byom-section"
+  | "custom-images"
+  | "custom-price"
+  | "custom-text"
+  | "uploaded-image";
 
 interface Section {
   id: string;
@@ -18,78 +40,155 @@ interface Section {
 }
 
 export default function ContentPage() {
-  const [activeTab, setActiveTab] = useState<ContentTab>('homepage');
+  const [activeTab, setActiveTab] = useState<ContentTab>("homepage");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentSection, setCurrentSection] = useState<Section | null>(null);
   const [showSubPage, setShowSubPage] = useState(false);
-  const [subPageType, setSubPageType] = useState<'custom-images' | 'custom-price' | null>(null);
+  const [subPageType, setSubPageType] = useState<
+    "custom-images" | "custom-price" | null
+  >(null);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [sections, setSections] = useState({
     homepage: [
-      { id: '1', name: 'Hero Section', type: 'hero' as SectionType, enabled: true },
-      { id: '2', name: 'Featured Drops', type: 'featured' as SectionType, enabled: true },
-      { id: '3', name: 'Banner Section', type: 'banner' as SectionType, enabled: true },
-      { id: '4', name: 'Bestsellers', type: 'bestsellers' as SectionType, enabled: true },
-      { id: '5', name: 'Explore Section', type: 'explore' as SectionType, enabled: true },
+      {
+        id: "1",
+        name: "Hero Section",
+        type: "hero" as SectionType,
+        enabled: true,
+      },
+      {
+        id: "2",
+        name: "Featured Drops",
+        type: "featured" as SectionType,
+        enabled: true,
+      },
+      {
+        id: "3",
+        name: "Banner Section",
+        type: "banner" as SectionType,
+        enabled: true,
+      },
+      {
+        id: "4",
+        name: "Bestsellers",
+        type: "bestsellers" as SectionType,
+        enabled: true,
+      },
+      {
+        id: "5",
+        name: "Explore Section",
+        type: "explore" as SectionType,
+        enabled: true,
+      },
     ],
     about: [
-      { id: '1', name: 'About Section', type: 'about' as SectionType, enabled: true },
-      { id: '2', name: 'Our Story', type: 'story' as SectionType, enabled: true },
-      { id: '3', name: 'The Movement', type: 'movement' as SectionType, enabled: true },
-      { id: '4', name: 'BYOM', type: 'byom-section' as SectionType, enabled: true },
+      {
+        id: "1",
+        name: "About Section",
+        type: "about" as SectionType,
+        enabled: true,
+      },
+      {
+        id: "2",
+        name: "Our Story",
+        type: "story" as SectionType,
+        enabled: true,
+      },
+      {
+        id: "3",
+        name: "The Movement",
+        type: "movement" as SectionType,
+        enabled: true,
+      },
+      {
+        id: "4",
+        name: "BYOM",
+        type: "byom-section" as SectionType,
+        enabled: true,
+      },
     ],
     byom: [
-      { id: '1', name: 'Custom Images', type: 'custom-images' as SectionType, enabled: true },
-      { id: '2', name: 'Custom Price', type: 'custom-price' as SectionType, enabled: true },
-      { id: '3', name: 'Custom Text', type: 'custom-text' as SectionType, enabled: true },
-      { id: '4', name: 'Uploaded Image', type: 'uploaded-image' as SectionType, enabled: true },
+      {
+        id: "1",
+        name: "Custom Images",
+        type: "custom-images" as SectionType,
+        enabled: true,
+      },
+      {
+        id: "2",
+        name: "Custom Price",
+        type: "custom-price" as SectionType,
+        enabled: true,
+      },
+      {
+        id: "3",
+        name: "Custom Text",
+        type: "custom-text" as SectionType,
+        enabled: true,
+      },
+      {
+        id: "4",
+        name: "Uploaded Image",
+        type: "uploaded-image" as SectionType,
+        enabled: true,
+      },
     ],
   });
 
   const [formData, setFormData] = useState({
-    heading: '',
-    description: '',
-    image: '',
-    status: 'Active',
-    productNumber: '4',
+    heading: "",
+    description: "",
+    image: "",
+    status: "Active",
+    productNumber: "4",
     selectedProducts: [] as Product[],
-    image1: '',
-    description1: '',
-    image2: '',
-    description2: '',
-    price: '',
-    type: 'All',
-    question: '',
-    answer: '',
-    customerImage: '',
-    customerName: '',
-    review: '',
+    image1: "",
+    description1: "",
+    image2: "",
+    description2: "",
+    price: "",
+    type: "All",
+    question: "",
+    answer: "",
+    faqIsActive: true,
+    customerImage: "",
+    customerName: "",
+    productImage: "",
+    review: "",
+    testimonialIsApproved: true,
     rating: 5,
-    date: '',
-    merchName: '',
-    amount: '',
+    date: "",
+    merchName: "",
+    amount: "",
   });
 
-  const handleToggleSection = (tabKey: 'homepage' | 'about' | 'byom', sectionId: string) => {
-    setSections(prev => ({
+  // Store actual file objects for testimonial images
+  const [buyerImageFile, setBuyerImageFile] = useState<File | null>(null);
+  const [productImageFile, setProductImageFile] = useState<File | null>(null);
+
+  const handleToggleSection = (
+    tabKey: "homepage" | "about" | "byom",
+    sectionId: string
+  ) => {
+    setSections((prev) => ({
       ...prev,
-      [tabKey]: prev[tabKey].map(section =>
+      [tabKey]: prev[tabKey].map((section) =>
         section.id === sectionId
           ? { ...section, enabled: !section.enabled }
           : section
-      )
+      ),
     }));
   };
 
   const handleEditSection = (section: Section) => {
     setCurrentSection(section);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      status: section.enabled ? 'Active' : 'Inactive'
+      status: section.enabled ? "Active" : "Inactive",
     }));
     resetForm();
-    
-    if (section.type === 'custom-images' || section.type === 'custom-price') {
+
+    if (section.type === "custom-images" || section.type === "custom-price") {
       setSubPageType(section.type);
       setShowSubPage(true);
     } else {
@@ -99,67 +198,90 @@ export default function ContentPage() {
 
   const handleSaveSection = () => {
     if (currentSection) {
-      const tabKey = activeTab === 'homepage' ? 'homepage' : activeTab === 'about' ? 'about' : 'byom';
-      setSections(prev => ({
+      const tabKey =
+        activeTab === "homepage"
+          ? "homepage"
+          : activeTab === "about"
+          ? "about"
+          : "byom";
+      setSections((prev) => ({
         ...prev,
-        [tabKey]: prev[tabKey].map(section =>
+        [tabKey]: prev[tabKey].map((section) =>
           section.id === currentSection.id
-            ? { ...section, enabled: formData.status === 'Active' }
+            ? { ...section, enabled: formData.status === "Active" }
             : section
-        )
+        ),
       }));
     }
     setIsModalOpen(false);
   };
 
-  const [faqs, setFaqs] = useState([
-    { id: '1', type: 'Orders & Shipping', question: 'How do I track my order?', answer: 'You can track your order using the tracking link sent to your email.' },
-    { id: '2', type: 'Products', question: 'What materials are used?', answer: 'We use premium quality cotton and polyester blends.' },
-  ]);
+  const [faqs, setFaqs] = useState<ApiFaq[]>([]);
+  const [faqsLoading, setFaqsLoading] = useState(false);
+  const [faqsError, setFaqsError] = useState<string | null>(null);
+  const [showDeleteFaqModal, setShowDeleteFaqModal] = useState(false);
+  const [faqToDelete, setFaqToDelete] = useState<ApiFaq | null>(null);
+  const [deletingFaq, setDeletingFaq] = useState(false);
+  const [savingFaq, setSavingFaq] = useState(false);
 
-  const [testimonials, setTestimonials] = useState([
-    { id: '1', image: '', name: 'John Doe', review: 'Great quality products! Love my new hoodie.', rating: 5, date: '2024-12-15' },
-    { id: '2', image: '', name: 'Jane Smith', review: 'Fast shipping and amazing designs!', rating: 5, date: '2024-12-10' },
-  ]);
+  const [testimonials, setTestimonials] = useState<ApiTestimonial[]>([]);
+  const [testimonialsLoading, setTestimonialsLoading] = useState(false);
+  const [testimonialsError, setTestimonialsError] = useState<string | null>(
+    null
+  );
+  const [showDeleteTestimonialModal, setShowDeleteTestimonialModal] =
+    useState(false);
+  const [testimonialToDelete, setTestimonialToDelete] =
+    useState<ApiTestimonial | null>(null);
+  const [deletingTestimonial, setDeletingTestimonial] = useState(false);
+  const [savingTestimonial, setSavingTestimonial] = useState(false);
 
-  const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
-  const [editingTestimonialId, setEditingTestimonialId] = useState<string | null>(null);
+  const [editingFaqId, setEditingFaqId] = useState<number | null>(null);
+  const [editingTestimonialId, setEditingTestimonialId] = useState<
+    number | null
+  >(null);
 
   const [customImages, setCustomImages] = useState([
-    { id: '1', image: '', amount: '5000', status: 'Active' },
+    { id: "1", image: "", amount: "5000", status: "Active" },
   ]);
 
   const [customPrices, setCustomPrices] = useState([
-    { id: '1', name: 'T-shirt', amount: '8000', status: 'Active' },
+    { id: "1", name: "T-shirt", amount: "8000", status: "Active" },
   ]);
 
   const resetForm = () => {
     setFormData({
-      heading: '',
-      description: '',
-      image: '',
-      status: 'Active',
-      productNumber: '4',
+      heading: "",
+      description: "",
+      image: "",
+      status: "Active",
+      productNumber: "4",
       selectedProducts: [],
-      image1: '',
-      description1: '',
-      image2: '',
-      description2: '',
-      price: '',
-      type: 'All',
-      question: '',
-      answer: '',
-      customerImage: '',
-      customerName: '',
-      review: '',
+      image1: "",
+      description1: "",
+      image2: "",
+      description2: "",
+      price: "",
+      type: "All",
+      question: "",
+      answer: "",
+      faqIsActive: true,
+      customerImage: "",
+      customerName: "",
+      productImage: "",
+      review: "",
+      testimonialIsApproved: true,
       rating: 5,
-      date: '',
-      merchName: '',
-      amount: '',
+      date: "",
+      merchName: "",
+      amount: "",
     });
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+  const handleImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: string
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -171,15 +293,17 @@ export default function ContentPage() {
   };
 
   const handleProductSelect = (product: Product) => {
-    if (formData.selectedProducts.find(p => p.id === product.id)) {
+    if (formData.selectedProducts.find((p) => p.id === product.id)) {
       setFormData({
         ...formData,
-        selectedProducts: formData.selectedProducts.filter(p => p.id !== product.id)
+        selectedProducts: formData.selectedProducts.filter(
+          (p) => p.id !== product.id
+        ),
       });
     } else if (formData.selectedProducts.length < 4) {
       setFormData({
         ...formData,
-        selectedProducts: [...formData.selectedProducts, product]
+        selectedProducts: [...formData.selectedProducts, product],
       });
     }
   };
@@ -187,109 +311,216 @@ export default function ContentPage() {
   const handleRemoveProduct = (productId: string) => {
     setFormData({
       ...formData,
-      selectedProducts: formData.selectedProducts.filter(p => p.id !== productId)
+      selectedProducts: formData.selectedProducts.filter(
+        (p) => p.id !== productId
+      ),
     });
   };
 
-  const handleEditFaq = (faq: typeof faqs[0]) => {
+  const loadFaqs = async () => {
+    setFaqsLoading(true);
+    setFaqsError(null);
+    try {
+      const data = await dashboardService.getFaqs();
+      setFaqs(data);
+    } catch (err: any) {
+      setFaqsError(err?.message || "Failed to load FAQs");
+      toast.error("Failed to load FAQs");
+    } finally {
+      setFaqsLoading(false);
+    }
+  };
+
+  const loadTestimonials = async () => {
+    setTestimonialsLoading(true);
+    setTestimonialsError(null);
+    try {
+      const data = await dashboardService.getTestimonials();
+      setTestimonials(data);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load testimonials";
+      setTestimonialsError(message);
+      toast.error("Failed to load testimonials");
+    } finally {
+      setTestimonialsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "faqs") loadFaqs();
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "testimonials") loadTestimonials();
+  }, [activeTab]);
+
+  const handleEditFaq = (faq: ApiFaq) => {
     setEditingFaqId(faq.id);
     setFormData({
       ...formData,
-      type: faq.type,
       question: faq.question,
       answer: faq.answer,
+      faqIsActive: faq.is_active,
     });
     setIsModalOpen(true);
   };
 
-  const handleDeleteFaq = (id: string) => {
-    if (confirm('Are you sure you want to delete this FAQ?')) {
-      setFaqs(faqs.filter(f => f.id !== id));
+  const handleDeleteFaq = (faq: ApiFaq) => {
+    setFaqToDelete(faq);
+    setShowDeleteFaqModal(true);
+  };
+
+  const handleConfirmDeleteFaq = async () => {
+    if (!faqToDelete) return;
+    setDeletingFaq(true);
+    try {
+      await dashboardService.deleteFaq(faqToDelete.id);
+      toast.success("FAQ deleted successfully");
+      setShowDeleteFaqModal(false);
+      setFaqToDelete(null);
+      await loadFaqs();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete FAQ");
+    } finally {
+      setDeletingFaq(false);
     }
   };
 
-  const handleSaveFaq = () => {
-    if (editingFaqId) {
-      setFaqs(faqs.map(f => f.id === editingFaqId ? {
-        ...f,
-        type: formData.type,
-        question: formData.question,
-        answer: formData.answer,
-      } : f));
-    } else {
-      const newFaq = {
-        id: String(faqs.length + 1),
-        type: formData.type,
-        question: formData.question,
-        answer: formData.answer,
-      };
-      setFaqs([...faqs, newFaq]);
+  const handleSaveFaq = async () => {
+    const payload = {
+      question: formData.question.trim(),
+      answer: formData.answer.trim(),
+      is_active: formData.faqIsActive,
+    };
+    if (!payload.question || !payload.answer) {
+      toast.error("Question and answer are required");
+      return;
     }
-    setEditingFaqId(null);
-    setIsModalOpen(false);
-    resetForm();
+    setSavingFaq(true);
+    try {
+      if (editingFaqId) {
+        await dashboardService.updateFaq(editingFaqId, payload);
+        toast.success("FAQ updated successfully");
+      } else {
+        await dashboardService.createFaq(payload);
+        toast.success("FAQ created successfully");
+      }
+      setEditingFaqId(null);
+      setIsModalOpen(false);
+      resetForm();
+      await loadFaqs();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save FAQ");
+    } finally {
+      setSavingFaq(false);
+    }
   };
 
-  const handleEditTestimonial = (testimonial: typeof testimonials[0]) => {
+  const handleEditTestimonial = (testimonial: ApiTestimonial) => {
     setEditingTestimonialId(testimonial.id);
     setFormData({
       ...formData,
-      customerImage: testimonial.image,
+      customerImage: testimonial.buyer_image ?? "",
       customerName: testimonial.name,
-      review: testimonial.review,
-      rating: testimonial.rating,
-      date: testimonial.date,
+      productImage: testimonial.product_image ?? "",
+      review: testimonial.message,
+      testimonialIsApproved: testimonial.is_approved,
     });
+    // Clear file objects when editing (existing images are URLs)
+    setBuyerImageFile(null);
+    setProductImageFile(null);
     setIsModalOpen(true);
   };
 
-  const handleDeleteTestimonial = (id: string) => {
-    if (confirm('Are you sure you want to delete this testimonial?')) {
-      setTestimonials(testimonials.filter(t => t.id !== id));
+  const handleDeleteTestimonial = (testimonial: ApiTestimonial) => {
+    setTestimonialToDelete(testimonial);
+    setShowDeleteTestimonialModal(true);
+  };
+
+  const handleConfirmDeleteTestimonial = async () => {
+    if (!testimonialToDelete) return;
+    setDeletingTestimonial(true);
+    try {
+      await dashboardService.deleteTestimonial(testimonialToDelete.id);
+      toast.success("Testimonial deleted successfully");
+      setShowDeleteTestimonialModal(false);
+      setTestimonialToDelete(null);
+      await loadTestimonials();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete testimonial";
+      toast.error(message);
+    } finally {
+      setDeletingTestimonial(false);
     }
   };
 
-  const handleSaveTestimonial = () => {
-    if (editingTestimonialId) {
-      setTestimonials(testimonials.map(t => t.id === editingTestimonialId ? {
-        ...t,
-        image: formData.customerImage,
-        name: formData.customerName,
-        review: formData.review,
-        rating: formData.rating,
-        date: formData.date,
-      } : t));
-    } else {
-      const newTestimonial = {
-        id: String(testimonials.length + 1),
-        image: formData.customerImage,
-        name: formData.customerName,
-        review: formData.review,
-        rating: formData.rating,
-        date: formData.date,
-      };
-      setTestimonials([...testimonials, newTestimonial]);
+  const handleSaveTestimonial = async () => {
+    if (!formData.customerName.trim() || !formData.review.trim()) {
+      toast.error("Name and message are required");
+      return;
     }
-    setEditingTestimonialId(null);
-    setIsModalOpen(false);
-    resetForm();
+    setSavingTestimonial(true);
+    try {
+      if (editingTestimonialId) {
+        await dashboardService.updateTestimonial(
+          editingTestimonialId,
+          formData.customerName.trim(),
+          formData.review.trim(),
+          formData.testimonialIsApproved,
+          buyerImageFile,
+          productImageFile
+        );
+        toast.success("Testimonial updated successfully");
+      } else {
+        await dashboardService.createTestimonial(
+          formData.customerName.trim(),
+          formData.review.trim(),
+          formData.testimonialIsApproved,
+          buyerImageFile,
+          productImageFile
+        );
+        toast.success("Testimonial created successfully");
+      }
+      setEditingTestimonialId(null);
+      setIsModalOpen(false);
+      resetForm();
+      setBuyerImageFile(null);
+      setProductImageFile(null);
+      await loadTestimonials();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to save testimonial";
+      toast.error(message);
+    } finally {
+      setSavingTestimonial(false);
+    }
   };
 
-  const renderSections = (sectionsList: Section[], tabKey: 'homepage' | 'byom') => (
+  const renderSections = (
+    sectionsList: Section[],
+    tabKey: "homepage" | "byom"
+  ) => (
     <div className="space-y-4">
       {sectionsList.map((section) => (
-        <div key={section.id} className="bg-white p-4 rounded-lg border border-accent-2 flex items-center justify-between">
+        <div
+          key={section.id}
+          className="bg-white p-4 rounded-lg border border-accent-2 flex items-center justify-between"
+        >
           <div className="flex items-center space-x-4">
             <PiDotsSixVertical size={24} className="text-grey cursor-move" />
-            <span className="font-medium text-admin-primary">{section.name}</span>
+            <span className="font-medium text-admin-primary">
+              {section.name}
+            </span>
           </div>
           <div className="flex items-center space-x-3">
             <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={section.enabled} 
-                className="sr-only peer" 
-                onChange={() => handleToggleSection(tabKey, section.id)} 
+              <input
+                type="checkbox"
+                checked={section.enabled}
+                className="sr-only peer"
+                onChange={() => handleToggleSection(tabKey, section.id)}
               />
               <div className="w-9 h-5 bg-grey/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-accent-2 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600"></div>
             </label>
@@ -310,44 +541,75 @@ export default function ContentPage() {
 
     const getModalTitle = () => {
       switch (currentSection.type) {
-        case 'hero': return 'Hero Section';
-        case 'featured': return 'Featured Products';
-        case 'banner': return 'Banner Section';
-        case 'bestsellers': return 'Bestsellers';
-        case 'explore': return 'Explore';
-        case 'story': return 'Our Story';
-        case 'movement': return 'The Movement';
-        case 'byom-section': return 'BYOM';
-        case 'custom-text': return 'Custom Text';
-        case 'uploaded-image': return 'Uploaded Image';
-        default: return '';
+        case "hero":
+          return "Hero Section";
+        case "featured":
+          return "Featured Products";
+        case "banner":
+          return "Banner Section";
+        case "bestsellers":
+          return "Bestsellers";
+        case "explore":
+          return "Explore";
+        case "story":
+          return "Our Story";
+        case "movement":
+          return "The Movement";
+        case "byom-section":
+          return "BYOM";
+        case "custom-text":
+          return "Custom Text";
+        case "uploaded-image":
+          return "Uploaded Image";
+        default:
+          return "";
       }
     };
 
     return (
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={getModalTitle()} size="lg">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={getModalTitle()}
+        size="lg"
+      >
         <div className="space-y-4">
-          {(currentSection.type === 'featured' || currentSection.type === 'bestsellers') ? (
+          {currentSection.type === "featured" ||
+          currentSection.type === "bestsellers" ? (
             <>
               <Input
-                label={currentSection.type === 'featured' ? 'Number' : 'Product Number'}
+                label={
+                  currentSection.type === "featured"
+                    ? "Number"
+                    : "Product Number"
+                }
                 value={formData.productNumber}
                 readOnly
                 disabled
               />
               <div>
-                <label className="block text-admin-primary font-medium mb-2">Select Products</label>
+                <label className="block text-admin-primary font-medium mb-2">
+                  Select Products
+                </label>
                 <select
                   className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none focus:border-[#A1CBFF]"
                   onChange={(e) => {
-                    const product = mockProducts.find(p => p.id === e.target.value);
+                    const product = mockProducts.find(
+                      (p) => p.id === e.target.value
+                    );
                     if (product) handleProductSelect(product);
-                    e.target.value = '';
+                    e.target.value = "";
                   }}
                 >
                   <option value="">Select a product</option>
                   {mockProducts.map((product) => (
-                    <option key={product.id} value={product.id} disabled={formData.selectedProducts.some(p => p.id === product.id)}>
+                    <option
+                      key={product.id}
+                      value={product.id}
+                      disabled={formData.selectedProducts.some(
+                        (p) => p.id === product.id
+                      )}
+                    >
                       {product.name}
                     </option>
                   ))}
@@ -356,13 +618,24 @@ export default function ContentPage() {
 
               {formData.selectedProducts.length > 0 && (
                 <div>
-                  <label className="block text-admin-primary font-medium mb-2">Selected Products ({formData.selectedProducts.length}/4)</label>
+                  <label className="block text-admin-primary font-medium mb-2">
+                    Selected Products ({formData.selectedProducts.length}/4)
+                  </label>
                   <div className="space-y-2">
                     {formData.selectedProducts.map((product) => (
-                      <div key={product.id} className="flex items-center justify-between p-3 bg-accent-1 rounded-lg">
+                      <div
+                        key={product.id}
+                        className="flex items-center justify-between p-3 bg-accent-1 rounded-lg"
+                      >
                         <div className="flex items-center space-x-3">
-                          <img src={product.image} alt={product.name} className="w-12 h-12 object-cover rounded" />
-                          <span className="text-admin-primary">{product.name}</span>
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                          <span className="text-admin-primary">
+                            {product.name}
+                          </span>
                         </div>
                         <button
                           type="button"
@@ -378,14 +651,18 @@ export default function ContentPage() {
               )}
 
               <div>
-                <label className="block text-admin-primary font-medium mb-2">Status</label>
+                <label className="block text-admin-primary font-medium mb-2">
+                  Status
+                </label>
                 <div className="flex gap-4">
                   <label className="flex items-center cursor-pointer">
                     <input
                       type="radio"
                       value="Active"
-                      checked={formData.status === 'Active'}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      checked={formData.status === "Active"}
+                      onChange={(e) =>
+                        setFormData({ ...formData, status: e.target.value })
+                      }
                       className="mr-2"
                     />
                     <span className="text-sm text-grey">Active</span>
@@ -394,8 +671,10 @@ export default function ContentPage() {
                     <input
                       type="radio"
                       value="Inactive"
-                      checked={formData.status === 'Inactive'}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      checked={formData.status === "Inactive"}
+                      onChange={(e) =>
+                        setFormData({ ...formData, status: e.target.value })
+                      }
                       className="mr-2"
                     />
                     <span className="text-sm text-grey">Inactive</span>
@@ -403,62 +682,85 @@ export default function ContentPage() {
                 </div>
               </div>
             </>
-          ) : currentSection.type === 'explore' ? (
+          ) : currentSection.type === "explore" ? (
             <>
               <div>
-                <label className="block text-admin-primary font-medium mb-2">Image 1</label>
+                <label className="block text-admin-primary font-medium mb-2">
+                  Image 1
+                </label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleImageUpload(e, 'image1')}
+                  onChange={(e) => handleImageUpload(e, "image1")}
                   className="w-full"
                 />
                 {formData.image1 && (
-                  <img src={formData.image1} alt="Preview" className="mt-2 w-32 h-32 object-cover rounded" />
+                  <img
+                    src={formData.image1}
+                    alt="Preview"
+                    className="mt-2 w-32 h-32 object-cover rounded"
+                  />
                 )}
               </div>
               <Textarea
                 label="Description 1"
                 value={formData.description1}
-                onChange={(e) => setFormData({ ...formData, description1: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description1: e.target.value })
+                }
                 rows={3}
               />
               <div>
-                <label className="block text-admin-primary font-medium mb-2">Image 2</label>
+                <label className="block text-admin-primary font-medium mb-2">
+                  Image 2
+                </label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleImageUpload(e, 'image2')}
+                  onChange={(e) => handleImageUpload(e, "image2")}
                   className="w-full"
                 />
                 {formData.image2 && (
-                  <img src={formData.image2} alt="Preview" className="mt-2 w-32 h-32 object-cover rounded" />
+                  <img
+                    src={formData.image2}
+                    alt="Preview"
+                    className="mt-2 w-32 h-32 object-cover rounded"
+                  />
                 )}
               </div>
               <Textarea
                 label="Description 2"
                 value={formData.description2}
-                onChange={(e) => setFormData({ ...formData, description2: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description2: e.target.value })
+                }
                 rows={3}
               />
             </>
-          ) : (currentSection.type === 'custom-text' || currentSection.type === 'uploaded-image') ? (
+          ) : currentSection.type === "custom-text" ||
+            currentSection.type === "uploaded-image" ? (
             <>
               <Input
                 label="Price"
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, price: e.target.value })
+                }
                 placeholder="Enter price"
               />
               <div>
-                <label className="block text-admin-primary font-medium mb-2">Status</label>
+                <label className="block text-admin-primary font-medium mb-2">
+                  Status
+                </label>
                 <div className="flex gap-4">
                   <label className="flex items-center cursor-pointer">
                     <input
                       type="radio"
                       value="Active"
-                      checked={formData.status === 'Active'}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      checked={formData.status === "Active"}
+                      onChange={(e) =>
+                        setFormData({ ...formData, status: e.target.value })
+                      }
                       className="mr-2"
                     />
                     <span className="text-sm text-grey">Active</span>
@@ -467,8 +769,10 @@ export default function ContentPage() {
                     <input
                       type="radio"
                       value="Inactive"
-                      checked={formData.status === 'Inactive'}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      checked={formData.status === "Inactive"}
+                      onChange={(e) =>
+                        setFormData({ ...formData, status: e.target.value })
+                      }
                       className="mr-2"
                     />
                     <span className="text-sm text-grey">Inactive</span>
@@ -481,37 +785,51 @@ export default function ContentPage() {
               <Input
                 label="Heading"
                 value={formData.heading}
-                onChange={(e) => setFormData({ ...formData, heading: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, heading: e.target.value })
+                }
                 placeholder="Enter heading"
               />
               <Textarea
                 label="Description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 placeholder="Enter description"
                 rows={4}
               />
               <div>
-                <label className="block text-admin-primary font-medium mb-2">Image</label>
+                <label className="block text-admin-primary font-medium mb-2">
+                  Image
+                </label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleImageUpload(e, 'image')}
+                  onChange={(e) => handleImageUpload(e, "image")}
                   className="w-full"
                 />
                 {formData.image && (
-                  <img src={formData.image} alt="Preview" className="mt-2 w-32 h-32 object-cover rounded" />
+                  <img
+                    src={formData.image}
+                    alt="Preview"
+                    className="mt-2 w-32 h-32 object-cover rounded"
+                  />
                 )}
               </div>
               <div>
-                <label className="block text-admin-primary font-medium mb-2">Status</label>
+                <label className="block text-admin-primary font-medium mb-2">
+                  Status
+                </label>
                 <div className="flex gap-4">
                   <label className="flex items-center cursor-pointer">
                     <input
                       type="radio"
                       value="Active"
-                      checked={formData.status === 'Active'}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      checked={formData.status === "Active"}
+                      onChange={(e) =>
+                        setFormData({ ...formData, status: e.target.value })
+                      }
                       className="mr-2"
                     />
                     <span className="text-sm text-grey">Active</span>
@@ -520,8 +838,10 @@ export default function ContentPage() {
                     <input
                       type="radio"
                       value="Inactive"
-                      checked={formData.status === 'Inactive'}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      checked={formData.status === "Inactive"}
+                      onChange={(e) =>
+                        setFormData({ ...formData, status: e.target.value })
+                      }
                       className="mr-2"
                     />
                     <span className="text-sm text-grey">Inactive</span>
@@ -532,7 +852,11 @@ export default function ContentPage() {
           )}
 
           <div className="flex justify-center space-x-5 pt-5">
-            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsModalOpen(false)}
+            >
               Cancel
             </Button>
             <Button type="button" onClick={handleSaveSection}>
@@ -546,9 +870,13 @@ export default function ContentPage() {
 
   return (
     <div>
-      <div className='mb-6'>
-        <h1 className="text-xl lg:text-2xl font-bold text-admin-primary">Content Management</h1>
-        <p className="text-sm text-admin-primary">Manage Homepage, BYOM, FAQs and Testimonials</p>
+      <div className="mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold text-admin-primary">
+          Content Management
+        </h1>
+        <p className="text-sm text-admin-primary">
+          Manage Homepage, BYOM, FAQs and Testimonials
+        </p>
       </div>
 
       {showSubPage ? (
@@ -565,17 +893,17 @@ export default function ContentPage() {
               <span className="font-medium">Back</span>
             </button>
             <h2 className="text-xl font-medium text-admin-primary">
-              {subPageType === 'custom-images' ? 'Custom Images' : 'Custom Price'}
+              {subPageType === "custom-images"
+                ? "Custom Images"
+                : "Custom Price"}
             </h2>
           </div>
 
           <div className="mb-4 flex justify-end">
-            <Button onClick={() => setIsSubModalOpen(true)}>
-              Add New
-            </Button>
+            <Button onClick={() => setIsSubModalOpen(true)}>Add New</Button>
           </div>
 
-          {subPageType === 'custom-images' ? (
+          {subPageType === "custom-images" ? (
             customImages.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-grey mb-4">No custom image uploaded</p>
@@ -584,53 +912,88 @@ export default function ContentPage() {
             ) : (
               <div className="space-y-3">
                 {customImages.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 bg-accent-1 rounded-lg">
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-4 bg-accent-1 rounded-lg"
+                  >
                     <div className="flex items-center space-x-4">
                       <div className="w-20 h-20 bg-grey/20 rounded" />
                       <div>
-                        <p className="font-medium text-admin-primary">₦{item.amount}</p>
-                        <Badge variant={item.status === 'Active' ? 'success' : 'default'}>{item.status}</Badge>
+                        <p className="font-medium text-admin-primary">
+                          ₦{item.amount}
+                        </p>
+                        <Badge
+                          variant={
+                            item.status === "Active" ? "success" : "default"
+                          }
+                        >
+                          {item.status}
+                        </Badge>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <button className="p-2 hover:bg-white rounded-lg"><Edit size={16} className="text-admin-primary" /></button>
-                      <button className="p-2 hover:bg-red-50 rounded-lg"><Trash2 size={16} className="text-red-600" /></button>
+                      <button className="p-2 hover:bg-white rounded-lg">
+                        <Edit size={16} className="text-admin-primary" />
+                      </button>
+                      <button className="p-2 hover:bg-red-50 rounded-lg">
+                        <Trash2 size={16} className="text-red-600" />
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
             )
+          ) : customPrices.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-grey mb-4">No merch added</p>
+              <Button onClick={() => setIsSubModalOpen(true)}>Add New</Button>
+            </div>
           ) : (
-            customPrices.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-grey mb-4">No merch added</p>
-                <Button onClick={() => setIsSubModalOpen(true)}>Add New</Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {customPrices.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 bg-accent-1 rounded-lg">
-                    <div>
-                      <p className="font-medium text-admin-primary">{item.name}</p>
-                      <p className="text-grey">₦{item.amount}</p>
-                      <Badge variant={item.status === 'Active' ? 'success' : 'default'}>{item.status}</Badge>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button className="p-2 hover:bg-white rounded-lg"><Edit size={16} className="text-admin-primary" /></button>
-                      <button className="p-2 hover:bg-red-50 rounded-lg"><Trash2 size={16} className="text-red-600" /></button>
-                    </div>
+            <div className="space-y-3">
+              {customPrices.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-4 bg-accent-1 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium text-admin-primary">
+                      {item.name}
+                    </p>
+                    <p className="text-grey">₦{item.amount}</p>
+                    <Badge
+                      variant={item.status === "Active" ? "success" : "default"}
+                    >
+                      {item.status}
+                    </Badge>
                   </div>
-                ))}
-              </div>
-            )
+                  <div className="flex items-center space-x-2">
+                    <button className="p-2 hover:bg-white rounded-lg">
+                      <Edit size={16} className="text-admin-primary" />
+                    </button>
+                    <button className="p-2 hover:bg-red-50 rounded-lg">
+                      <Trash2 size={16} className="text-red-600" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
 
-          <Modal isOpen={isSubModalOpen} onClose={() => setIsSubModalOpen(false)} title={subPageType === 'custom-images' ? 'Upload Image' : 'Add Merch'} size="md">
+          <Modal
+            isOpen={isSubModalOpen}
+            onClose={() => setIsSubModalOpen(false)}
+            title={
+              subPageType === "custom-images" ? "Upload Image" : "Add Merch"
+            }
+            size="md"
+          >
             <div className="space-y-4">
-              {subPageType === 'custom-images' ? (
+              {subPageType === "custom-images" ? (
                 <>
                   <div>
-                    <label className="block text-admin-primary font-medium mb-2">Upload Image</label>
+                    <label className="block text-admin-primary font-medium mb-2">
+                      Upload Image
+                    </label>
                     <input type="file" accept="image/*" className="w-full" />
                   </div>
                   <Input label="Amount" placeholder="Enter amount" />
@@ -638,7 +1001,9 @@ export default function ContentPage() {
               ) : (
                 <>
                   <div>
-                    <label className="block text-admin-primary font-medium mb-2">Name</label>
+                    <label className="block text-admin-primary font-medium mb-2">
+                      Name
+                    </label>
                     <select className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none">
                       <option>T-shirt</option>
                       <option>Long Sleeve</option>
@@ -653,22 +1018,43 @@ export default function ContentPage() {
               )}
 
               <div>
-                <label className="block text-admin-primary font-medium mb-2">Status</label>
+                <label className="block text-admin-primary font-medium mb-2">
+                  Status
+                </label>
                 <div className="flex gap-4">
                   <label className="flex items-center cursor-pointer">
-                    <input type="radio" name="status" value="Active" defaultChecked className="mr-2" />
+                    <input
+                      type="radio"
+                      name="status"
+                      value="Active"
+                      defaultChecked
+                      className="mr-2"
+                    />
                     <span className="text-sm text-grey">Active</span>
                   </label>
                   <label className="flex items-center cursor-pointer">
-                    <input type="radio" name="status" value="Inactive" className="mr-2" />
+                    <input
+                      type="radio"
+                      name="status"
+                      value="Inactive"
+                      className="mr-2"
+                    />
                     <span className="text-sm text-grey">Inactive</span>
                   </label>
                 </div>
               </div>
 
               <div className="flex justify-center space-x-5 pt-5">
-                <Button type="button" variant="secondary" onClick={() => setIsSubModalOpen(false)}>Cancel</Button>
-                <Button type="button" onClick={() => setIsSubModalOpen(false)}>Save Changes</Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setIsSubModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="button" onClick={() => setIsSubModalOpen(false)}>
+                  Save Changes
+                </Button>
               </div>
             </div>
           </Modal>
@@ -678,18 +1064,19 @@ export default function ContentPage() {
           <div className="bg-admin-primary/4 rounded-t-xl p-4">
             <div className="flex flex-wrap gap-2 w-fit bg-white p-1">
               {[
-                { key: 'homepage', label: 'Homepage' },
-                { key: 'byom', label: 'BYOM' },
-                { key: 'faqs', label: 'FAQs & Help Center' },
-                { key: 'testimonials', label: 'Testimonials & Reviews' },
+                { key: "homepage", label: "Homepage" },
+                { key: "byom", label: "BYOM" },
+                { key: "faqs", label: "FAQs & Help Center" },
+                { key: "testimonials", label: "Testimonials & Reviews" },
               ].map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key as ContentTab)}
-                  className={`px-4 py-2 rounded-sm text-sm transition-all ${activeTab === tab.key
-                    ? 'bg-admin-primary text-white'
-                    : 'bg-admin-primary/5 text-admin-primary'
-                    }`}
+                  className={`px-4 py-2 rounded-sm text-sm transition-all ${
+                    activeTab === tab.key
+                      ? "bg-admin-primary text-white"
+                      : "bg-admin-primary/5 text-admin-primary"
+                  }`}
                 >
                   {tab.label}
                 </button>
@@ -700,208 +1087,517 @@ export default function ContentPage() {
           <div className="bg-admin-primary/4 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-admin-primary">
-                {activeTab === 'homepage' ? 'Homepage' :
-                 activeTab === 'byom' ? 'BYOM' :
-                 activeTab === 'faqs' ? 'FAQs' :
-                 'Testimonials'}
+                {activeTab === "homepage"
+                  ? "Homepage"
+                  : activeTab === "byom"
+                  ? "BYOM"
+                  : activeTab === "faqs"
+                  ? "FAQs"
+                  : "Testimonials"}
               </h2>
-              {(activeTab === 'faqs' || activeTab === 'testimonials') && (
-                <Button onClick={() => {
-                  resetForm();
-                  setCurrentSection(null);
-                  setIsModalOpen(true);
-                }}>
+              {(activeTab === "faqs" || activeTab === "testimonials") && (
+                <Button
+                  onClick={() => {
+                    resetForm();
+                    setCurrentSection(null);
+                    setIsModalOpen(true);
+                  }}
+                >
                   Add New
                 </Button>
               )}
             </div>
 
-            {activeTab === 'homepage' && renderSections(sections.homepage, 'homepage')}
-            {activeTab === 'byom' && renderSections(sections.byom, 'byom')}
+            {activeTab === "homepage" &&
+              renderSections(sections.homepage, "homepage")}
+            {activeTab === "byom" && renderSections(sections.byom, "byom")}
 
-            {activeTab === 'faqs' && (
+            {activeTab === "faqs" && (
               <div className="space-y-3">
-                {faqs.map((faq) => (
-                  <div key={faq.id} className="bg-white p-4 rounded-lg border border-accent-2">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <p className="font-medium text-admin-primary">{faq.question}</p>
-                          <Badge variant="info">{faq.type}</Badge>
+                {faqsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingSpinner size="lg" />
+                  </div>
+                ) : faqsError ? (
+                  <p className="text-red-600 text-center py-4">{faqsError}</p>
+                ) : faqs.length === 0 ? (
+                  <p className="text-grey text-center py-8">
+                    No FAQs yet. Add one to get started.
+                  </p>
+                ) : (
+                  faqs.map((faq) => (
+                    <div
+                      key={faq.id}
+                      className="bg-white p-4 rounded-lg border border-accent-2"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <p className="font-medium text-admin-primary">
+                              {faq.question}
+                            </p>
+                            <Badge
+                              variant={faq.is_active ? "success" : "default"}
+                            >
+                              {faq.is_active ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                          <p className="text-grey">{faq.answer}</p>
                         </div>
-                        <p className="text-grey">{faq.answer}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button 
-                          onClick={() => handleEditFaq(faq)}
-                          className="p-2 hover:bg-accent-1 rounded-lg"
-                        >
-                          <Edit size={16} className="text-admin-primary" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteFaq(faq.id)}
-                          className="p-2 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 size={16} className="text-red-600" />
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleEditFaq(faq)}
+                            className="p-2 hover:bg-accent-1 rounded-lg"
+                          >
+                            <Edit size={16} className="text-admin-primary" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteFaq(faq)}
+                            className="p-2 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 size={16} className="text-red-600" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
 
-            {activeTab === 'testimonials' && (
+            {activeTab === "testimonials" && (
               <div className="space-y-3">
-                {testimonials.map((testimonial) => (
-                  <div key={testimonial.id} className="bg-white p-4 rounded-lg border border-accent-2">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="w-12 h-12 bg-admin-primary rounded-full flex items-center justify-center">
-                          {testimonial.image ? (
-                            <img src={testimonial.image} alt={testimonial.name} className="w-full h-full rounded-full object-cover" />
-                          ) : (
-                            <span className="text-white font-medium">{testimonial.name.charAt(0)}</span>
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-admin-primary">{testimonial.name}</p>
-                          <div className="flex text-yellow-500">
-                            {'★'.repeat(testimonial.rating)}{'☆'.repeat(5 - testimonial.rating)}
+                {testimonialsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingSpinner size="lg" />
+                  </div>
+                ) : testimonialsError ? (
+                  <p className="text-red-600 text-center py-4">
+                    {testimonialsError}
+                  </p>
+                ) : testimonials.length === 0 ? (
+                  <p className="text-grey text-center py-8">
+                    No testimonials yet. Add one to get started.
+                  </p>
+                ) : (
+                  testimonials.map((testimonial) => (
+                    <div
+                      key={testimonial.id}
+                      className="bg-white p-4 rounded-lg border border-accent-2"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-12 h-12 bg-admin-primary rounded-full flex items-center justify-center overflow-hidden">
+                            {testimonial.buyer_image ? (
+                              <img
+                                src={testimonial.buyer_image}
+                                alt={testimonial.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-white font-medium">
+                                {testimonial.name.charAt(0)}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-admin-primary">
+                              {testimonial.name}
+                            </p>
+                            <Badge
+                              variant={
+                                testimonial.is_approved ? "success" : "default"
+                              }
+                            >
+                              {testimonial.is_approved ? "Approved" : "Pending"}
+                            </Badge>
                           </div>
                         </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() =>
+                              handleEditTestimonial(testimonial)
+                            }
+                            className="p-2 hover:bg-accent-1 rounded-lg"
+                          >
+                            <Edit
+                              size={16}
+                              className="text-admin-primary"
+                            />
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDeleteTestimonial(testimonial)
+                            }
+                            className="p-2 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 size={16} className="text-red-600" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <button 
-                          onClick={() => handleEditTestimonial(testimonial)}
-                          className="p-2 hover:bg-accent-1 rounded-lg"
-                        >
-                          <Edit size={16} className="text-admin-primary" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteTestimonial(testimonial.id)}
-                          className="p-2 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 size={16} className="text-red-600" />
-                        </button>
-                      </div>
+                      <p className="text-grey">{testimonial.message}</p>
                     </div>
-                    <p className="text-grey">{testimonial.review}</p>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
           </div>
 
           {renderModal()}
 
-          {(activeTab === 'faqs' || activeTab === 'testimonials') && (
-            <Modal isOpen={isModalOpen && !currentSection} onClose={() => {
-              setIsModalOpen(false);
-              setEditingFaqId(null);
-              setEditingTestimonialId(null);
-              resetForm();
-            }} title={activeTab === 'faqs' ? (editingFaqId ? 'Edit FAQ' : 'Add FAQ') : (editingTestimonialId ? 'Edit Testimonial' : 'Add Testimonial')} size="md">
+          {(activeTab === "faqs" || activeTab === "testimonials") && (
+            <Modal
+              isOpen={isModalOpen && !currentSection}
+              onClose={() => {
+                setIsModalOpen(false);
+                setEditingFaqId(null);
+                setEditingTestimonialId(null);
+                resetForm();
+              }}
+              title={
+                activeTab === "faqs"
+                  ? editingFaqId
+                    ? "Edit FAQ"
+                    : "Add FAQ"
+                  : editingTestimonialId
+                  ? "Edit Testimonial"
+                  : "Add Testimonial"
+              }
+              size="md"
+            >
               <div className="space-y-4">
-                {activeTab === 'faqs' ? (
+                {activeTab === "faqs" ? (
                   <>
-                    <div>
-                      <label className="block text-admin-primary font-medium mb-2">Type</label>
-                      <select
-                        value={formData.type}
-                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                        className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg focus:outline-none focus:border-[#A1CBFF]"
-                      >
-                        <option>All</option>
-                        <option>Orders & Shipping</option>
-                        <option>Products</option>
-                        <option>BYOM</option>
-                        <option>Returns & Exchanges</option>
-                        <option>Payment</option>
-                        <option>Account</option>
-                      </select>
-                    </div>
                     <Input
                       label="Question"
                       value={formData.question}
-                      onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, question: e.target.value })
+                      }
                       placeholder="Enter question"
                     />
-                    <Input
+                    <Textarea
                       label="Answer"
                       value={formData.answer}
-                      onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, answer: e.target.value })
+                      }
                       placeholder="Enter answer"
-                    />
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <label className="block text-admin-primary font-medium mb-2">Customer Image</label>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={(e) => handleImageUpload(e, 'customerImage')} 
-                        className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg"
-                      />
-                      {formData.customerImage && (
-                        <img src={formData.customerImage} alt="Preview" className="mt-2 w-20 h-20 object-cover rounded-full" />
-                      )}
-                    </div>
-                    <Input
-                      label="Customer Name"
-                      value={formData.customerName}
-                      onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                      placeholder="Enter customer name"
-                    />
-                    <Textarea
-                      label="Review"
-                      value={formData.review}
-                      onChange={(e) => setFormData({ ...formData, review: e.target.value })}
-                      placeholder="Enter review"
                       rows={3}
                     />
                     <div>
-                      <label className="block text-admin-primary font-medium mb-2">Rating</label>
-                      <div className="flex space-x-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, rating: star })}
-                            className={`text-2xl ${star <= formData.rating ? 'text-yellow-500' : 'text-grey/30'} hover:scale-110 transition-transform`}
-                          >
-                            ★
-                          </button>
-                        ))}
+                      <label className="block text-admin-primary font-medium mb-2">
+                        Status
+                      </label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="radio"
+                            checked={formData.faqIsActive}
+                            onChange={() =>
+                              setFormData({ ...formData, faqIsActive: true })
+                            }
+                            className="mr-2"
+                          />
+                          <span className="text-sm text-grey">Active</span>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="radio"
+                            checked={!formData.faqIsActive}
+                            onChange={() =>
+                              setFormData({ ...formData, faqIsActive: false })
+                            }
+                            className="mr-2"
+                          />
+                          <span className="text-sm text-grey">Inactive</span>
+                        </label>
                       </div>
-                      <p className="text-sm text-grey mt-1">{formData.rating} star{formData.rating !== 1 ? 's' : ''} selected</p>
                     </div>
+                  </>
+                ) : (
+                  <>
                     <Input
-                      label="Date"
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      label="Name"
+                      value={formData.customerName}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          customerName: e.target.value,
+                        })
+                      }
+                      placeholder="Enter customer name"
                     />
+                    <div>
+                      <label className="block text-admin-primary font-medium mb-2">
+                        Buyer Image
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setBuyerImageFile(file);
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setFormData({
+                                ...formData,
+                                customerImage: reader.result as string,
+                              });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg"
+                      />
+                      {formData.customerImage && (
+                        <img
+                          src={formData.customerImage}
+                          alt="Preview"
+                          className="mt-2 w-20 h-20 object-cover rounded-full"
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-admin-primary font-medium mb-2">
+                        Product Image
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setProductImageFile(file);
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setFormData({
+                                ...formData,
+                                productImage: reader.result as string,
+                              });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="w-full px-4 py-2 border border-admin-primary/35 rounded-lg"
+                      />
+                      {formData.productImage && (
+                        <img
+                          src={formData.productImage}
+                          alt="Product preview"
+                          className="mt-2 w-20 h-20 object-cover rounded"
+                        />
+                      )}
+                    </div>
+                    <Textarea
+                      label="Message"
+                      value={formData.review}
+                      onChange={(e) =>
+                        setFormData({ ...formData, review: e.target.value })
+                      }
+                      placeholder="Enter testimonial message"
+                      rows={3}
+                    />
+                    <div>
+                      <label className="block text-admin-primary font-medium mb-2">
+                        Status
+                      </label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="radio"
+                            checked={formData.testimonialIsApproved}
+                            onChange={() =>
+                              setFormData({
+                                ...formData,
+                                testimonialIsApproved: true,
+                              })
+                            }
+                            className="mr-2"
+                          />
+                          <span className="text-sm text-grey">Approved</span>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="radio"
+                            checked={!formData.testimonialIsApproved}
+                            onChange={() =>
+                              setFormData({
+                                ...formData,
+                                testimonialIsApproved: false,
+                              })
+                            }
+                            className="mr-2"
+                          />
+                          <span className="text-sm text-grey">Pending</span>
+                        </label>
+                      </div>
+                    </div>
                   </>
                 )}
 
                 <div className="flex justify-center space-x-5 pt-5">
-                  <Button type="button" variant="secondary" onClick={() => {
-                    setIsModalOpen(false);
-                    setEditingFaqId(null);
-                    setEditingTestimonialId(null);
-                    resetForm();
-                  }}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setEditingFaqId(null);
+                      setEditingTestimonialId(null);
+                      resetForm();
+                    }}
+                    disabled={
+                      (activeTab === "faqs" && savingFaq) ||
+                      (activeTab === "testimonials" && savingTestimonial)
+                    }
+                  >
                     Cancel
                   </Button>
-                  <Button type="button" onClick={activeTab === 'faqs' ? handleSaveFaq : handleSaveTestimonial}>
-                    Done
+                  <Button
+                    type="button"
+                    onClick={
+                      activeTab === "faqs"
+                        ? handleSaveFaq
+                        : handleSaveTestimonial
+                    }
+                    disabled={
+                      (activeTab === "faqs" && savingFaq) ||
+                      (activeTab === "testimonials" && savingTestimonial)
+                    }
+                  >
+                    {activeTab === "faqs" && savingFaq ? (
+                      <span className="flex items-center gap-2">
+                        <LoadingSpinner size="sm" />
+                        Saving...
+                      </span>
+                    ) : activeTab === "testimonials" && savingTestimonial ? (
+                      <span className="flex items-center gap-2">
+                        <LoadingSpinner size="sm" />
+                        Saving...
+                      </span>
+                    ) : (
+                      "Done"
+                    )}
                   </Button>
                 </div>
               </div>
             </Modal>
           )}
+
+          <Modal
+            isOpen={showDeleteTestimonialModal}
+            onClose={() =>
+              !deletingTestimonial &&
+              (setShowDeleteTestimonialModal(false),
+              setTestimonialToDelete(null))
+            }
+            title="Delete Testimonial"
+            size="md"
+          >
+            <div className="py-6">
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-admin-primary mb-2 text-center">
+                  Are you sure you want to delete this testimonial?
+                </h3>
+                <p className="text-grey text-center">
+                  {testimonialToDelete && (
+                    <>
+                      This will permanently delete the testimonial from &quot;
+                      {testimonialToDelete.name}&quot;. This action cannot be
+                      undone.
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="flex justify-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowDeleteTestimonialModal(false);
+                    setTestimonialToDelete(null);
+                  }}
+                  disabled={deletingTestimonial}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={handleConfirmDeleteTestimonial}
+                  disabled={deletingTestimonial}
+                >
+                  {deletingTestimonial ? (
+                    <span className="flex items-center gap-2">
+                      <LoadingSpinner size="sm" />
+                      Deleting...
+                    </span>
+                  ) : (
+                    "Delete Testimonial"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </Modal>
+
+          <Modal
+            isOpen={showDeleteFaqModal}
+            onClose={() =>
+              !deletingFaq &&
+              (setShowDeleteFaqModal(false), setFaqToDelete(null))
+            }
+            title="Delete FAQ"
+            size="md"
+          >
+            <div className="py-6">
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-admin-primary mb-2 text-center">
+                  Are you sure you want to delete this FAQ?
+                </h3>
+                <p className="text-grey text-center">
+                  {faqToDelete && (
+                    <>
+                      This will permanently delete &quot;{faqToDelete.question}
+                      &quot;. This action cannot be undone.
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="flex justify-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowDeleteFaqModal(false);
+                    setFaqToDelete(null);
+                  }}
+                  disabled={deletingFaq}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={handleConfirmDeleteFaq}
+                  disabled={deletingFaq}
+                >
+                  {deletingFaq ? (
+                    <span className="flex items-center gap-2">
+                      <LoadingSpinner size="sm" />
+                      Deleting...
+                    </span>
+                  ) : (
+                    "Delete FAQ"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </Modal>
         </>
       )}
     </div>
