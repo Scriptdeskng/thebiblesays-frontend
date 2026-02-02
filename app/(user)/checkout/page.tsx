@@ -454,13 +454,14 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePayazaCheckout = async (orderData: any, currencyParam: string) => {
+    const handlePayazaCheckout = async (orderData: any, currencyParam: string) => {
     try {
-      const { order, payment, transactionReference, backendReference, callbackUrl } = await paymentService.createOrderAndInitializePayaza(
-        orderData,
-        accessToken || undefined,
-        currencyParam
-      );
+      const { order, payment, backendReference } =
+        await paymentService.createOrderAndInitializePayaza(
+          orderData,
+          accessToken || undefined,
+          currencyParam
+        );
 
       const isNewAddressMode = useNewAddress || addresses.length === 0;
 
@@ -491,55 +492,49 @@ export default function CheckoutPage() {
         }
       }
 
-      const shippingAddress = orderData.shipping_address || {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        phone: formData.phoneNumber,
-      };
-
       const paymentAmount = Number(payment?.amount || subtotal);
 
-      const payazaData: PayazaCheckoutOptionsInterface = {
+      const payazaData: any = {
         merchant_key: process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.trim() || '',
-        connection_mode: ConnectionMode.LIVE,
+        connection_mode: "LIVE",
         checkout_amount: paymentAmount,
         currency_code: 'NGN',
-        currency: 'NGN',
         email_address: orderData.email,
-        first_name: shippingAddress.first_name,
-        last_name: shippingAddress.last_name,
-        phone_number: shippingAddress.phone || formData.phoneNumber,
-        transaction_reference: backendReference || `order-${Date.now()}`,
-        ...(callbackUrl && { callback_url: callbackUrl }),
+        first_name: orderData.shipping_address?.first_name || formData.firstName,
+        last_name: orderData.shipping_address?.last_name || formData.lastName,
+        transaction_reference: backendReference,
+
         onClose: () => {
-          toast('Payment window closed', {
-            duration: 3000,
-          });
+          toast('Payment window closed');
           setIsProcessing(false);
         },
 
-        callback: (response: any) => {
+        callback: async (response: any) => {
+          const payazaRef = response.data?.transaction_reference || response.transaction_reference;
 
-          const ref = response.data?.transaction_reference || "no-reference";
+          if (response.type === 'success' || response.status === 'success') {
+            try {
+              const verification = await paymentService.verifyPayazaPayment(
+                payazaRef,
+                accessToken || undefined
+              );
 
-          setTimeout(() => {
-            if (response.type === 'success' || response.status === 201) {
-
-              clearCart();
-
-              const orderId = order?.id || response.data?.metadata?.order_id;
-
-              window.location.href = `/order-confirmation?reference=${orderId}`;
-            } else {
-              setIsProcessing(false);
-              router.push(`/payment-failed?reference=${ref}&payment=failed`);
+              if (verification) {
+                clearCart();
+                window.location.href = `/order-confirmation?reference=${order?.id}`;
+              }
+            } catch (err: any) {
+              router.push(`/payment-failed?reference=${payazaRef}&error=verification_failed`);
             }
-          }, 10);
-        },
+          } else {
+            setIsProcessing(false);
+          }
+        }
       };
 
-      const checkout = new PayazaCheckout(payazaData);
+      const checkout = new (window as any).PayazaCheckout(payazaData);
       checkout.showPopup();
+
     } catch (error) {
       throw error;
     }
