@@ -360,6 +360,35 @@ export interface ApiCategory {
   product_count?: number;
 }
 
+export interface ApiFaq {
+  id: number;
+  question: string;
+  answer: string;
+  is_active: boolean;
+}
+
+export interface ApiTestimonial {
+  id: number;
+  name: string;
+  buyer_image?: string;
+  product_image?: string;
+  message: string;
+  is_approved: boolean;
+}
+
+export interface ApiNotificationSettings {
+  id: number;
+  is_enabled: boolean;
+  enable_order_notifications: boolean;
+  enable_custom_merch_notifications: boolean;
+  enable_stock_notifications: boolean;
+  enable_revenue_notifications: boolean;
+  enable_testimonial_notifications: boolean;
+  enable_payment_notifications: boolean;
+  enable_user_notifications: boolean;
+  auto_cleanup_enabled: boolean;
+}
+
 export interface ApiProductImage {
   id: number;
   image: string;

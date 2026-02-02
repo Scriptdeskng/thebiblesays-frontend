@@ -14,7 +14,7 @@ interface HeaderProps {
 
 // const currencies = ["NGN (₦)"];
 
-// Helper function to format time ago
+// Helper function to format time ago from a date string
 const formatTimeAgo = (dateString?: string): string => {
   if (!dateString) return "";
 
@@ -40,13 +40,46 @@ const formatTimeAgo = (dateString?: string): string => {
   }
 };
 
+/** Convert age_in_hours (string) to timeline; show minutes when less than 1 hour */
+const formatNotificationTime = (
+  ageInHours?: string,
+  createdAt?: string
+): string => {
+  if (ageInHours != null && ageInHours !== "") {
+    const hours = parseFloat(ageInHours);
+    if (!Number.isNaN(hours)) {
+      if (hours < 1) {
+        const minutes = Math.round(hours * 60);
+        if (minutes < 1) return "Just now";
+        return `${minutes} ${minutes === 1 ? "min" : "mins"} ago`;
+      }
+      if (hours < 24) {
+        const h = Math.floor(hours);
+        return `${h} ${h === 1 ? "hour" : "hours"} ago`;
+      }
+      const days = Math.floor(hours / 24);
+      return `${days} ${days === 1 ? "day" : "days"} ago`;
+    }
+  }
+  return formatTimeAgo(createdAt);
+};
+
 export default function Header({ onMenuClick }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCurrency, setShowCurrency] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("Today");
+  const [activeFilter, setActiveFilter] = useState("Older");
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [showAllNotifications, setShowAllNotifications] = useState(false);
+
+  const INITIAL_NOTIFICATIONS_COUNT = 3;
+  const visibleNotifications = showAllNotifications
+    ? notifications
+    : notifications.slice(0, INITIAL_NOTIFICATIONS_COUNT);
+  const hasMoreNotifications =
+    notifications.length > INITIAL_NOTIFICATIONS_COUNT;
+  const showShowAllButton = hasMoreNotifications && !showAllNotifications;
   // const [selectedCurrency, setSelectedCurrency] = useState(currencies[0]);
 
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -55,7 +88,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const currencyRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  useClickOutside(notificationRef, () => setShowNotifications(false));
+  useClickOutside(notificationRef, () => {
+    setShowNotifications(false);
+    setShowAllNotifications(false);
+  });
   useClickOutside(currencyRef, () => setShowCurrency(false));
   useClickOutside(profileRef, () => setShowProfile(false));
 
@@ -127,7 +163,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     Notifications
                   </h3>
                   <button
-                    onClick={() => setShowNotifications(false)}
+                    onClick={() => {
+                      setShowNotifications(false);
+                      setShowAllNotifications(false);
+                    }}
                     className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                   >
                     <X size={18} className="text-gray-500" />
@@ -153,13 +192,37 @@ export default function Header({ onMenuClick }: HeaderProps) {
                       )
                     )}
                   </div>
-                  <button className="text-sm text-gray-900 hover:underline">
-                    Mark all as read
-                  </button>
+                  {notifications.length > 0 && unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const ids = notifications.map((n) => n.id);
+                          await dashboardService.markAllNotificationsAsRead(
+                            ids
+                          );
+                          setNotifications((prev) =>
+                            prev.map((n) => ({ ...n, is_read: true }))
+                          );
+                        } catch (err) {
+                          console.error("Failed to mark all as read:", err);
+                        }
+                      }}
+                      className="text-sm text-gray-900 hover:underline"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
                 </div>
 
-                {/* Notifications List */}
-                <div className="max-h-96 overflow-y-auto">
+                {/* Notifications List - scrollable only when "Show all" is expanded */}
+                <div
+                  className={
+                    showAllNotifications
+                      ? "max-h-96 overflow-y-auto"
+                      : "overflow-hidden"
+                  }
+                >
                   {loadingNotifications ? (
                     <div className="px-4 py-8 text-center text-gray-500">
                       Loading notifications...
@@ -169,10 +232,30 @@ export default function Header({ onMenuClick }: HeaderProps) {
                       No notifications found
                     </div>
                   ) : (
-                    notifications.map((notification) => (
-                      <div
+                    visibleNotifications.map((notification) => (
+                      <button
                         key={notification.id}
-                        className={`px-4 py-3 relative ${
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await dashboardService.markNotificationAsRead(
+                              notification.id
+                            );
+                            setNotifications((prev) =>
+                              prev.map((n) =>
+                                n.id === notification.id
+                                  ? { ...n, is_read: true }
+                                  : n
+                              )
+                            );
+                          } catch (err) {
+                            console.error(
+                              "Failed to mark notification as read:",
+                              err
+                            );
+                          }
+                        }}
+                        className={`w-full text-left px-4 py-3 relative transition-colors hover:bg-gray-50 ${
                           !notification.is_read ? "bg-blue-50" : "bg-white"
                         }`}
                       >
@@ -185,25 +268,33 @@ export default function Header({ onMenuClick }: HeaderProps) {
                               {notification.message}
                             </p>
                             <span className="text-sm text-gray-600">
-                              {notification.age_in_hours ||
-                                formatTimeAgo(notification.created_at)}
+                              {formatNotificationTime(
+                                notification.age_in_hours,
+                                notification.created_at
+                              )}
                             </span>
                           </div>
                           {!notification.is_read && (
                             <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 shrink-0" />
                           )}
                         </div>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
 
-                {/* Footer */}
-                {notifications.length > 0 && <div className="p-4 text-center border-t border-gray-100">
-                  <button className="text-sm text-gray-900 font-medium hover:text-gray-700">
-                    View All Notifications
-                  </button>
-                </div>}
+                {/* Show all - only when there are more than 3 and not yet expanded */}
+                {showShowAllButton && (
+                  <div className="p-4 text-center border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowAllNotifications(true)}
+                      className="text-sm text-gray-900 font-medium hover:text-gray-700"
+                    >
+                      Show all notifications
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
