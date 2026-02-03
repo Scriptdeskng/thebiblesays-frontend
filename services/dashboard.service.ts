@@ -425,7 +425,7 @@ class DashboardService {
       }
 
       const response = await makeRequest({
-        url: `${API_URL}/dashboard/byom-designs/`,
+        url: `${API_URL}/dashboard/byom-products/`,
         method: "GET",
         params: queryParams,
         requireToken: true,
@@ -436,6 +436,94 @@ class DashboardService {
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error("Error fetching custom merch:", error);
+      throw error;
+    }
+  }
+
+  /** POST /dashboard/byom-products/ - create BYOM product/asset (multipart if image provided) */
+  async createByomProduct(
+    data: {
+      name: string;
+      description: string;
+      price: string;
+      color?: string;
+      size?: string;
+      category: number;
+      subcategory?: number;
+      tag_ids?: number[];
+      color_ids?: number[];
+      stock_level?: number;
+      is_active?: boolean;
+    },
+    imageFile?: File | null
+  ): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("name", data.name);
+        formData.append("description", data.description);
+        formData.append("price", data.price);
+        if (data.color) formData.append("color", data.color);
+        if (data.size) formData.append("size", data.size);
+        formData.append("category", String(data.category));
+        if (data.subcategory !== undefined && data.subcategory !== null) {
+          formData.append("subcategory", String(data.subcategory));
+        }
+        if (data.tag_ids?.length) {
+          data.tag_ids.forEach((id) => formData.append("tag_ids", String(id)));
+        }
+        if (data.color_ids?.length) {
+          data.color_ids.forEach((id) => formData.append("color_ids", String(id)));
+        }
+        if (data.stock_level !== undefined) {
+          formData.append("stock_level", String(data.stock_level));
+        }
+        if (data.is_active !== undefined) {
+          formData.append("is_active", String(data.is_active));
+        }
+        formData.append("image", imageFile, imageFile.name);
+
+        const response = await axios({
+          method: "POST",
+          url: `${API_URL}/dashboard/byom-products/`,
+          data: formData,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        });
+        return response.data;
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/byom-products/`,
+        method: "POST",
+        requireToken: true,
+        token: accessToken,
+        data: {
+          name: data.name,
+          description: data.description,
+          price: data.price,
+          ...(data.color && { color: data.color }),
+          ...(data.size && { size: data.size }),
+          category: data.category,
+          ...(data.subcategory !== undefined && { subcategory: data.subcategory }),
+          ...(data.tag_ids?.length && { tag_ids: data.tag_ids }),
+          ...(data.color_ids?.length && { color_ids: data.color_ids }),
+          ...(data.stock_level !== undefined && { stock_level: data.stock_level }),
+          ...(data.is_active !== undefined && { is_active: data.is_active }),
+        },
+      });
+      return response;
+    } catch (error) {
+      console.error("Error creating BYOM product:", error);
       throw error;
     }
   }
@@ -580,6 +668,94 @@ class DashboardService {
       return response.data;
     } catch (error) {
       console.error("Error exporting custom merch:", error);
+      throw error;
+    }
+  }
+
+  /** GET /dashboard/pricing/global/ - global BYOM pricing config */
+  async getPricingGlobal(): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/pricing/global/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error fetching global pricing:", error);
+      throw error;
+    }
+  }
+
+  /** POST /dashboard/pricing/global/ - create/update global BYOM pricing */
+  async createPricingGlobal(data: {
+    product?: number;
+    base_customization_fee: string;
+    front_placement_cost: string;
+    back_placement_cost: string;
+    side_placement_cost: string;
+    text_customization_cost: string;
+    text_image_combination_cost: string;
+    is_active?: boolean;
+    priority?: number;
+  }): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/pricing/global/`,
+        method: "POST",
+        requireToken: true,
+        token: accessToken,
+        data: {
+          base_customization_fee: data.base_customization_fee,
+          front_placement_cost: data.front_placement_cost,
+          back_placement_cost: data.back_placement_cost,
+          side_placement_cost: data.side_placement_cost,
+          text_customization_cost: data.text_customization_cost,
+          text_image_combination_cost: data.text_image_combination_cost,
+          is_active: data.is_active ?? true,
+          priority: data.priority ?? 2147483647,
+        },
+      });
+      return response;
+    } catch (error) {
+      console.error("Error creating global pricing:", error);
+      throw error;
+    }
+  }
+
+  /** GET /dashboard/byom-designs/designs_with_orders/ - designs with their orders */
+  async getByomDesignsWithOrders(): Promise<any[]> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/byom-designs/designs_with_orders/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching BYOM designs with orders:", error);
       throw error;
     }
   }
