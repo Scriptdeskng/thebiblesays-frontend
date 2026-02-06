@@ -21,6 +21,16 @@ export const formatDate = (dateString: string): string => {
   });
 };
 
+/** DD/MM/YYYY e.g. 28/02/2026 */
+export const formatDateShort = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
 export const formatDateTime = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleString('en-NG', {

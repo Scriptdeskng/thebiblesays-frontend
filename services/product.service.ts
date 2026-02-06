@@ -21,6 +21,7 @@ interface ApiProduct {
 
   description: string;
   price: string;
+  color: string;
   is_on_sale: boolean;
   average_rating: string;
   review_count: number;
@@ -33,15 +34,18 @@ interface ApiProduct {
   created_at: string;
 }
 
-/**
- * NOTE:
- * Colors and sizes are platform-wide constants.
- * Backend does not provide variants.
- * All products are assumed to support all sizes & colors.
- */
 class ProductService {
   private transformProduct(apiProduct: ApiProduct): Product {
-    const colors = COLORS;
+    const availableColorNames = apiProduct.color 
+      ? apiProduct.color.split(',').map(c => c.trim())
+      : [];
+    
+    const colors = COLORS.filter(color => 
+      availableColorNames.some(name => 
+        name.toLowerCase() === color.name.toLowerCase()
+      )
+    );
+
     const sizes = SIZES;
 
     const inStock = true;

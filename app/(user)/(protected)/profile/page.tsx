@@ -14,9 +14,7 @@ import Link from 'next/link';
 import { productService } from '@/services/product.service';
 import { orderService } from '@/services/order.service';
 import { addressService } from '@/services/address.service';
-import { byomService, CustomMerchDesign } from '@/services/byom.service';
 import { Product } from '@/types/product.types';
-import { BYOMCustomization } from '@/types/byom.types';
 import { formatPrice } from '@/utils/format';
 import { cn } from '@/utils/cn';
 import toast from 'react-hot-toast';
@@ -50,15 +48,6 @@ interface Address {
   is_default: boolean;
 }
 
-const BASE_PRICES: Record<string, number> = {
-  tshirt: 15000,
-  longsleeve: 20000,
-  hoodie: 35000,
-  trouser: 28000,
-  short: 18000,
-  hat: 8000,
-};
-
 export default function ProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -81,8 +70,6 @@ export default function ProfilePage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
 
-  const [drafts, setDrafts] = useState<CustomMerchDesign[]>([]);
-  const [isLoadingDrafts, setIsLoadingDrafts] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { currency } = useCurrencyStore();
 
@@ -175,24 +162,6 @@ export default function ProfilePage() {
     };
 
     loadAddresses();
-  }, [activeTab, accessToken]);
-
-  useEffect(() => {
-    const loadDrafts = async () => {
-      if (activeTab !== 'drafts' || !accessToken) return;
-
-      setIsLoadingDrafts(true);
-      try {
-        const savedDesigns = await byomService.getSavedDesigns(accessToken);
-        setDrafts(savedDesigns || []);
-      } catch (error) {
-        setDrafts([]);
-      } finally {
-        setIsLoadingDrafts(false);
-      }
-    };
-
-    loadDrafts();
   }, [activeTab, accessToken]);
 
   const tabs = [
@@ -310,128 +279,6 @@ export default function ProfilePage() {
       setAddresses(fetchedAddresses || []);
     } catch (error) {
       toast.error('Failed to set default address');
-    }
-  };
-
-  const handleDeleteDraft = async (draftId: number) => {
-    if (!accessToken || !confirm('Are you sure you want to delete this draft?')) return;
-
-    try {
-      await byomService.deleteDesign(accessToken, draftId);
-      toast.success('Draft deleted successfully!');
-
-      const savedDesigns = await byomService.getSavedDesigns(accessToken);
-      setDrafts(savedDesigns || []);
-    } catch (error) {
-      toast.error('Failed to delete draft');
-    }
-  };
-
-  const handleAddDraftToCart = async (draft: CustomMerchDesign) => {
-    if (!accessToken) return;
-
-    if (draft.status !== 'approved') {
-      toast.error('Only approved designs can be added to cart');
-      return;
-    }
-
-    try {
-      let config: BYOMCustomization;
-      try {
-        if (typeof draft.configuration_json === 'string') {
-          config = JSON.parse(draft.configuration_json);
-        } else {
-          config = draft.configuration_json as any;
-        }
-      } catch (parseError) {
-        toast.error('Invalid design configuration');
-        return;
-      }
-
-      const basePrice = BASE_PRICES[config.merchType] || 15000;
-
-      const textCount = (config.front?.texts?.length || 0) +
-        (config.back?.texts?.length || 0) +
-        (config.side?.texts?.length || 0);
-      const stickerCount = (config.front?.stickers?.length || 0) +
-        (config.back?.stickers?.length || 0) +
-        (config.side?.stickers?.length || 0);
-      const customizationCost = (textCount * 1000) + (stickerCount * 500);
-      const total = basePrice + customizationCost;
-
-      const merchImageUrl = `/byom/${config.merchType}-${config.colorName || 'black'}.svg`;
-
-      const byomProduct = {
-        id: `byom-${draft.id}`,
-        name: draft.name,
-        price: total,
-        images: [{ url: merchImageUrl, color: 'Custom', alt: draft.name }],
-        colors: [{ name: 'Custom', hex: config.color }],
-        sizes: [config.size],
-        category: 'Shirts' as const,
-        inStock: true,
-        description: `Custom ${config.merchType} with personalized design`,
-        features: ['Custom design', 'Premium quality'],
-        rating: 5,
-        reviewCount: 0,
-      };
-
-      addItem({
-        productId: byomProduct.id,
-        product: byomProduct,
-        quantity: 1,
-        color: 'Custom',
-        size: config.size,
-        customization: config,
-      });
-
-      toast.success('Added to cart!');
-      router.push('/cart');
-    } catch (error) {
-      toast.error('Failed to add to cart');
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-            <CheckCircle className="w-3 h-3" />
-            Approved
-          </span>
-        );
-      case 'rejected':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-            <XCircle className="w-3 h-3" />
-            Rejected
-          </span>
-        );
-      case 'pending_approval':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-            <Clock className="w-3 h-3" />
-            Pending Review
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
-            Draft
-          </span>
-        );
-    }
-  };
-
-  const parseConfig = (draft: CustomMerchDesign): BYOMCustomization | null => {
-    try {
-      if (typeof draft.configuration_json === 'string') {
-        return JSON.parse(draft.configuration_json);
-      }
-      return draft.configuration_json as any;
-    } catch (error) {
-      return null;
     }
   };
 
@@ -597,127 +444,6 @@ export default function ProfilePage() {
                     {wishlistProducts.map((product) => (
                       <ProductCard key={product.id} product={product} />
                     ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'drafts' && (
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl text-primary">Custom Design Drafts</h2>
-                </div>
-
-                {isLoadingDrafts ? (
-                  <div className="space-y-4">
-                    {[...Array(2)].map((_, i) => (
-                      <div key={i} className="h-40 bg-accent-1 rounded-lg animate-pulse" />
-                    ))}
-                  </div>
-                ) : !drafts || drafts.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="w-16 h-16 text-grey mx-auto mb-4" />
-                    <p className="text-grey text-lg mb-4">No saved drafts</p>
-                    <Link href="/byom">
-                      <Button>Create Custom Merch</Button>
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {drafts.map((draft) => {
-                      const config = parseConfig(draft);
-                      if (!config) {
-                        return (
-                          <div key={draft.id} className="border-2 border-red-200 rounded-lg p-4 bg-red-50">
-                            <p className="text-red-700 text-sm">Invalid configuration data</p>
-                          </div>
-                        );
-                      }
-
-                      const merchImageUrl = `/byom/${config.merchType}-${config.colorName || 'black'}.svg`;
-
-                      return (
-                        <div
-                          key={draft.id}
-                          className={cn(
-                            'border-2 rounded-lg p-4 transition-shadow',
-                            draft.status === 'approved'
-                              ? 'border-green-200 bg-green-50/30'
-                              : draft.status === 'rejected'
-                                ? 'border-red-200 bg-red-50/30'
-                                : 'border-accent-2 hover:shadow-md'
-                          )}
-                        >
-                          <div className="flex gap-4">
-                            <div className="relative w-24 h-24 bg-accent-1 rounded-lg overflow-hidden shrink-0">
-                              <Image
-                                src={merchImageUrl}
-                                alt={draft.name}
-                                fill
-                                className="object-contain p-2"
-                              />
-                            </div>
-
-                            <div className="flex-1">
-                              <div className="flex justify-between items-start mb-2">
-                                <div>
-                                  <h3 className="font-semibold text-primary">{draft.name}</h3>
-                                  <p className="text-sm text-grey">
-                                    Size: {draft.size} • Color: {draft.color}
-                                  </p>
-                                </div>
-                                {getStatusBadge(draft.status)}
-                              </div>
-
-                              <p className="text-xs text-grey mb-3">
-                                Created {new Date(draft.created_at).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}
-                              </p>
-
-                              {draft.status === 'rejected' && draft.rejection_reason && (
-                                <div className="bg-red-50 border border-red-100 rounded-lg p-3 mb-3">
-                                  <p className="text-sm text-red-400">
-                                    <span className="font-semibold">Rejection Reason:</span> {draft.rejection_reason}
-                                  </p>
-                                </div>
-                              )}
-
-                              {draft.status === 'pending_approval' && (
-                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
-                                  <p className="text-sm text-yellow-800">
-                                    Your design is being reviewed. You'll be notified once it's approved or if changes are needed.
-                                  </p>
-                                </div>
-                              )}
-
-                              <div className="flex gap-2 flex-wrap">
-                                {draft.status === 'approved' && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleAddDraftToCart(draft)}
-                                    leftIcon={<ShoppingCart className="w-4 h-4" />}
-                                  >
-                                    Add to Cart
-                                  </Button>
-                                )}
-
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleDeleteDraft(draft.id)}
-                                  className="text-red-500 border-red-200 hover:bg-red-50"
-                                >
-                                  Delete
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 )}
               </div>
