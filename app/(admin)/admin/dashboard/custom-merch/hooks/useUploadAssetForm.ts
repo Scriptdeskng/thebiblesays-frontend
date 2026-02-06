@@ -8,7 +8,7 @@ import type { UploadFormState } from "../types";
 const INITIAL_FORM: UploadFormState = {
   name: "",
   description: "",
-  price: 10000,
+  price: 0,
   size: "S",
   category: 0,
   subcategory: 0,
