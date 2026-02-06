@@ -53,19 +53,21 @@ export default function AssetCard({
           />
         )}
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleEnabled(merch);
-          }}
-          className={`absolute top-[10px] right-2 px-2 py-[2px] rounded-[2px] text-[8px] text-black border ${
-            !enabled
-              ? "bg-[#3291FF14] border-[#3291FF4D]"
-              : "bg-[#62626214] border-[#62626233]"
-          }`}
-        >
-          {enabled ? "Disable" : "Enable"}
-        </button>
+        <div className="bg-white">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleEnabled(merch);
+            }}
+            className={`absolute top-[10px] right-2 px-2 py-[2px] rounded-[2px] text-[10px] text-white border shadow-2xl ${
+              !enabled
+                ? "bg-[#3291FF] border-[#3291FF4D]"
+                : "bg-[#626262] border-[#62626233]"
+            }`}
+          >
+            {enabled ? "Disable" : "Enable"}
+          </button>
+        </div>
       </div>
 
       <div className="p-3">
@@ -90,9 +92,26 @@ export default function AssetCard({
           Category: {categoryLabel}
         </p>
 
+        {merch.stockStatus && (
+          <p className="text-xs text-admin-primary mt-0.5">
+            Stock: {merch.stockStatus}
+            {merch.isInStock !== undefined && (
+              <span
+                className={`ml-1 ${
+                  merch.isInStock ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                ({merch.isInStock ? "In stock" : "Out of stock"})
+              </span>
+            )}
+          </p>
+        )}
+
         <div className="flex items-center justify-between mt-1">
           <p className="text-xs text-admin-primary">
-            Date Added: {formatDateShort(merch.dateCreated)}
+            {merch.dateCreated
+              ? `Date Added: ${formatDateShort(merch.dateCreated)}`
+              : ""}
           </p>
 
           <span className="text-admin-primary">

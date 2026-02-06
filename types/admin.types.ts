@@ -133,6 +133,9 @@ export interface CustomMerch {
   quantity: number;
   status: CustomMerchStatus;
   dateCreated: string;
+  stockStatus?: string;
+  isInStock?: boolean;
+  currency?: string;
 }
 
 export type TransactionStatus = "pending" | "successful" | "failed";
