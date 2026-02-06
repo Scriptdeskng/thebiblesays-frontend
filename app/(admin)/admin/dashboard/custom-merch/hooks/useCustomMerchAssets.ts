@@ -8,6 +8,7 @@ import {
   transformByomProductToCustomMerch,
   transformApiDesignToCustomMerch,
   isByomProduct,
+  inferProductCategory,
 } from "../lib/transformers";
 
 export function useCustomMerchAssets() {
@@ -36,7 +37,9 @@ export function useCustomMerchAssets() {
       const labels: Record<string, string> = {};
       const transformedData = apiData.map((item: any) => {
         if (isByomProduct(item)) {
-          labels[String(item.id)] = item.category_name;
+          labels[String(item.id)] =
+            item.category_name ??
+            inferProductCategory(item.name || item.slug || "");
           return transformByomProductToCustomMerch(item);
         }
         return transformApiDesignToCustomMerch(item);

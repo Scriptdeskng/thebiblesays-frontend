@@ -47,8 +47,12 @@ export function categoryNameToProductCategory(
 export function transformByomProductToCustomMerch(
   product: ByomProductApi
 ): CustomMerch {
-  const category = categoryNameToProductCategory(product.category_name);
+  const categoryName = product.category_name ?? "";
+  const category = categoryName
+    ? categoryNameToProductCategory(categoryName)
+    : inferProductCategory(product.name || product.slug || "");
   const image =
+    product.featured_image ??
     (product as { image?: string }).image ??
     (product as { thumbnail_url?: string }).thumbnail_url ??
     "";
@@ -62,8 +66,11 @@ export function transformByomProductToCustomMerch(
     image,
     amount: parseFloat(product.price) || 0,
     quantity: 1,
-    status: product.is_active ? "approved" : "rejected",
-    dateCreated: product.created_at,
+    status: product.is_active !== false ? "approved" : "rejected",
+    dateCreated: product.created_at ?? "",
+    stockStatus: product.stock_status,
+    isInStock: product.is_in_stock,
+    currency: product.currency,
   };
 }
 
@@ -72,8 +79,7 @@ export function isByomProduct(item: unknown): item is ByomProductApi {
   return (
     x != null &&
     typeof x.id === "number" &&
-    typeof x.category_name === "string" &&
-    typeof x.is_active === "boolean" &&
+    typeof x.name === "string" &&
     (typeof x.price === "string" || typeof x.price === "number")
   );
 }
