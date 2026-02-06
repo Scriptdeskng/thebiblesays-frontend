@@ -11,7 +11,7 @@ interface AssetCardProps {
   categoryLabel: string;
   enabled: boolean;
   onView: (merch: CustomMerch) => void;
-  onToggleEnabled: (id: string) => void;
+  onToggleEnabled: (merch: CustomMerch) => void;
   onDelete: (merch: CustomMerch) => void;
 }
 
@@ -19,8 +19,8 @@ export default function AssetCard({
   merch,
   categoryLabel,
   enabled,
-  // onView,
-  // onToggleEnabled,
+  onView,
+  onToggleEnabled,
   onDelete,
 }: AssetCardProps) {
   return (
@@ -56,7 +56,7 @@ export default function AssetCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            // onToggleEnabled(merch.id);
+            onToggleEnabled(merch);
           }}
           className={`absolute top-[10px] right-2 px-2 py-[2px] rounded-[2px] text-[8px] text-black border ${
             !enabled

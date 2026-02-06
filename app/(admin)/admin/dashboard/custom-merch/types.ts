@@ -49,10 +49,13 @@ export interface PricingConfig {
   priority: number;
 }
 
+export type ByomProductSize = "S" | "M" | "L" | "XL" | "XXL";
+
 export interface UploadFormState {
   name: string;
   description: string;
   price: number;
+  size: ByomProductSize;
   category: number;
   subcategory: number;
   tag_ids: number[];

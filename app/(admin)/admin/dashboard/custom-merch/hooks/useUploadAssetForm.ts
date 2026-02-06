@@ -9,11 +9,12 @@ const INITIAL_FORM: UploadFormState = {
   name: "",
   description: "",
   price: 10000,
+  size: "S",
   category: 0,
   subcategory: 0,
   tag_ids: [],
   color_ids: [],
-  stock_level: 10,
+  stock_level: 1,
   is_active: true,
 };
 
@@ -23,73 +24,89 @@ const MAX_SIZE = 10 * 1024 * 1024;
 export function useUploadAssetForm(onSuccess?: () => void) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<UploadFormState>(INITIAL_FORM);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const revokePreviews = useCallback((urls: string[]) => {
+    urls.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
 
   const openForm = useCallback(() => {
     setForm(INITIAL_FORM);
-    setImageFile(null);
-    setImagePreview((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return null;
+    setImagePreviews((prev) => {
+      revokePreviews(prev);
+      return [];
     });
+    setImageFiles([]);
     setShowForm(true);
-  }, []);
+  }, [revokePreviews]);
 
   const closeForm = useCallback(() => {
     if (!submitting) {
       setShowForm(false);
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
+      setImagePreviews((prev) => {
+        revokePreviews(prev);
+        return [];
+      });
     }
-  }, [submitting, imagePreview]);
-
-  const setImage = useCallback((file: File | null) => {
-    setImagePreview((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return null;
-    });
-    setImageFile(file);
-    if (file) setImagePreview(URL.createObjectURL(file));
-  }, []);
+  }, [submitting, revokePreviews]);
 
   const handleImageChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      if (file.size > MAX_SIZE) {
-        toast.error("Image must be under 10MB");
-        return;
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      const fileArray = Array.from(files);
+      for (const file of fileArray) {
+        if (file.size > MAX_SIZE) {
+          toast.error(`"${file.name}" must be under 10MB`);
+          return;
+        }
+        if (!ACCEPTED_TYPES.includes(file.type)) {
+          toast.error(`"${file.name}": Use PNG or JPG`);
+          return;
+        }
       }
-      if (!ACCEPTED_TYPES.includes(file.type)) {
-        toast.error("Use PNG or JPG");
-        return;
-      }
-      setImage(file);
+      const newPreviews = fileArray.map((f) => URL.createObjectURL(f));
+      setImageFiles((prev) => [...prev, ...fileArray]);
+      setImagePreviews((prev) => [...prev, ...newPreviews]);
+      e.target.value = "";
     },
-    [setImage]
+    []
   );
 
-  const handleImageDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const file = e.dataTransfer.files?.[0];
-      if (!file) return;
+  const handleImageDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    const fileArray = Array.from(files);
+    for (const file of fileArray) {
       if (file.size > MAX_SIZE) {
-        toast.error("Image must be under 10MB");
+        toast.error(`"${file.name}" must be under 10MB`);
         return;
       }
       if (!ACCEPTED_TYPES.includes(file.type)) {
-        toast.error("Use PNG or JPG");
+        toast.error(`"${file.name}": Use PNG or JPG`);
         return;
       }
-      setImage(file);
-    },
-    [setImage]
-  );
+    }
+    const newPreviews = fileArray.map((f) => URL.createObjectURL(f));
+    setImageFiles((prev) => [...prev, ...fileArray]);
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
+  }, []);
 
   const handleImageDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+  }, []);
+
+  const removeImage = useCallback((index: number) => {
+    setImagePreviews((prev) => {
+      const next = [...prev];
+      URL.revokeObjectURL(next[index]);
+      next.splice(index, 1);
+      return next;
+    });
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const addTag = useCallback((tagId: number) => {
@@ -119,16 +136,21 @@ export function useUploadAssetForm(onSuccess?: () => void) {
           name: form.name.trim(),
           description: form.description.trim() || form.name.trim(),
           price: String(form.price),
+          size: form.size,
           category: form.category,
-          subcategory: form.subcategory,
+          // subcategory: form.subcategory,
           tag_ids: form.tag_ids.length ? form.tag_ids : undefined,
-          color_ids: form.color_ids.length ? form.color_ids : undefined,
+          // color_ids: form.color_ids.length ? form.color_ids : undefined,
           stock_level: form.stock_level,
           is_active: form.is_active,
         },
-        imageFile ?? undefined
+        imageFiles.length > 0 ? imageFiles : undefined
       );
-      toast.success("Asset created");
+      toast.success(
+        `Asset created${
+          imageFiles.length > 0 ? ` with ${imageFiles.length} image(s)` : ""
+        }`
+      );
       closeForm();
       onSuccess?.();
     } catch {
@@ -136,20 +158,21 @@ export function useUploadAssetForm(onSuccess?: () => void) {
     } finally {
       setSubmitting(false);
     }
-  }, [form, imageFile, closeForm, onSuccess]);
+  }, [form, imageFiles, closeForm, onSuccess]);
 
   return {
     showForm,
     form,
     setForm,
-    imageFile,
-    imagePreview,
+    imageFiles,
+    imagePreviews,
     submitting,
     openForm,
     closeForm,
     handleImageChange,
     handleImageDrop,
     handleImageDragOver,
+    removeImage,
     addTag,
     removeTag,
     createAsset,

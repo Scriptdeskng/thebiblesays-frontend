@@ -1,21 +1,26 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { Plus, Minus, Upload, X, ChevronLeft } from "lucide-react";
-import { Button, LoadingSpinner } from "@/components/admin/ui";
-import { formatCurrency } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { Upload, X, ChevronLeft } from "lucide-react";
+import { Button, LoadingSpinner, Input, Textarea } from "@/components/admin/ui";
+import { dashboardService } from "@/services/dashboard.service";
+import type { ApiCategory } from "@/types/admin.types";
 import type { UploadFormState } from "../types";
-import { BYOM_CATEGORIES, BYOM_TAG_OPTIONS } from "../constants";
+import { BYOM_SIZES } from "../constants";
+import ValuePicker from "./ValuePicker";
+import toast from "react-hot-toast";
 
 interface UploadAssetFormProps {
   form: UploadFormState;
   setForm: React.Dispatch<React.SetStateAction<UploadFormState>>;
-  imagePreview: string | null;
+  imagePreviews: string[];
   submitting: boolean;
   onBack: () => void;
   onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImageDrop: (e: React.DragEvent) => void;
   onImageDragOver: (e: React.DragEvent) => void;
+  onRemoveImage?: (index: number) => void;
   onAddTag: (tagId: number) => void;
   onRemoveTag: (tagId: number) => void;
   onSubmit: () => void;
@@ -24,18 +29,44 @@ interface UploadAssetFormProps {
 export default function UploadAssetForm({
   form,
   setForm,
-  imagePreview,
+  imagePreviews,
   submitting,
   onBack,
   onImageChange,
   onImageDrop,
   onImageDragOver,
+  onRemoveImage,
   onAddTag,
   onRemoveTag,
   onSubmit,
 }: UploadAssetFormProps) {
+  void onAddTag;
+  void onRemoveTag;
+  const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  // const [colors, setColors] = useState<
+  //   Array<{ id: number; name: string; hex_code?: string }>
+  // >([]);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      setCategoriesLoading(true);
+      try {
+        const data = await dashboardService.getCategories();
+        setCategories(data);
+      } catch {
+        toast.error("Failed to load categories");
+        setCategories([]);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    loadCategories();
+  }, []);
+
+  const hasImages = imagePreviews.length > 0;
   return (
-    <div className="py-4">
+    <div className="py-4 w-full">
       <div className="flex items-center gap-3 mb-6">
         <button
           type="button"
@@ -46,10 +77,10 @@ export default function UploadAssetForm({
           <ChevronLeft size={20} />
         </button>
         <h2 className="text-lg font-semibold text-admin-primary">
-          Upload new asset
+          Create BYOM asset
         </h2>
       </div>
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6 w-full">
         <div
           className="border-2 border-dashed border-admin-primary/25 rounded-xl p-8 text-center bg-admin-primary/5 cursor-pointer hover:border-admin-primary/40 hover:bg-admin-primary/10 transition-colors"
           onDrop={onImageDrop}
@@ -64,16 +95,34 @@ export default function UploadAssetForm({
             accept="image/png,image/jpeg,image/jpg"
             className="hidden"
             onChange={onImageChange}
+            multiple
           />
-          {imagePreview ? (
-            <div className="relative inline-block">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="max-h-48 rounded-lg object-contain"
-              />
-              <p className="text-sm text-admin-primary/70 mt-2">
-                Click or drop to replace
+          {hasImages ? (
+            <div className="flex flex-wrap gap-3 justify-center">
+              {imagePreviews.map((preview, idx) => (
+                <div key={idx} className="relative inline-block group">
+                  <img
+                    src={preview}
+                    alt={`Preview ${idx + 1}`}
+                    className="max-h-32 rounded-lg object-contain border border-admin-primary/20"
+                  />
+                  {onRemoveImage && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveImage(idx);
+                      }}
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Remove image"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <p className="text-sm text-admin-primary/70 w-full mt-2">
+                Click or drop to add more images
               </p>
             </div>
           ) : (
@@ -83,26 +132,31 @@ export default function UploadAssetForm({
                 Click to upload or drag and drop
               </p>
               <p className="text-sm text-admin-primary/60 mt-1">
-                PNG, JPG up to 10MB
+                PNG, JPG up to 10MB (multiple images supported)
               </p>
             </>
           )}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-admin-primary mb-1">
-            Asset name
-          </label>
-          <input
-            type="text"
-            placeholder="e.g Gods grace collection"
-            value={form.name}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, name: e.target.value }))
-            }
-            className="w-full px-4 py-2.5 border border-accent-2 rounded-lg text-admin-primary placeholder:text-admin-primary/50 focus:outline-none focus:ring-2 focus:ring-admin-primary/20"
-          />
-        </div>
+        <Input
+          label="Asset name"
+          value={form.name}
+          onChange={(e) =>
+            setForm((prev) => ({ ...prev, name: e.target.value }))
+          }
+          placeholder="e.g Gods grace collection"
+          required
+        />
+
+        <Textarea
+          label="Description"
+          value={form.description}
+          onChange={(e) =>
+            setForm((prev) => ({ ...prev, description: e.target.value }))
+          }
+          placeholder="Product description"
+          rows={3}
+        />
 
         <div>
           <label className="block text-sm font-medium text-admin-primary mb-1">
@@ -116,61 +170,118 @@ export default function UploadAssetForm({
                 category: parseInt(e.target.value, 10),
               }))
             }
-            className="w-full px-4 py-2.5 border border-accent-2 rounded-lg text-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20"
+            disabled={categoriesLoading}
+            className="w-full px-4 py-2.5 border border-accent-2 rounded-lg text-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20 disabled:opacity-60"
           >
-            {BYOM_CATEGORIES.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
+            <option value={0}>Select category</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
               </option>
             ))}
           </select>
         </div>
 
+        <ValuePicker
+          label="Price"
+          value={form.price}
+          onChange={(price) => setForm((prev) => ({ ...prev, price }))}
+          step={1000}
+        />
+
+        <Input
+          label="Stock level"
+          type="number"
+          min={0}
+          value={form.stock_level}
+          onChange={(e) =>
+            setForm((prev) => ({
+              ...prev,
+              stock_level: Math.max(0, parseInt(e.target.value, 10) || 0),
+            }))
+          }
+          placeholder="0"
+        />
+
         <div>
           <label className="block text-sm font-medium text-admin-primary mb-1">
-            Price
+            Size
           </label>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                setForm((prev) => ({
-                  ...prev,
-                  price: Math.max(0, prev.price - 1000),
-                }))
-              }
-              className="w-10 h-10 rounded-lg border border-accent-2 flex items-center justify-center text-admin-primary hover:bg-admin-primary/5"
-            >
-              <Minus size={18} />
-            </button>
-            <input
-              type="number"
-              min={0}
-              value={form.price}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  price: Math.max(0, parseInt(e.target.value, 10) || 0),
-                }))
-              }
-              className="w-40 px-4 py-2.5 border border-accent-2 rounded-lg text-admin-primary"
-            />
-            <button
-              type="button"
-              onClick={() =>
-                setForm((prev) => ({ ...prev, price: prev.price + 1000 }))
-              }
-              className="w-10 h-10 rounded-lg border border-accent-2 flex items-center justify-center text-admin-primary hover:bg-admin-primary/5"
-            >
-              <Plus size={18} />
-            </button>
-            <span className="text-admin-primary/70">
-              {formatCurrency(form.price)}
-            </span>
+          <div className="flex flex-wrap gap-2">
+            {BYOM_SIZES.map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, size }))}
+                className={`px-4 py-2 rounded-md border transition-all ${
+                  form.size === size
+                    ? "border-[#A1CBFF] text-[#3291FF] bg-secondary"
+                    : "border-admin-primary/35 text-admin-primary"
+                }`}
+              >
+                {size}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div>
+        {/* <div>
+          <label className="block text-sm font-medium text-admin-primary mb-1">
+            Colors
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {colors.map((color) => {
+              const isSelected = form.color_ids.includes(color.id);
+              return (
+                <button
+                  key={color.id}
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      color_ids: isSelected
+                        ? prev.color_ids.filter((id) => id !== color.id)
+                        : [...prev.color_ids, color.id],
+                    }))
+                  }
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-all ${
+                    isSelected
+                      ? "border-[#A1CBFF] bg-secondary"
+                      : "border-admin-primary/35 text-admin-primary"
+                  }`}
+                >
+                  <div
+                    className="w-4 h-4 rounded-full border border-accent-2"
+                    style={{
+                      backgroundColor: color.hex_code || "#cccccc",
+                    }}
+                  />
+                  <span className="text-sm">{color.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div> */}
+
+        <div className="flex items-center gap-2">
+          <input
+            id="byom-is-active"
+            type="checkbox"
+            checked={form.is_active}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, is_active: e.target.checked }))
+            }
+            className="w-4 h-4 rounded border-accent-2 text-admin-primary focus:ring-admin-primary/20"
+          />
+          <label
+            htmlFor="byom-is-active"
+            className="text-sm font-medium text-admin-primary"
+          >
+            Active (visible to customers)
+          </label>
+        </div>
+
+        {/* <div>
           <label className="block text-sm font-medium text-admin-primary mb-1">
             Tags
           </label>
@@ -208,7 +319,7 @@ export default function UploadAssetForm({
               )
             )}
           </div>
-        </div>
+        </div> */}
 
         <div className="flex justify-end gap-3 pt-4">
           <Button variant="secondary" onClick={onBack} disabled={submitting}>

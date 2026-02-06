@@ -19,11 +19,11 @@ interface CustomMerchTabContentProps {
   categoryLabels: Record<string, string>;
   assetEnabled: Record<string, boolean>;
   onViewMerch: (merch: CustomMerch) => void;
-  onToggleEnabled: (id: string) => void;
+  onToggleEnabled: (merch: CustomMerch) => void;
   onDeleteAsset: (merch: CustomMerch) => void;
   showUploadForm: boolean;
   uploadForm: UploadFormState;
-  uploadImagePreview: string | null;
+  uploadImagePreviews: string[];
   uploadSubmitting: boolean;
   onOpenUploadForm: () => void;
   onCloseUploadForm: () => void;
@@ -31,9 +31,21 @@ interface CustomMerchTabContentProps {
   onUploadImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onUploadImageDrop: (e: React.DragEvent) => void;
   onUploadImageDragOver: (e: React.DragEvent) => void;
+  onRemoveUploadImage?: (index: number) => void;
   onAddTag: (tagId: number) => void;
   onRemoveTag: (tagId: number) => void;
   onCreateAsset: () => void;
+  showDeleteModal: boolean;
+  setShowDeleteModal: (show: boolean) => void;
+  merchToDelete: CustomMerch | null;
+  confirmDelete: () => void;
+  deleting: boolean;
+  showToggleModal: boolean;
+  setShowToggleModal: (show: boolean) => void;
+  merchToToggle: CustomMerch | null;
+  pendingEnabled: boolean;
+  confirmToggle: () => void;
+  toggling: boolean;
   /** Pricing tab */
   pricing: PricingConfig;
   setPricing: React.Dispatch<React.SetStateAction<PricingConfig>>;
@@ -61,7 +73,7 @@ export default function CustomMerchTabContent({
   onDeleteAsset,
   showUploadForm,
   uploadForm,
-  uploadImagePreview,
+  uploadImagePreviews,
   uploadSubmitting,
   onOpenUploadForm,
   onCloseUploadForm,
@@ -69,9 +81,21 @@ export default function CustomMerchTabContent({
   onUploadImageChange,
   onUploadImageDrop,
   onUploadImageDragOver,
+  onRemoveUploadImage,
   onAddTag,
   onRemoveTag,
   onCreateAsset,
+  showDeleteModal,
+  setShowDeleteModal,
+  merchToDelete,
+  confirmDelete,
+  deleting,
+  showToggleModal,
+  setShowToggleModal,
+  merchToToggle,
+  pendingEnabled,
+  confirmToggle,
+  toggling,
   pricing,
   setPricing,
   onSavePricing,
@@ -93,7 +117,7 @@ export default function CustomMerchTabContent({
         categoryLabels={categoryLabels}
         assetEnabled={assetEnabled}
         uploadForm={uploadForm}
-        uploadImagePreview={uploadImagePreview}
+        uploadImagePreviews={uploadImagePreviews}
         uploadSubmitting={uploadSubmitting}
         onOpenUploadForm={onOpenUploadForm}
         onCloseUploadForm={onCloseUploadForm}
@@ -104,9 +128,21 @@ export default function CustomMerchTabContent({
         onUploadImageChange={onUploadImageChange}
         onUploadImageDrop={onUploadImageDrop}
         onUploadImageDragOver={onUploadImageDragOver}
+        onRemoveUploadImage={onRemoveUploadImage}
         onAddTag={onAddTag}
         onRemoveTag={onRemoveTag}
         onCreateAsset={onCreateAsset}
+        showDeleteModal={showDeleteModal}
+        setShowDeleteModal={setShowDeleteModal}
+        merchToDelete={merchToDelete}
+        confirmDelete={confirmDelete}
+        deleting={deleting}
+        showToggleModal={showToggleModal}
+        setShowToggleModal={setShowToggleModal}
+        merchToToggle={merchToToggle}
+        pendingEnabled={pendingEnabled}
+        confirmToggle={confirmToggle}
+        toggling={toggling}
       />
     );
   }

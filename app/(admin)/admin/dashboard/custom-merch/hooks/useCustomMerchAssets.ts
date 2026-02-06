@@ -19,6 +19,13 @@ export function useCustomMerchAssets() {
     Record<string, boolean>
   >({});
   const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [merchToDelete, setMerchToDelete] = useState<CustomMerch | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [showToggleModal, setShowToggleModal] = useState(false);
+  const [merchToToggle, setMerchToToggle] = useState<CustomMerch | null>(null);
+  const [pendingEnabled, setPendingEnabled] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -54,17 +61,51 @@ export function useCustomMerchAssets() {
     loadData();
   }, [loadData]);
 
-  const toggleAssetEnabled = useCallback((id: string) => {
-    setAssetEnabled((prev) => ({ ...prev, [id]: !prev[id] }));
-    toast.success("Asset status updated");
-  }, []);
+  const toggleAssetEnabled = useCallback((merch: CustomMerch) => {
+    const currentEnabled = assetEnabled[merch.id] ?? merch.status === "approved";
+    setMerchToToggle(merch);
+    setPendingEnabled(!currentEnabled);
+    setShowToggleModal(true);
+  }, [assetEnabled]);
+
+  const confirmToggle = useCallback(async () => {
+    if (!merchToToggle) return;
+    setToggling(true);
+    try {
+      await dashboardService.toggleByomProductStatus(parseInt(merchToToggle.id, 10));
+      setAssetEnabled((prev) => ({ ...prev, [merchToToggle.id]: pendingEnabled }));
+      toast.success(`Asset ${pendingEnabled ? "enabled" : "disabled"}`);
+      setShowToggleModal(false);
+      setMerchToToggle(null);
+      await loadData();
+    } catch {
+      toast.error("Failed to update asset status");
+    } finally {
+      setToggling(false);
+    }
+  }, [merchToToggle, pendingEnabled, loadData]);
 
   const handleDeleteAsset = useCallback((merch: CustomMerch) => {
-    if (confirm(`Delete "${merch.designName}"?`)) {
-      setCustomMerch((prev) => prev.filter((m) => m.id !== merch.id));
-      toast.success("Asset removed");
-    }
+    setMerchToDelete(merch);
+    setShowDeleteModal(true);
   }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!merchToDelete) return;
+    setDeleting(true);
+    try {
+      await dashboardService.deleteByomProduct(parseInt(merchToDelete.id, 10));
+      setCustomMerch((prev) => prev.filter((m) => m.id !== merchToDelete.id));
+      toast.success("Asset deleted");
+      setShowDeleteModal(false);
+      setMerchToDelete(null);
+      await loadData();
+    } catch {
+      toast.error("Failed to delete asset");
+    } finally {
+      setDeleting(false);
+    }
+  }, [merchToDelete, loadData]);
 
   return {
     customMerch,
@@ -74,5 +115,16 @@ export function useCustomMerchAssets() {
     loadData,
     toggleAssetEnabled,
     handleDeleteAsset,
+    showDeleteModal,
+    setShowDeleteModal,
+    merchToDelete,
+    confirmDelete,
+    deleting,
+    showToggleModal,
+    setShowToggleModal,
+    merchToToggle,
+    pendingEnabled,
+    confirmToggle,
+    toggling,
   };
 }

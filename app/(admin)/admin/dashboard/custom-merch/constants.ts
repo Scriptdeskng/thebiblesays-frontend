@@ -1,4 +1,13 @@
-import type { PricingConfig, PageTab } from "./types";
+import type { PricingConfig, PageTab, ByomProductSize } from "./types";
+import { AVAILABLE_COLORS } from "@/services/mock.service";
+
+export const BYOM_SIZES: ByomProductSize[] = ["S", "M", "L", "XL", "XXL"];
+
+export const BYOM_COLOR_OPTIONS = AVAILABLE_COLORS.map((c, i) => ({
+  id: i + 1,
+  name: c.name,
+  hex: c.hex,
+}));
 
 export const DEFAULT_PRICING: PricingConfig = {
   product: 0,
