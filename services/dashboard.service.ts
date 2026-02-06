@@ -127,7 +127,9 @@ class DashboardService {
     }
   }
 
-  async getColors(): Promise<Array<{ id: number; name: string; hex_code?: string }>> {
+  async getColors(): Promise<
+    Array<{ id: number; name: string; hex_code?: string }>
+  > {
     try {
       const { accessToken } = useAuthStore.getState();
 
@@ -476,6 +478,7 @@ class DashboardService {
       color_ids?: number[];
       stock_level?: number;
       is_active?: boolean;
+      is_customizable?: boolean;
     },
     images?: File[]
   ): Promise<any> {
@@ -493,6 +496,7 @@ class DashboardService {
         formData.append("name", data.name);
         formData.append("description", data.description);
         formData.append("price", data.price);
+        formData.append("is_customizable", "true");
         if (data.color) formData.append("color", data.color);
         if (data.size) formData.append("size", data.size);
         formData.append("category", String(data.category));
