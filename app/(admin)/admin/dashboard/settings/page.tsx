@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, Edit, Trash2, ChevronLeft } from 'lucide-react';
 import { Button, Modal, Input, Badge, LoadingSpinner } from '@/components/admin/ui';
 import { dashboardService } from '@/services/dashboard.service';
+import { ApiNotificationSettings } from '@/types/admin.types';
 import toast from 'react-hot-toast';
 
 type SettingsTab = 'shipping' | 'roles' | 'team' | 'general';
@@ -64,14 +65,9 @@ export default function SettingsPage() {
     lastUpdated: '30 mins ago',
   });
 
-  const [notifications, setNotifications] = useState({
-    newUserRegistration: true,
-    newOrder: true,
-    failedTransaction: true,
-    pendingSettlement: false,
-    refundRequests: true,
-    chargebacksDisputes: true,
-  });
+  const [notificationSettings, setNotificationSettings] = useState<ApiNotificationSettings | null>(null);
+  const [notificationSettingsLoading, setNotificationSettingsLoading] = useState(false);
+  const [updatingNotification, setUpdatingNotification] = useState(false);
 
   const [formData, setFormData] = useState({
     region: '',
@@ -309,11 +305,45 @@ export default function SettingsPage() {
     }
   };
 
-  const handleToggleNotification = (key: string) => {
-    setNotifications({
-      ...notifications,
-      [key]: !notifications[key as keyof typeof notifications],
-    });
+  const loadNotificationSettings = async () => {
+    setNotificationSettingsLoading(true);
+    try {
+      const data = await dashboardService.getNotificationSettings();
+      setNotificationSettings(data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load notification settings';
+      toast.error(message);
+    } finally {
+      setNotificationSettingsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'general') {
+      loadNotificationSettings();
+    }
+  }, [activeTab]);
+
+  const handleToggleNotification = async (key: keyof ApiNotificationSettings) => {
+    if (!notificationSettings || updatingNotification) return;
+    
+    const newValue = !notificationSettings[key];
+    setUpdatingNotification(true);
+    
+    try {
+      await dashboardService.updateNotificationSettings(
+        notificationSettings.id,
+        { [key]: newValue }
+      );
+      toast.success('Notification setting updated');
+      // Refetch notification settings after update
+      await loadNotificationSettings();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update notification setting';
+      toast.error(message);
+    } finally {
+      setUpdatingNotification(false);
+    }
   };
 
   const filteredShipping = shippingRegions.filter(r =>
@@ -734,29 +764,41 @@ export default function SettingsPage() {
 
                 <div className="bg-white rounded-lg p-6 border border-accent-2">
                   <h3 className="font-semibold text-admin-primary mb-4">Notification Settings</h3>
-                  <div className="space-y-3">
-                    {[
-                      { key: 'newUserRegistration', label: 'New user registration' },
-                      { key: 'newOrder', label: 'New order' },
-                      { key: 'failedTransaction', label: 'Failed transaction' },
-                      { key: 'pendingSettlement', label: 'Pending settlement' },
-                      { key: 'refundRequests', label: 'Refund requests' },
-                      { key: 'chargebacksDisputes', label: 'Chargebacks/Disputes' },
-                    ].map((item) => (
-                      <div key={item.key} className="flex items-center justify-between py-2">
-                        <span className="text-admin-primary">{item.label}</span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={notifications[item.key as keyof typeof notifications]}
-                            onChange={() => handleToggleNotification(item.key)}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-grey/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-accent-2 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+                  {notificationSettingsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <LoadingSpinner size="lg" />
+                    </div>
+                  ) : !notificationSettings ? (
+                    <p className="text-grey text-center py-4">Failed to load notification settings</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {[
+                        { key: 'is_enabled' as keyof ApiNotificationSettings, label: 'Enable All Notifications' },
+                        { key: 'enable_order_notifications' as keyof ApiNotificationSettings, label: 'Order Notifications' },
+                        { key: 'enable_custom_merch_notifications' as keyof ApiNotificationSettings, label: 'Custom Merch Notifications' },
+                        { key: 'enable_stock_notifications' as keyof ApiNotificationSettings, label: 'Stock Notifications' },
+                        { key: 'enable_revenue_notifications' as keyof ApiNotificationSettings, label: 'Revenue Notifications' },
+                        { key: 'enable_testimonial_notifications' as keyof ApiNotificationSettings, label: 'Testimonial Notifications' },
+                        { key: 'enable_payment_notifications' as keyof ApiNotificationSettings, label: 'Payment Notifications' },
+                        { key: 'enable_user_notifications' as keyof ApiNotificationSettings, label: 'User Notifications' },
+                        { key: 'auto_cleanup_enabled' as keyof ApiNotificationSettings, label: 'Auto Cleanup Notifications' },
+                      ].map((item) => (
+                        <div key={item.key} className="flex items-center justify-between py-2">
+                          <span className="text-admin-primary">{item.label}</span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={notificationSettings[item.key] as boolean}
+                              onChange={() => handleToggleNotification(item.key)}
+                              disabled={updatingNotification}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 cursor-pointer h-6 bg-grey/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-accent-2 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

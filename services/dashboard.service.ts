@@ -15,6 +15,9 @@ import {
   AuditLogDetail,
   UserActivityResponse,
   GetAuditLogsParams,
+  ApiFaq,
+  ApiTestimonial,
+  ApiNotificationSettings,
 } from "@/types/admin.types";
 import { useAuthStore } from "@/store/useAuthStore";
 import axios from "axios";
@@ -1318,6 +1321,53 @@ class DashboardService {
     }
   }
 
+  async markNotificationAsRead(id: number): Promise<unknown> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/notifications/${id}/mark_as_read/`,
+        method: "POST",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      throw error;
+    }
+  }
+
+  async markAllNotificationsAsRead(
+    notificationIds: number[]
+  ): Promise<unknown> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/notifications/mark_all_as_read/`,
+        method: "POST",
+        requireToken: true,
+        token: accessToken,
+        data: { notification_ids: notificationIds },
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      throw error;
+    }
+  }
+
   async getAuditLogs(params?: GetAuditLogsParams): Promise<AuditLog[]> {
     try {
       const { accessToken } = useAuthStore.getState();
@@ -1480,6 +1530,265 @@ class DashboardService {
       return response as Blob;
     } catch (error) {
       console.error("Error exporting audit logs:", error);
+      throw error;
+    }
+  }
+
+  // FAQ Section
+  async getFaqs(): Promise<ApiFaq[]> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/faqs/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching FAQs:", error);
+      throw error;
+    }
+  }
+
+  async getFaqById(id: number): Promise<ApiFaq> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/faqs/${id}/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error fetching FAQ:", error);
+      throw error;
+    }
+  }
+
+  async createFaq(payload: {
+    question: string;
+    answer: string;
+    is_active?: boolean;
+  }): Promise<ApiFaq> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/faqs/`,
+        method: "POST",
+        data: payload,
+        requireToken: true,
+        token: accessToken,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error creating FAQ:", error);
+      throw error;
+    }
+  }
+
+  async updateFaq(
+    id: number,
+    payload: { question?: string; answer?: string; is_active?: boolean }
+  ): Promise<ApiFaq> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/faqs/${id}/`,
+        method: "PATCH",
+        data: payload,
+        requireToken: true,
+        token: accessToken,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error updating FAQ:", error);
+      throw error;
+    }
+  }
+
+  async deleteFaq(id: number): Promise<void> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      await makeRequest({
+        url: `${API_URL}/dashboard/faqs/${id}/`,
+        method: "DELETE",
+        requireToken: true,
+        token: accessToken,
+      });
+    } catch (error) {
+      console.error("Error deleting FAQ:", error);
+      throw error;
+    }
+  }
+
+  // Testimonial Section
+  async getTestimonials(): Promise<ApiTestimonial[]> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/testimonials/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching testimonials:", error);
+      throw error;
+    }
+  }
+
+  async getTestimonialById(id: number): Promise<ApiTestimonial> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/testimonials/${id}/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error fetching testimonial:", error);
+      throw error;
+    }
+  }
+
+  async createTestimonial(
+    name: string,
+    message: string,
+    is_approved: boolean,
+    buyer_image?: File | null,
+    product_image?: File | null
+  ): Promise<ApiTestimonial> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("message", message);
+      formData.append("is_approved", String(is_approved));
+
+      if (buyer_image) {
+        formData.append("buyer_image", buyer_image);
+      }
+      if (product_image) {
+        formData.append("product_image", product_image);
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/testimonials/`,
+        method: "POST",
+        data: formData,
+        requireToken: true,
+        token: accessToken,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error creating testimonial:", error);
+      throw error;
+    }
+  }
+
+  async updateTestimonial(
+    id: number,
+    name: string,
+    message: string,
+    is_approved: boolean,
+    buyer_image?: File | null,
+    product_image?: File | null
+  ): Promise<ApiTestimonial> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("message", message);
+      formData.append("is_approved", String(is_approved));
+
+      if (buyer_image) {
+        formData.append("buyer_image", buyer_image);
+      }
+      if (product_image) {
+        formData.append("product_image", product_image);
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/testimonials/${id}/`,
+        method: "PATCH",
+        data: formData,
+        requireToken: true,
+        token: accessToken,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error updating testimonial:", error);
+      throw error;
+    }
+  }
+
+  async deleteTestimonial(id: number): Promise<void> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      await makeRequest({
+        url: `${API_URL}/dashboard/testimonials/${id}/`,
+        method: "DELETE",
+        requireToken: true,
+        token: accessToken,
+      });
+    } catch (error) {
+      console.error("Error deleting testimonial:", error);
+      throw error;
+    }
+  }
+
+  // Notification Settings
+  async getNotificationSettings(): Promise<ApiNotificationSettings> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/notification-settings/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error fetching notification settings:", error);
+      throw error;
+    }
+  }
+
+  async updateNotificationSettings(
+    id: number,
+    payload: Partial<ApiNotificationSettings>
+  ): Promise<ApiNotificationSettings> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+      if (!accessToken) throw new Error("No access token available");
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/notification-settings/${id}/`,
+        method: "PATCH",
+        data: payload,
+        requireToken: true,
+        token: accessToken,
+      });
+      return response;
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
       throw error;
     }
   }

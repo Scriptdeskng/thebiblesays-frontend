@@ -68,6 +68,53 @@ const additionalColors: ProductColor[] = [
   { name: "Lime", hex: "#00FF00" },
   { name: "Indigo", hex: "#4B0082" },
 ];
+
+/** All colors (main + additional) for lookup by name when parsing API response */
+const ALL_COLORS: ProductColor[] = [...AVAILABLE_COLORS, ...additionalColors];
+
+/**
+ * Parse color value from API into ProductColor[].
+ * Handles: string (single or comma-separated), object, or array so we never assign [object Object].
+ */
+function parseProductColorsFromApi(color: unknown): ProductColor[] {
+  if (color == null || color === "") return [];
+  if (typeof color === "string") {
+    const names = color
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return names.map((name) => {
+      const found = ALL_COLORS.find(
+        (c) => c.name.toLowerCase() === name.toLowerCase()
+      );
+      return found ?? { name, hex: "#000000" };
+    });
+  }
+  if (Array.isArray(color)) {
+    return color.map((item) => {
+      if (item && typeof item === "object" && "name" in item && "hex" in item) {
+        return { name: String(item.name), hex: String(item.hex) };
+      }
+      if (item && typeof item === "object" && "name" in item) {
+        const name = String(item.name);
+        const found = ALL_COLORS.find(
+          (c) => c.name.toLowerCase() === name.toLowerCase()
+        );
+        return found ?? { name, hex: "#000000" };
+      }
+      return { name: String(item), hex: "#000000" };
+    });
+  }
+  if (typeof color === "object" && color !== null) {
+    const obj = color as Record<string, string>;
+    return Object.entries(obj).map(([name, hex]) => ({
+      name,
+      hex: typeof hex === "string" ? hex : "#000000",
+    }));
+  }
+  return [];
+}
+
 // const predefinedTags = ["Faith", "Hoodie", "Christian"];
 
 export default function ProductsPage() {
@@ -92,7 +139,9 @@ export default function ProductsPage() {
   const [deletingImageIndex, setDeletingImageIndex] = useState<number | null>(
     null
   );
-  const [originalStatus, setOriginalStatus] = useState<ProductStatus | null>(null);
+  const [originalStatus, setOriginalStatus] = useState<ProductStatus | null>(
+    null
+  );
   const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
   const [pendingUpdateData, setPendingUpdateData] = useState<any>(null);
 
@@ -208,13 +257,13 @@ export default function ProductsPage() {
           const productImageIds = productDetail.images.map((img) => img.id);
 
           // Parse sizes and colors from the product detail
-          // Note: The API returns color and size as strings, but the form expects arrays
+          // Note: The API may return color as string (single/comma-separated) or object; parse to ProductColor[] with correct hex
           const productSizes: ProductSize[] = productDetail.size
             ? [productDetail.size as ProductSize]
             : [];
-          const productColors: ProductColor[] = productDetail.color
-            ? [{ name: productDetail.color, hex: "#000000" }] // Default hex if color name provided
-            : [];
+          const productColors: ProductColor[] = parseProductColorsFromApi(
+            productDetail.color
+          );
 
           // Create a Product-like object from ApiProductDetail for editing
           const featuredImage = productDetail.images.find(
@@ -322,7 +371,10 @@ export default function ProductsPage() {
     setPendingUpdateData(null);
   };
 
-  const performUpdate = async (apiProductData: any, productIdToUpdate: number) => {
+  const performUpdate = async (
+    apiProductData: any,
+    productIdToUpdate: number
+  ) => {
     await dashboardService.updateProduct(productIdToUpdate, apiProductData);
 
     // Check if there are new images to upload
@@ -370,13 +422,21 @@ export default function ProductsPage() {
         return;
       }
 
+      // Join color names as comma-separated string (mapping); ensure we never pass an object
+      const colorString =
+        formData.colors.length > 0
+          ? formData.colors
+              .map((c) => (typeof c.name === "string" ? c.name : ""))
+              .filter(Boolean)
+              .join(",")
+          : undefined;
+
       // Map form data to API schema
-      // Note: API accepts single size/color, so we use the first selected one
       const apiProductData = {
         name: formData.name,
         description: formData.description,
         price: formData.price,
-        color: formData.colors.length > 0 ? formData.colors[0].name : undefined,
+        color: colorString,
         size:
           formData.sizes.length > 0
             ? (formData.sizes[0] as "S" | "M" | "L" | "XL" | "XXL")
@@ -393,7 +453,10 @@ export default function ProductsPage() {
         // Check if status has changed
         if (originalStatus && originalStatus !== formData.status) {
           // Status changed - show confirmation modal
-          setPendingUpdateData({ apiProductData, productId: editingProduct.id });
+          setPendingUpdateData({
+            apiProductData,
+            productId: editingProduct.id,
+          });
           setShowStatusChangeModal(true);
           setSubmitting(false);
           return;
@@ -632,9 +695,7 @@ export default function ProductsPage() {
       imageFiles: formData.imageFiles.filter(
         (_, index) => index !== indexToRemove
       ),
-      imageIds: formData.imageIds.filter(
-        (_, index) => index !== indexToRemove
-      ),
+      imageIds: formData.imageIds.filter((_, index) => index !== indexToRemove),
     });
 
     setDeletingImageIndex(null);
@@ -970,9 +1031,7 @@ export default function ProductsPage() {
                             src={image}
                             alt={`Preview ${index + 1}`}
                             className={`w-full h-48 object-cover rounded-lg ${
-                              deletingImageIndex === index
-                                ? "opacity-50"
-                                : ""
+                              deletingImageIndex === index ? "opacity-50" : ""
                             }`}
                           />
                           <button
@@ -1464,10 +1523,7 @@ export default function ProductsPage() {
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleConfirmStatusChange}
-              disabled={submitting}
-            >
+            <Button onClick={handleConfirmStatusChange} disabled={submitting}>
               {submitting ? (
                 <span className="flex items-center gap-2">
                   <LoadingSpinner size="sm" />
