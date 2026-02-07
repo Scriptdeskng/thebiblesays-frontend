@@ -449,7 +449,7 @@ class DashboardService {
       }
 
       const response = await makeRequest({
-        url: `${API_URL}/dashboard/byom-products/`,
+        url: `${API_URL}/dashboard/byom-products/?is_customizable=true`,
         method: "GET",
         params: queryParams,
         requireToken: true,
