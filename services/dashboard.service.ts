@@ -609,6 +609,107 @@ class DashboardService {
     }
   }
 
+  /** GET /dashboard/stickers/ */
+  async getStickers(): Promise<any[]> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const response = await makeRequest({
+        url: `${API_URL}/dashboard/stickers/`,
+        method: "GET",
+        requireToken: true,
+        token: accessToken,
+      });
+
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("Error fetching stickers:", error);
+      throw error;
+    }
+  }
+
+  /** POST /dashboard/stickers/ - multipart FormData */
+  async createSticker(data: {
+    name: string;
+    image: File;
+    is_active?: boolean;
+  }): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      const formData = new FormData();
+      formData.append("name", data.name);
+      formData.append("image", data.image, data.image.name);
+      formData.append("is_active", String(data.is_active ?? true));
+
+      const response = await axios({
+        method: "POST",
+        url: `${API_URL}/dashboard/stickers/`,
+        data: formData,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error creating sticker:", error);
+      throw error;
+    }
+  }
+
+  /** PATCH /dashboard/stickers/{id}/ */
+  async patchSticker(id: number, data: { is_active?: boolean }): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      return makeRequest({
+        url: `${API_URL}/dashboard/stickers/${id}/`,
+        method: "PATCH",
+        requireToken: true,
+        token: accessToken,
+        data,
+      });
+    } catch (error) {
+      console.error("Error updating sticker:", error);
+      throw error;
+    }
+  }
+
+  /** DELETE /dashboard/stickers/{id}/ */
+  async deleteSticker(id: number): Promise<void> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      await makeRequest({
+        url: `${API_URL}/dashboard/stickers/${id}/`,
+        method: "DELETE",
+        requireToken: true,
+        token: accessToken,
+      });
+    } catch (error) {
+      console.error("Error deleting sticker:", error);
+      throw error;
+    }
+  }
+
   async exportUsers(params?: {
     search?: string;
     ordering?: string;

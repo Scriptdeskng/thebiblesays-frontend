@@ -38,6 +38,7 @@ export const BYOM_TAG_OPTIONS = [
 
 export const TABS: { id: PageTab; label: string }[] = [
   { id: "custom-asset", label: "Custom asset" },
+  { id: "custom-sticker", label: "Stickers & Graphics" },
   { id: "pricing", label: "Pricing configuration" },
   { id: "orders", label: "Custom merch orders" },
 ];

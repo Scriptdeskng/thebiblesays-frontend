@@ -6,7 +6,7 @@ import Image from "next/image";
 import { LogOut, X } from "lucide-react";
 import { MdDashboard } from "react-icons/md";
 import {
-  RiGiftFill,
+  // RiGiftFill,
   RiSettings5Fill,
   RiTShirtFill,
   RiUserSettingsFill,
@@ -55,11 +55,11 @@ const menuItems = [
     label: "Content Management",
     href: "/admin/dashboard/content",
   },
-  {
-    icon: RiGiftFill,
-    label: "Loyalty Program",
-    href: "/admin/dashboard/loyalty",
-  },
+  // {
+  //   icon: RiGiftFill,
+  //   label: "Loyalty Program",
+  //   href: "/admin/dashboard/loyalty",
+  // },
   {
     icon: HiShieldCheck,
     label: "Audit Logs",
