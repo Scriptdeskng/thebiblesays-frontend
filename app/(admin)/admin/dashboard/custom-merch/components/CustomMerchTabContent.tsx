@@ -5,9 +5,12 @@ import type {
   PricingConfig,
   CustomMerchOrderRow,
   UploadFormState,
+  Sticker,
 } from "../types";
+import type { StickerFormState } from "../hooks/useUploadStickerForm";
 import type { CustomMerch } from "@/types/admin.types";
 import CustomAssetTab from "./CustomAssetTab";
+import CustomStickerTab from "./CustomStickerTab";
 import PricingConfigTab from "./PricingConfigTab";
 import CustomMerchOrdersTab from "./CustomMerchOrdersTab";
 
@@ -46,6 +49,34 @@ interface CustomMerchTabContentProps {
   pendingEnabled: boolean;
   confirmToggle: () => void;
   toggling: boolean;
+  /** Stickers tab */
+  stickersLoading: boolean;
+  stickers: Sticker[];
+  stickerForm: StickerFormState;
+  setStickerForm: React.Dispatch<React.SetStateAction<StickerFormState>>;
+  stickerImagePreview: string;
+  stickerSubmitting: boolean;
+  showStickerUploadForm: boolean;
+  onOpenStickerUploadForm: () => void;
+  onCloseStickerUploadForm: () => void;
+  onStickerImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onStickerImageDrop: (e: React.DragEvent) => void;
+  onStickerImageDragOver: (e: React.DragEvent) => void;
+  onRemoveStickerImage: () => void;
+  onCreateSticker: () => void;
+  onStickerToggleEnabled: (sticker: Sticker) => void;
+  onStickerDelete: (sticker: Sticker) => void;
+  stickerShowDeleteModal: boolean;
+  stickerSetShowDeleteModal: (show: boolean) => void;
+  stickerToDelete: Sticker | null;
+  stickerConfirmDelete: () => void;
+  stickerDeleting: boolean;
+  stickerShowToggleModal: boolean;
+  stickerSetShowToggleModal: (show: boolean) => void;
+  stickerToToggle: Sticker | null;
+  stickerPendingEnabled: boolean;
+  stickerConfirmToggle: () => void;
+  stickerToggling: boolean;
   /** Pricing tab */
   pricing: PricingConfig;
   setPricing: React.Dispatch<React.SetStateAction<PricingConfig>>;
@@ -96,6 +127,33 @@ export default function CustomMerchTabContent({
   pendingEnabled,
   confirmToggle,
   toggling,
+  stickersLoading,
+  stickers,
+  stickerForm,
+  setStickerForm,
+  stickerImagePreview,
+  stickerSubmitting,
+  showStickerUploadForm,
+  onOpenStickerUploadForm,
+  onCloseStickerUploadForm,
+  onStickerImageChange,
+  onStickerImageDrop,
+  onStickerImageDragOver,
+  onRemoveStickerImage,
+  onCreateSticker,
+  onStickerToggleEnabled,
+  onStickerDelete,
+  stickerShowDeleteModal,
+  stickerSetShowDeleteModal,
+  stickerToDelete,
+  stickerConfirmDelete,
+  stickerDeleting,
+  stickerShowToggleModal,
+  stickerSetShowToggleModal,
+  stickerToToggle,
+  stickerPendingEnabled,
+  stickerConfirmToggle,
+  stickerToggling,
   pricing,
   setPricing,
   onSavePricing,
@@ -143,6 +201,40 @@ export default function CustomMerchTabContent({
         pendingEnabled={pendingEnabled}
         confirmToggle={confirmToggle}
         toggling={toggling}
+      />
+    );
+  }
+
+  if (pageTab === "custom-sticker") {
+    return (
+      <CustomStickerTab
+        showUploadForm={showStickerUploadForm}
+        loading={stickersLoading}
+        stickers={stickers}
+        form={stickerForm}
+        setForm={setStickerForm}
+        imagePreview={stickerImagePreview}
+        submitting={stickerSubmitting}
+        onOpenUploadForm={onOpenStickerUploadForm}
+        onCloseUploadForm={onCloseStickerUploadForm}
+        onImageChange={onStickerImageChange}
+        onImageDrop={onStickerImageDrop}
+        onImageDragOver={onStickerImageDragOver}
+        onRemoveImage={onRemoveStickerImage}
+        onCreateSticker={onCreateSticker}
+        onToggleEnabled={onStickerToggleEnabled}
+        onDelete={onStickerDelete}
+        showDeleteModal={stickerShowDeleteModal}
+        setShowDeleteModal={stickerSetShowDeleteModal}
+        stickerToDelete={stickerToDelete}
+        confirmDelete={stickerConfirmDelete}
+        deleting={stickerDeleting}
+        showToggleModal={stickerShowToggleModal}
+        setShowToggleModal={stickerSetShowToggleModal}
+        stickerToToggle={stickerToToggle}
+        pendingEnabled={stickerPendingEnabled}
+        confirmToggle={stickerConfirmToggle}
+        toggling={stickerToggling}
       />
     );
   }

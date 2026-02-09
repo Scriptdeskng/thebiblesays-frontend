@@ -11,9 +11,11 @@ import {
 } from "./components";
 import {
   useCustomMerchAssets,
+  useCustomMerchStickers,
   usePricingConfig,
   useByomOrders,
   useUploadAssetForm,
+  useUploadStickerForm,
   useMerchDetail,
 } from "./hooks";
 
@@ -23,10 +25,12 @@ export default function CustomMerchPage() {
   const [pageTab, setPageTab] = useState<PageTab>("custom-asset");
 
   const assets = useCustomMerchAssets();
+  const stickers = useCustomMerchStickers();
   const pricing = usePricingConfig();
   const orders = useByomOrders();
   const merchDetail = useMerchDetail(assets.loadData);
   const uploadForm = useUploadAssetForm(assets.loadData);
+  const stickerUploadForm = useUploadStickerForm(stickers.loadData);
 
   useEffect(() => {
     if (pageTab === "pricing") pricing.loadPricing();
@@ -108,6 +112,33 @@ export default function CustomMerchPage() {
           onAddTag={uploadForm.addTag}
           onRemoveTag={uploadForm.removeTag}
           onCreateAsset={uploadForm.createAsset}
+          stickersLoading={stickers.loading}
+          stickers={stickers.stickers}
+          stickerForm={stickerUploadForm.form}
+          setStickerForm={stickerUploadForm.setForm}
+          stickerImagePreview={stickerUploadForm.imagePreview}
+          stickerSubmitting={stickerUploadForm.submitting}
+          showStickerUploadForm={stickerUploadForm.showForm}
+          onOpenStickerUploadForm={stickerUploadForm.openForm}
+          onCloseStickerUploadForm={stickerUploadForm.closeForm}
+          onStickerImageChange={stickerUploadForm.handleImageChange}
+          onStickerImageDrop={stickerUploadForm.handleImageDrop}
+          onStickerImageDragOver={stickerUploadForm.handleImageDragOver}
+          onRemoveStickerImage={stickerUploadForm.removeImage}
+          onCreateSticker={stickerUploadForm.createSticker}
+          onStickerToggleEnabled={stickers.toggleStickerEnabled}
+          onStickerDelete={stickers.handleDeleteSticker}
+          stickerShowDeleteModal={stickers.showDeleteModal}
+          stickerSetShowDeleteModal={stickers.setShowDeleteModal}
+          stickerToDelete={stickers.stickerToDelete}
+          stickerConfirmDelete={stickers.confirmDelete}
+          stickerDeleting={stickers.deleting}
+          stickerShowToggleModal={stickers.showToggleModal}
+          stickerSetShowToggleModal={stickers.setShowToggleModal}
+          stickerToToggle={stickers.stickerToToggle}
+          stickerPendingEnabled={stickers.pendingEnabled}
+          stickerConfirmToggle={stickers.confirmToggle}
+          stickerToggling={stickers.toggling}
           pricing={pricing.pricing}
           setPricing={pricing.setPricing}
           onSavePricing={pricing.savePricing}

@@ -1,6 +1,14 @@
 import type { CustomMerch, ProductCategory } from "@/types/admin.types";
 
-export type PageTab = "custom-asset" | "pricing" | "orders";
+export type PageTab = "custom-asset" | "custom-sticker" | "pricing" | "orders";
+
+export interface Sticker {
+  id: number;
+  name: string;
+  image: string;
+  is_active: boolean;
+  created_at?: string;
+}
 
 export interface CustomMerchOrderRow {
   id: string;
