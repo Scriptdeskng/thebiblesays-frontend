@@ -30,8 +30,14 @@ export interface ProductColor {
   hex: string;
 }
 
-export type Size = 'S' | 'M' | 'L' | 'XL' | 'XXL';
-export type Category = 'Shirts' | 'Caps' | 'Hoodie' | 'Headband' | 'Hat' | 'Jackets';
+export type Size = "S" | "M" | "L" | "XL" | "XXL";
+export type Category =
+  | "Shirts"
+  | "Caps"
+  | "Hoodie"
+  | "Headband"
+  | "Hat"
+  | "Jackets";
 
 export interface Review {
   id: string;
@@ -50,7 +56,8 @@ export interface CartItem {
   quantity: number;
   color: string;
   size: Size;
-  customization?: BYOMCustomization;
+  customization?: any;
+  baseProductId?: string;
 }
 
-import { BYOMCustomization } from './byom.types';
+import { BYOMCustomization } from "./byom.types";

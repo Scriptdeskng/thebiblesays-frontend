@@ -20,9 +20,9 @@ export interface CustomText {
   strikethrough?: boolean;
 }
 
-export interface CustomSticker {
+export interface CustomAsset {
   id: string;
-  stickerId: string;
+  assetId: string;
   x: number;
   y: number;
   scale: number;
@@ -30,21 +30,40 @@ export interface CustomSticker {
 
 export interface DesignSide {
   texts: CustomText[];
-  stickers: CustomSticker[];
+  assets: CustomAsset[];
 }
 
 export interface BYOMCustomization {
   merchType: MerchType;
-  color: string;
-  colorName?: string;
   size: Size;
   front: DesignSide;
   back: DesignSide;
   side: DesignSide;
 }
 
-export interface Sticker {
-  id: string;
-  url: string;
+export interface Asset {
+  id: number;
   name: string;
+  image: string;
+  image_url?: string;
+  is_active?: boolean;
+  created_at?: string;
+}
+
+export interface BYOMProduct {
+  id: number;
+  name: string;
+  slug: string;
+  featured_image: string;
+  category: string;
+  base_price?: number;
+  price?: number;
+  customization_info?: {
+    pricing_available: boolean;
+    base_customization_fee: number;
+    placement_options: string[];
+    supports_text: boolean;
+    supports_image: boolean;
+    max_image_size_mb: number;
+  };
 }

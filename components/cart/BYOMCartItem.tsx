@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { CartItem } from '@/types/product.types';
+import { CustomText } from '@/types/byom.types';
 import { useCurrencyStore } from '@/store/useCurrencyStore';
 import { formatPrice } from '@/utils/format';
 
@@ -17,17 +18,25 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
   const { currency } = useCurrencyStore();
   const customization = item.customization;
 
-  if (!customization) return null;
+  if (!customization) {
+    return null;
+  }
 
   const frontTextCount = customization.front?.texts?.length || 0;
-  const frontStickerCount = customization.front?.stickers?.length || 0;
+  const frontAssetCount = customization.front?.assets?.length || 0;
   const backTextCount = customization.back?.texts?.length || 0;
-  const backStickerCount = customization.back?.stickers?.length || 0;
+  const backAssetCount = customization.back?.assets?.length || 0;
   const sideTextCount = customization.side?.texts?.length || 0;
-  const sideStickerCount = customization.side?.stickers?.length || 0;
+  const sideAssetCount = customization.side?.assets?.length || 0;
 
   const totalTexts = frontTextCount + backTextCount + sideTextCount;
-  const totalStickers = frontStickerCount + backStickerCount + sideStickerCount;
+  const totalAssets = frontAssetCount + backAssetCount + sideAssetCount;
+
+  const hasAnyContent = totalTexts > 0 || totalAssets > 0;
+
+  if (!hasAnyContent) {
+    return null;
+  }
 
   return (
     <div className="bg-accent-1 rounded-lg p-4 mt-3">
@@ -38,7 +47,7 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
         <div>
           <p className="text-sm font-semibold text-primary mb-1">Custom Design Details</p>
           <p className="text-xs text-grey">
-            {totalTexts} text element(s), {totalStickers} sticker(s)
+            {totalTexts} text element{totalTexts !== 1 ? 's' : ''}, {totalAssets} asset{totalAssets !== 1 ? 's' : ''}
           </p>
         </div>
         {showDetails ? (
@@ -52,18 +61,12 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
         <div className="mt-4 space-y-4 border-t border-accent-2 pt-4">
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-grey mb-1">Merch Color</p>
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-6 h-6 rounded border border-accent-2"
-                  style={{ backgroundColor: customization.color }}
-                />
-                <span className="text-primary font-medium capitalize">{customization.colorName || 'Custom'}</span>
-              </div>
+              <p className="text-grey mb-1">Size</p>
+              <p className="text-primary font-medium">{customization.size || 'M'}</p>
             </div>
             <div>
-              <p className="text-grey mb-1">Size</p>
-              <p className="text-primary font-medium">{customization.size}</p>
+              <p className="text-grey mb-1">Type</p>
+              <p className="text-primary font-medium capitalize">{customization.merchType || 'Custom'}</p>
             </div>
           </div>
 
@@ -71,9 +74,9 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
             <div>
               <p className="text-sm font-semibold text-primary mb-2">Front - Text Elements:</p>
               <div className="space-y-2">
-                {customization.front.texts.map((text) => (
-                  <div key={text.id} className="bg-white rounded p-2 text-xs">
-                    <p className="font-medium text-primary mb-1">
+                {customization.front.texts.map((text: CustomText, index: number) => (
+                  <div key={text.id || `front-text-${index}`} className="bg-white rounded p-2 text-xs">
+                    <p className="font-medium text-primary mb-1" style={{ color: text.color }}>
                       "{text.content}"
                     </p>
                     <div className="flex flex-wrap gap-2 text-grey">
@@ -89,10 +92,10 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
             </div>
           )}
 
-          {frontStickerCount > 0 && (
+          {frontAssetCount > 0 && (
             <div>
               <p className="text-sm font-semibold text-primary mb-2">
-                Front - {frontStickerCount} Sticker(s)
+                Front - {frontAssetCount} Asset{frontAssetCount !== 1 ? 's' : ''}
               </p>
             </div>
           )}
@@ -101,8 +104,8 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
             <div>
               <p className="text-sm font-semibold text-primary mb-2">Back - Text Elements:</p>
               <div className="space-y-2">
-                {customization.back.texts.map((text) => (
-                  <div key={text.id} className="bg-white rounded p-2 text-xs">
+                {customization.back.texts.map((text: CustomText, index: number) => (
+                  <div key={text.id || `back-text-${index}`} className="bg-white rounded p-2 text-xs">
                     <p className="font-medium text-primary mb-1" style={{ color: text.color }}>
                       "{text.content}"
                     </p>
@@ -119,10 +122,10 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
             </div>
           )}
 
-          {backStickerCount > 0 && (
+          {backAssetCount > 0 && (
             <div>
               <p className="text-sm font-semibold text-primary mb-2">
-                Back - {backStickerCount} Sticker(s)
+                Back - {backAssetCount} Asset{backAssetCount !== 1 ? 's' : ''}
               </p>
             </div>
           )}
@@ -131,8 +134,8 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
             <div>
               <p className="text-sm font-semibold text-primary mb-2">Side - Text Elements:</p>
               <div className="space-y-2">
-                {customization.side.texts.map((text) => (
-                  <div key={text.id} className="bg-white rounded p-2 text-xs">
+                {customization.side.texts.map((text: CustomText, index: number) => (
+                  <div key={text.id || `side-text-${index}`} className="bg-white rounded p-2 text-xs">
                     <p className="font-medium text-primary mb-1" style={{ color: text.color }}>
                       "{text.content}"
                     </p>
@@ -149,10 +152,10 @@ export const BYOMCartItem = ({ item, compact = false }: BYOMCartItemProps) => {
             </div>
           )}
 
-          {sideStickerCount > 0 && (
+          {sideAssetCount > 0 && (
             <div>
               <p className="text-sm font-semibold text-primary mb-2">
-                Side - {sideStickerCount} Sticker(s)
+                Side - {sideAssetCount} Asset{sideAssetCount !== 1 ? 's' : ''}
               </p>
             </div>
           )}

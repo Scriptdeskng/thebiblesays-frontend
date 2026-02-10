@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
-import { useCartStore } from '@/store/useCartStore';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useCurrencyStore } from '@/store/useCurrencyStore';
-import { addressService } from '@/services/address.service';
-import { paymentService, PaymentMethod } from '@/services/payment.service';
-import { geocodingService } from '@/services/geocoding.service';
-import { formatPrice } from '@/utils/format';
-import toast from 'react-hot-toast';
-import { Loader2, MapPin } from 'lucide-react';
-import PayazaCheckout from 'payaza-web-sdk';
-import { PayazaCheckoutOptionsInterface } from 'payaza-web-sdk/lib/PayazaCheckoutDataInterface';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { useCartStore } from "@/store/useCartStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useCurrencyStore } from "@/store/useCurrencyStore";
+import { addressService } from "@/services/address.service";
+import { paymentService, PaymentMethod } from "@/services/payment.service";
+import { geocodingService } from "@/services/geocoding.service";
+import { formatPrice } from "@/utils/format";
+import toast from "react-hot-toast";
+import { Loader2, MapPin } from "lucide-react";
+import PayazaCheckout from "payaza-web-sdk";
+import { PayazaCheckoutOptionsInterface } from "payaza-web-sdk/lib/PayazaCheckoutDataInterface";
 import { ConnectionMode } from "payaza-web-sdk/lib/PayazaCheckout";
-import { productService } from '@/services/product.service';
+import { productService } from "@/services/product.service";
 
 interface Address {
   id: number;
@@ -54,28 +54,33 @@ export default function CheckoutPage() {
   const { currency, getCurrencyParam } = useCurrencyStore();
 
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
+    null,
+  );
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [saveAddress, setSaveAddress] = useState(true);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
-  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [coordinates, setCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
-  const paymentMethod: PaymentMethod = currency === 'USD' ? 'stripe' : 'payaza';
+  const paymentMethod: PaymentMethod = currency === "USD" ? "stripe" : "payaza";
 
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    email: user?.email || '',
-    phoneNumber: user?.phoneNumber || '',
-    address_line1: '',
-    address_line2: '',
-    city: '',
-    state: '',
-    postal_code: '',
-    country: 'Nigeria',
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
+    email: user?.email || "",
+    phoneNumber: user?.phoneNumber || "",
+    address_line1: "",
+    address_line2: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    country: "Nigeria",
   });
   const [isUpdatingPrices, setIsUpdatingPrices] = useState(false);
 
@@ -85,24 +90,27 @@ export default function CheckoutPage() {
       setIsUpdatingPrices(true);
       const currencyParam = getCurrencyParam();
       const productSlugs = items
-        .map(item => item.product?.slug)
+        .filter((item) => !item.customization)
+        .map((item) => item.product?.slug)
         .filter((slug): slug is string => Boolean(slug));
 
       const uniqueSlugs = [...new Set(productSlugs)];
 
       for (const slug of uniqueSlugs) {
         try {
-          const updatedProduct = await productService.getProductBySlug(slug, currencyParam);
+          const updatedProduct = await productService.getProductBySlug(
+            slug,
+            currencyParam,
+          );
 
           if (updatedProduct) {
-            items.forEach(item => {
+            items.forEach((item) => {
               if (item.product?.slug === slug) {
                 item.product.price = updatedProduct.price;
               }
             });
           }
-        } catch (error) {
-        }
+        } catch (error) {}
       }
       useCartStore.setState({ items: [...items] });
       setIsUpdatingPrices(false);
@@ -112,7 +120,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (user) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         firstName: user.firstName || prev.firstName,
         lastName: user.lastName || prev.lastName,
@@ -127,16 +135,19 @@ export default function CheckoutPage() {
       if (isAuthenticated && accessToken) {
         setIsLoadingAddresses(true);
         try {
-          const fetchedAddresses = await addressService.getAddresses(accessToken);
+          const fetchedAddresses =
+            await addressService.getAddresses(accessToken);
           setAddresses(fetchedAddresses || []);
 
-          const defaultAddress = fetchedAddresses.find(addr => addr.is_default);
+          const defaultAddress = fetchedAddresses.find(
+            (addr) => addr.is_default,
+          );
           if (defaultAddress) {
             setSelectedAddressId(defaultAddress.id);
             if (defaultAddress.latitude && defaultAddress.longitude) {
               setCoordinates({
                 latitude: defaultAddress.latitude,
-                longitude: defaultAddress.longitude
+                longitude: defaultAddress.longitude,
               });
             }
           }
@@ -150,10 +161,14 @@ export default function CheckoutPage() {
     loadAddresses();
   }, [isAuthenticated, accessToken]);
 
-  // Geocode address whenever address fields change
   useEffect(() => {
     const geocodeAddressDebounced = async () => {
-      if (formData.address_line1 && formData.city && formData.state && formData.country) {
+      if (
+        formData.address_line1 &&
+        formData.city &&
+        formData.state &&
+        formData.country
+      ) {
         setIsGeocodingAddress(true);
 
         try {
@@ -162,17 +177,17 @@ export default function CheckoutPage() {
             city: formData.city,
             state: formData.state,
             country: formData.country,
-            postal_code: formData.postal_code
+            postal_code: formData.postal_code,
           });
 
           if (result) {
             setCoordinates({
               latitude: result.latitude,
-              longitude: result.longitude
+              longitude: result.longitude,
             });
           }
         } catch (error) {
-          console.error('Failed to geocode address:', error);
+          console.error("Failed to geocode address:", error);
         } finally {
           setIsGeocodingAddress(false);
         }
@@ -181,21 +196,27 @@ export default function CheckoutPage() {
 
     const timeoutId = setTimeout(geocodeAddressDebounced, 1000);
     return () => clearTimeout(timeoutId);
-  }, [formData.address_line1, formData.city, formData.state, formData.country, formData.postal_code]);
+  }, [
+    formData.address_line1,
+    formData.city,
+    formData.state,
+    formData.country,
+    formData.postal_code,
+  ]);
 
   const subtotal = getTotal();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
 
     if (formErrors[name as keyof FormErrors]) {
-      setFormErrors(prev => ({
+      setFormErrors((prev) => ({
         ...prev,
-        [name]: undefined
+        [name]: undefined,
       }));
     }
   };
@@ -203,39 +224,43 @@ export default function CheckoutPage() {
   const validateForm = (): boolean => {
     const errors: FormErrors = {};
 
-    if (useNewAddress || !isAuthenticated || (isAuthenticated && addresses.length === 0)) {
+    if (
+      useNewAddress ||
+      !isAuthenticated ||
+      (isAuthenticated && addresses.length === 0)
+    ) {
       if (!formData.firstName.trim()) {
-        errors.firstName = 'First name is required';
+        errors.firstName = "First name is required";
       }
 
       if (!formData.lastName.trim()) {
-        errors.lastName = 'Last name is required';
+        errors.lastName = "Last name is required";
       }
 
       if (!formData.email.trim()) {
-        errors.email = 'Email is required';
+        errors.email = "Email is required";
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        errors.email = 'Please enter a valid email address';
+        errors.email = "Please enter a valid email address";
       }
 
       if (!formData.phoneNumber.trim()) {
-        errors.phoneNumber = 'Phone number is required';
+        errors.phoneNumber = "Phone number is required";
       }
 
       if (!formData.address_line1.trim()) {
-        errors.address_line1 = 'Street address is required';
+        errors.address_line1 = "Street address is required";
       }
 
       if (!formData.city.trim()) {
-        errors.city = 'City is required';
+        errors.city = "City is required";
       }
 
       if (!formData.state.trim()) {
-        errors.state = 'State is required';
+        errors.state = "State is required";
       }
 
       if (!formData.country.trim()) {
-        errors.country = 'Country is required';
+        errors.country = "Country is required";
       }
     }
 
@@ -247,22 +272,30 @@ export default function CheckoutPage() {
     e.preventDefault();
 
     if (items.length === 0) {
-      toast.error('Your cart is empty');
+      toast.error("Your cart is empty");
       return;
     }
 
-    if (isAuthenticated && addresses.length > 0 && !useNewAddress && !selectedAddressId) {
-      toast.error('Please select a shipping address');
+    if (
+      isAuthenticated &&
+      addresses.length > 0 &&
+      !useNewAddress &&
+      !selectedAddressId
+    ) {
+      toast.error("Please select a shipping address");
       return;
     }
 
     if (!validateForm()) {
-      toast.error('Please fill in all required fields correctly');
+      toast.error("Please fill in all required fields correctly");
       return;
     }
 
-    if ((useNewAddress || !isAuthenticated || addresses.length === 0) && !coordinates) {
-      toast.loading('Getting address coordinates...', { id: 'geocoding' });
+    if (
+      (useNewAddress || !isAuthenticated || addresses.length === 0) &&
+      !coordinates
+    ) {
+      toast.loading("Getting address coordinates...", { id: "geocoding" });
 
       try {
         const result = await geocodingService.geocodeAddress({
@@ -270,22 +303,27 @@ export default function CheckoutPage() {
           city: formData.city,
           state: formData.state,
           country: formData.country,
-          postal_code: formData.postal_code
+          postal_code: formData.postal_code,
         });
 
         if (result) {
           setCoordinates({
             latitude: result.latitude,
-            longitude: result.longitude
+            longitude: result.longitude,
           });
         } else {
-          toast.error('Could not determine location from address. Please verify your address.', { id: 'geocoding' });
+          toast.error(
+            "Could not determine location from address. Please verify your address.",
+            { id: "geocoding" },
+          );
           return;
         }
 
-        toast.dismiss('geocoding');
+        toast.dismiss("geocoding");
       } catch (error) {
-        toast.error('Failed to get location. Please try again.', { id: 'geocoding' });
+        toast.error("Failed to get location. Please try again.", {
+          id: "geocoding",
+        });
         return;
       }
     }
@@ -300,10 +338,12 @@ export default function CheckoutPage() {
       };
 
       if (isAuthenticated && selectedAddressId && !useNewAddress) {
-        const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+        const selectedAddress = addresses.find(
+          (addr) => addr.id === selectedAddressId,
+        );
 
         if (!selectedAddress) {
-          toast.error('Selected address not found');
+          toast.error("Selected address not found");
           setIsProcessing(false);
           return;
         }
@@ -312,7 +352,7 @@ export default function CheckoutPage() {
           first_name: selectedAddress.first_name,
           last_name: selectedAddress.last_name,
           address_line1: selectedAddress.address_line1,
-          address_line2: selectedAddress.address_line2 || '',
+          address_line2: selectedAddress.address_line2 || "",
           city: selectedAddress.city,
           state: selectedAddress.state,
           postal_code: selectedAddress.postal_code,
@@ -329,7 +369,7 @@ export default function CheckoutPage() {
           address_line2: formData.address_line2,
           city: formData.city,
           state: formData.state,
-          postal_code: formData.postal_code || '000000',
+          postal_code: formData.postal_code || "000000",
           country: formData.country,
           phone: formData.phoneNumber,
           longitude: coordinates?.longitude,
@@ -344,46 +384,75 @@ export default function CheckoutPage() {
       }
 
       if (!orderData.email) {
-        toast.error('Email is required for payment processing');
+        toast.error("Email is required for payment processing");
         return;
       }
 
-      orderData.items = items.map(item => {
+      orderData.items = items.map((item) => {
         const orderItem: any = {
           quantity: item.quantity,
           color: item.color,
           size: item.size,
         };
 
-        if (item.productId && item.productId !== '0') {
-          orderItem.product_id = parseInt(item.productId);
-        }
-        if (item.customization) {
-          orderItem.customization = item.customization;
+        const isCustomItem = item.productId
+          ?.toString()
+          .startsWith("custom-cart-item-");
+
+        if (isCustomItem) {
+          const rawId: any = item.baseProductId || item.product?.id;
+
+          const idStr = String(rawId || "");
+
+          if (
+            !rawId ||
+            idStr.startsWith("custom-cart-item-") ||
+            idStr === "0"
+          ) {
+            console.error("Missing valid baseProductId for custom item:", item);
+            throw new Error(
+              `The product "${item.product?.name}" needs to be re-added to the cart.`,
+            );
+          }
+
+          const finalId = parseInt(idStr, 10);
+
+          if (isNaN(finalId)) {
+            throw new Error("Invalid Product ID format.");
+          }
+
+          orderItem.product_id = finalId;
+
+          if (item.customization) {
+            orderItem.customization = item.customization;
+          }
+        } else {
+          if (item.productId && item.productId !== "0") {
+            orderItem.product_id = parseInt(String(item.productId), 10);
+          }
         }
 
         return orderItem;
       });
 
       if (!orderData.shipping_address) {
-        toast.error('Shipping address was not set properly');
+        toast.error("Shipping address was not set properly");
         setIsProcessing(false);
         return;
       }
 
-      if (paymentMethod === 'payaza') {
+      if (paymentMethod === "payaza") {
         await handlePayazaCheckout(orderData, currencyParam);
-      } else if (paymentMethod === 'stripe') {
+      } else if (paymentMethod === "stripe") {
         await handleStripeCheckout(orderData, currencyParam);
       }
-
     } catch (error: any) {
-      let errorMessage = 'Checkout failed. Please try again.';
+      let errorMessage = "Checkout failed. Please try again.";
 
       if (error?.response?.data) {
         const errors = error.response.data;
 
-        if (typeof errors === 'object' && !Array.isArray(errors)) {
+        if (typeof errors === "object" && !Array.isArray(errors)) {
           const messages = Object.entries(errors)
             .map(([key, value]) => {
               if (Array.isArray(value)) {
@@ -396,7 +465,7 @@ export default function CheckoutPage() {
           if (messages.length > 0) {
             errorMessage = messages[0];
           }
-        } else if (typeof errors === 'string') {
+        } else if (typeof errors === "string") {
           errorMessage = errors;
         }
       } else if (error?.message) {
@@ -409,27 +478,36 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleStripeCheckout = async (orderData: any, currencyParam: string) => {
+  const handleStripeCheckout = async (
+    orderData: any,
+    currencyParam: string,
+  ) => {
     try {
       const { order, paymentUrl } = await paymentService.checkout(
         orderData,
         accessToken || undefined,
-        currencyParam
+        currencyParam,
       );
 
       const isNewAddressMode = useNewAddress || addresses.length === 0;
 
-      if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address && isNewAddressMode) {
+      if (
+        isAuthenticated &&
+        accessToken &&
+        saveAddress &&
+        orderData.shipping_address &&
+        isNewAddressMode
+      ) {
         try {
           const addressData: any = {
-            label: 'Home',
-            address_type: 'home' as const,
+            label: "Home",
+            address_type: "home" as const,
             first_name: orderData.shipping_address.first_name,
             last_name: orderData.shipping_address.last_name,
             address_line1: orderData.shipping_address.address_line1,
             city: orderData.shipping_address.city,
             state: orderData.shipping_address.state,
-            postal_code: orderData.shipping_address.postal_code || '000000',
+            postal_code: orderData.shipping_address.postal_code || "000000",
             country: orderData.shipping_address.country,
             phone: orderData.shipping_address.phone,
             longitude: orderData.shipping_address.longitude,
@@ -438,15 +516,15 @@ export default function CheckoutPage() {
           };
 
           if (orderData.shipping_address.address_line2) {
-            addressData.address_line2 = orderData.shipping_address.address_line2;
+            addressData.address_line2 =
+              orderData.shipping_address.address_line2;
           }
 
           await addressService.createAddress(accessToken, addressData);
-        } catch (error) {
-        }
+        } catch (error) {}
       }
 
-      toast.loading('Redirecting to Stripe...', { id: 'stripe-redirect' });
+      toast.loading("Redirecting to Stripe...", { id: "stripe-redirect" });
 
       window.location.href = paymentUrl;
     } catch (error) {
@@ -454,28 +532,37 @@ export default function CheckoutPage() {
     }
   };
 
-    const handlePayazaCheckout = async (orderData: any, currencyParam: string) => {
+  const handlePayazaCheckout = async (
+    orderData: any,
+    currencyParam: string,
+  ) => {
     try {
       const { order, payment, backendReference } =
         await paymentService.createOrderAndInitializePayaza(
           orderData,
           accessToken || undefined,
-          currencyParam
+          currencyParam,
         );
 
       const isNewAddressMode = useNewAddress || addresses.length === 0;
 
-      if (isAuthenticated && accessToken && saveAddress && orderData.shipping_address && isNewAddressMode) {
+      if (
+        isAuthenticated &&
+        accessToken &&
+        saveAddress &&
+        orderData.shipping_address &&
+        isNewAddressMode
+      ) {
         try {
           const addressData: any = {
-            label: 'Home',
-            address_type: 'home' as const,
+            label: "Home",
+            address_type: "home" as const,
             first_name: orderData.shipping_address.first_name,
             last_name: orderData.shipping_address.last_name,
             address_line1: orderData.shipping_address.address_line1,
             city: orderData.shipping_address.city,
             state: orderData.shipping_address.state,
-            postal_code: orderData.shipping_address.postal_code || '000000',
+            postal_code: orderData.shipping_address.postal_code || "000000",
             country: orderData.shipping_address.country,
             phone: orderData.shipping_address.phone,
             longitude: orderData.shipping_address.longitude,
@@ -484,39 +571,42 @@ export default function CheckoutPage() {
           };
 
           if (orderData.shipping_address.address_line2) {
-            addressData.address_line2 = orderData.shipping_address.address_line2;
+            addressData.address_line2 =
+              orderData.shipping_address.address_line2;
           }
 
           await addressService.createAddress(accessToken, addressData);
-        } catch (error) {
-        }
+        } catch (error) {}
       }
 
       const paymentAmount = Number(payment?.amount || subtotal);
 
       const payazaData: any = {
-        merchant_key: process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.trim() || '',
+        merchant_key: process.env.NEXT_PUBLIC_PAYAZA_PUBLIC_KEY?.trim() || "",
         connection_mode: "LIVE",
         checkout_amount: paymentAmount,
-        currency_code: 'NGN',
+        currency_code: "NGN",
         email_address: orderData.email,
-        first_name: orderData.shipping_address?.first_name || formData.firstName,
+        first_name:
+          orderData.shipping_address?.first_name || formData.firstName,
         last_name: orderData.shipping_address?.last_name || formData.lastName,
         transaction_reference: backendReference,
 
         onClose: () => {
-          toast('Payment window closed');
+          toast("Payment window closed");
           setIsProcessing(false);
         },
 
         callback: async (response: any) => {
-          const payazaRef = response.data?.transaction_reference || response.transaction_reference;
+          const payazaRef =
+            response.data?.transaction_reference ||
+            response.transaction_reference;
 
-          if (response.type === 'success' || response.status === 'success') {
+          if (response.type === "success" || response.status === "success") {
             try {
               const verification = await paymentService.verifyPayazaPayment(
                 payazaRef,
-                accessToken || undefined
+                accessToken || undefined,
               );
 
               if (verification) {
@@ -524,25 +614,26 @@ export default function CheckoutPage() {
                 window.location.href = `/order-confirmation?reference=${order?.id}`;
               }
             } catch (err: any) {
-              router.push(`/payment-failed?reference=${payazaRef}&error=verification_failed`);
+              router.push(
+                `/payment-failed?reference=${payazaRef}&error=verification_failed`,
+              );
             }
           } else {
             setIsProcessing(false);
           }
-        }
+        },
       };
 
-      const checkout = new (window as any).PayazaCheckout(payazaData);
-      checkout.showPopup();
+      const checkout = new PayazaCheckout(payazaData);
 
+      checkout.showPopup();
     } catch (error) {
       throw error;
     }
   };
 
-
   if (items.length === 0) {
-    router.push('/cart');
+    router.push("/cart");
     return null;
   }
 
@@ -553,7 +644,9 @@ export default function CheckoutPage() {
       {isUpdatingPrices && (
         <div className="mb-4 bg-secondary border border-blue-200 rounded-lg p-3 flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin text-primary/70" />
-          <span className="text-sm text-primary">Updating prices to {currency}...</span>
+          <span className="text-sm text-primary">
+            Updating prices to {currency}...
+          </span>
         </div>
       )}
 
@@ -561,7 +654,9 @@ export default function CheckoutPage() {
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="bg-white border border-accent-2 rounded-lg p-6">
-              <h2 className="text-xl font-bold text-primary mb-6">Personal Information</h2>
+              <h2 className="text-xl font-bold text-primary mb-6">
+                Personal Information
+              </h2>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Input
@@ -570,10 +665,14 @@ export default function CheckoutPage() {
                     value={formData.firstName}
                     onChange={handleChange}
                     required
-                    disabled={isAuthenticated && !!user?.firstName && !useNewAddress}
+                    disabled={
+                      isAuthenticated && !!user?.firstName && !useNewAddress
+                    }
                   />
                   {formErrors.firstName && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.firstName}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {formErrors.firstName}
+                    </p>
                   )}
                 </div>
 
@@ -584,10 +683,14 @@ export default function CheckoutPage() {
                     value={formData.lastName}
                     onChange={handleChange}
                     required
-                    disabled={isAuthenticated && !!user?.lastName && !useNewAddress}
+                    disabled={
+                      isAuthenticated && !!user?.lastName && !useNewAddress
+                    }
                   />
                   {formErrors.lastName && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.lastName}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {formErrors.lastName}
+                    </p>
                   )}
                 </div>
 
@@ -602,7 +705,9 @@ export default function CheckoutPage() {
                     disabled={isAuthenticated}
                   />
                   {formErrors.email && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {formErrors.email}
+                    </p>
                   )}
                 </div>
 
@@ -614,29 +719,38 @@ export default function CheckoutPage() {
                     value={formData.phoneNumber}
                     onChange={handleChange}
                     required
-                    disabled={isAuthenticated && !!user?.phoneNumber && !useNewAddress}
+                    disabled={
+                      isAuthenticated && !!user?.phoneNumber && !useNewAddress
+                    }
                   />
                   {formErrors.phoneNumber && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.phoneNumber}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {formErrors.phoneNumber}
+                    </p>
                   )}
                 </div>
               </div>
             </div>
 
             <div className="bg-white border border-accent-2 rounded-lg p-6">
-              <h2 className="text-xl font-bold text-primary mb-6">Shipping Address</h2>
+              <h2 className="text-xl font-bold text-primary mb-6">
+                Shipping Address
+              </h2>
 
               {isAuthenticated && addresses.length > 0 && !useNewAddress && (
                 <div className="mb-6">
-                  <p className="text-sm text-grey mb-3">Select a saved address:</p>
+                  <p className="text-sm text-grey mb-3">
+                    Select a saved address:
+                  </p>
                   <div className="space-y-3">
                     {addresses.map((address) => (
                       <label
                         key={address.id}
-                        className={`block p-4 border rounded-lg cursor-pointer transition-colors ${selectedAddressId === address.id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-accent-2 hover:border-primary/50'
-                          }`}
+                        className={`block p-4 border rounded-lg cursor-pointer transition-colors ${
+                          selectedAddressId === address.id
+                            ? "border-primary bg-primary/5"
+                            : "border-accent-2 hover:border-primary/50"
+                        }`}
                       >
                         <input
                           type="radio"
@@ -648,7 +762,7 @@ export default function CheckoutPage() {
                             if (address.latitude && address.longitude) {
                               setCoordinates({
                                 latitude: address.latitude,
-                                longitude: address.longitude
+                                longitude: address.longitude,
                               });
                             }
                           }}
@@ -668,10 +782,12 @@ export default function CheckoutPage() {
                           </p>
                           <p className="text-sm text-grey">
                             {address.address_line1}
-                            {address.address_line2 && `, ${address.address_line2}`}
+                            {address.address_line2 &&
+                              `, ${address.address_line2}`}
                           </p>
                           <p className="text-sm text-grey">
-                            {address.city}, {address.state} {address.postal_code}
+                            {address.city}, {address.state}{" "}
+                            {address.postal_code}
                           </p>
                           <p className="text-sm text-grey">{address.phone}</p>
                         </div>
@@ -689,19 +805,21 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {(useNewAddress || !isAuthenticated || addresses.length === 0) && (
+              {(useNewAddress ||
+                !isAuthenticated ||
+                addresses.length === 0) && (
                 <div className="space-y-4">
                   {isAuthenticated && addresses.length > 0 && (
                     <button
                       type="button"
                       onClick={() => {
                         setUseNewAddress(false);
-                        const defaultAddr = addresses.find(a => a.is_default);
+                        const defaultAddr = addresses.find((a) => a.is_default);
                         setSelectedAddressId(defaultAddr?.id || null);
                         if (defaultAddr?.latitude && defaultAddr?.longitude) {
                           setCoordinates({
                             latitude: defaultAddr.latitude,
-                            longitude: defaultAddr.longitude
+                            longitude: defaultAddr.longitude,
                           });
                         }
                       }}
@@ -720,7 +838,9 @@ export default function CheckoutPage() {
                       required
                     />
                     {formErrors.address_line1 && (
-                      <p className="mt-1 text-sm text-red-600">{formErrors.address_line1}</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        {formErrors.address_line1}
+                      </p>
                     )}
                   </div>
 
@@ -741,7 +861,9 @@ export default function CheckoutPage() {
                         required
                       />
                       {formErrors.city && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.city}</p>
+                        <p className="mt-1 text-sm text-red-600">
+                          {formErrors.city}
+                        </p>
                       )}
                     </div>
 
@@ -754,7 +876,9 @@ export default function CheckoutPage() {
                         required
                       />
                       {formErrors.state && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.state}</p>
+                        <p className="mt-1 text-sm text-red-600">
+                          {formErrors.state}
+                        </p>
                       )}
                     </div>
 
@@ -766,7 +890,9 @@ export default function CheckoutPage() {
                         onChange={handleChange}
                       />
                       {formErrors.postal_code && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.postal_code}</p>
+                        <p className="mt-1 text-sm text-red-600">
+                          {formErrors.postal_code}
+                        </p>
                       )}
                     </div>
 
@@ -779,7 +905,9 @@ export default function CheckoutPage() {
                         required
                       />
                       {formErrors.country && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.country}</p>
+                        <p className="mt-1 text-sm text-red-600">
+                          {formErrors.country}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -807,11 +935,17 @@ export default function CheckoutPage() {
                         onChange={(e) => setSaveAddress(e.target.checked)}
                         className="mt-1 w-4 h-4"
                       />
-                      <label htmlFor="saveAddress" className="text-sm text-grey cursor-pointer">
-                        <span className="font-medium text-primary">Save this address to my profile</span>
+                      <label
+                        htmlFor="saveAddress"
+                        className="text-sm text-grey cursor-pointer"
+                      >
+                        <span className="font-medium text-primary">
+                          Save this address to my profile
+                        </span>
                         <br />
                         This address will be saved for future orders
-                        {addresses.length === 0 && ' and set as your default address'}
+                        {addresses.length === 0 &&
+                          " and set as your default address"}
                       </label>
                     </div>
                   )}
@@ -820,15 +954,25 @@ export default function CheckoutPage() {
             </div>
 
             <div className="bg-white border border-accent-2 rounded-lg p-6">
-              <h2 className="text-xl font-bold text-primary mb-6">Payment Method</h2>
+              <h2 className="text-xl font-bold text-primary mb-6">
+                Payment Method
+              </h2>
 
-              {currency === 'USD' ? (
+              {currency === "USD" ? (
                 <div className="p-4 border border-primary bg-primary/5 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-white rounded flex items-center justify-center">
-                      <svg className="w-8 h-8" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <svg
+                        className="w-8 h-8"
+                        viewBox="0 0 28 28"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
                         <rect width="28" height="28" rx="4" fill="#635BFF" />
-                        <path d="M13.3 12.5c0-.9-.6-1.3-1.5-1.3h-1v2.7h1c.9 0 1.5-.5 1.5-1.4zm.3 3.3c0-1-.7-1.5-1.7-1.5h-1.2v3h1.2c1 0 1.7-.5 1.7-1.5z" fill="white" />
+                        <path
+                          d="M13.3 12.5c0-.9-.6-1.3-1.5-1.3h-1v2.7h1c.9 0 1.5-.5 1.5-1.4zm.3 3.3c0-1-.7-1.5-1.7-1.5h-1.2v3h1.2c1 0 1.7-.5 1.7-1.5z"
+                          fill="white"
+                        />
                       </svg>
                     </div>
                     <div>
@@ -862,7 +1006,7 @@ export default function CheckoutPage() {
                   Processing...
                 </>
               ) : (
-                'Proceed to Payment'
+                "Proceed to Payment"
               )}
             </Button>
           </form>
@@ -870,11 +1014,16 @@ export default function CheckoutPage() {
 
         <div className="lg:col-span-1">
           <div className="bg-white border border-accent-2 rounded-lg p-6 sticky top-4">
-            <h2 className="text-xl font-bold text-primary mb-6">Order Summary</h2>
+            <h2 className="text-xl font-bold text-primary mb-6">
+              Order Summary
+            </h2>
 
             <div className="space-y-4 mb-6">
               {items.map((item) => (
-                <div key={`${item.productId}-${item.color}-${item.size}`} className="flex gap-3">
+                <div
+                  key={`${item.productId}-${item.color}-${item.size}`}
+                  className="flex gap-3"
+                >
                   <div className="relative w-16 h-16 bg-accent-1 rounded-md overflow-hidden shrink-0">
                     <img
                       src={item.product.images[0].url}
@@ -884,7 +1033,9 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-primary truncate">{item.product.name}</p>
-                    <p className="text-xs text-grey">{item.color} • {item.size}</p>
+                    <p className="text-xs text-grey">
+                      {item.color} • {item.size}
+                    </p>
                     <p className="text-xs text-grey">Qty: {item.quantity}</p>
                   </div>
                   <p className="text-primary">
@@ -897,17 +1048,23 @@ export default function CheckoutPage() {
             <div className="border-t border-accent-2 pt-4 space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-grey">Subtotal</span>
-                <span className="text-primary">{formatPrice(subtotal, currency)}</span>
+                <span className="text-primary">
+                  {formatPrice(subtotal, currency)}
+                </span>
               </div>
-              
+
               <p className="text-xs text-grey italic">
                 Shipping fee will be calculated based on your delivery address
               </p>
 
               <div className="flex items-center justify-between pt-3 border-t border-accent-2">
-                <span className="text-lg font-semibold text-primary">Total</span>
+                <span className="text-lg font-semibold text-primary">
+                  Total
+                </span>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">{formatPrice(subtotal, currency)}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {formatPrice(subtotal, currency)}
+                  </p>
                 </div>
               </div>
             </div>

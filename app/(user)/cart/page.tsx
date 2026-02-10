@@ -1,18 +1,21 @@
-'use client';
+"use client";
 
-import { Trash2, Minus, Plus, X, Loader2 } from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
-import { BYOMCartItem } from '@/components/cart/BYOMCartItem';
-import { useCartStore } from '@/store/useCartStore';
-import { useCurrencyStore } from '@/store/useCurrencyStore';
-import { formatPrice } from '@/utils/format';
-import { useEffect, useState } from 'react';
-import { productService } from '@/services/product.service';
+import { Trash2, Minus, Plus, X, Loader2 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/Button";
+import { BYOMCartItem } from "@/components/cart/BYOMCartItem";
+import { useCartStore } from "@/store/useCartStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useCurrencyStore } from "@/store/useCurrencyStore";
+import { formatPrice } from "@/utils/format";
+import { useEffect, useState } from "react";
+import { productService } from "@/services/product.service";
+import toast from "react-hot-toast";
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, getTotal } = useCartStore();
+  const { accessToken } = useAuthStore();
   const { currency, getCurrencyParam } = useCurrencyStore();
   const [isUpdatingPrices, setIsUpdatingPrices] = useState(false);
 
@@ -22,25 +25,27 @@ export default function CartPage() {
       setIsUpdatingPrices(true);
       const currencyParam = getCurrencyParam();
       const productSlugs = items
-        .map(item => item.product?.slug)
+        .filter((item) => !item.customization)
+        .map((item) => item.product?.slug)
         .filter((slug): slug is string => Boolean(slug));
 
       const uniqueSlugs = [...new Set(productSlugs)];
 
       for (const slug of uniqueSlugs) {
         try {
-          const updatedProduct = await productService.getProductBySlug(slug, currencyParam);
+          const updatedProduct = await productService.getProductBySlug(
+            slug,
+            currencyParam,
+          );
 
           if (updatedProduct) {
-            items.forEach(item => {
+            items.forEach((item) => {
               if (item.product?.slug === slug) {
                 item.product.price = updatedProduct.price;
               }
             });
           }
-        } catch (error) {
-          console.error(`Error updating price for ${slug}:`, error);
-        }
+        } catch (error) {}
       }
       useCartStore.setState({ items: [...items] });
       setIsUpdatingPrices(false);
@@ -58,8 +63,12 @@ export default function CartPage() {
           <div className="w-24 h-24 bg-accent-1 rounded-full flex items-center justify-center mx-auto mb-6">
             <Trash2 className="w-12 h-12 text-grey" />
           </div>
-          <h1 className="text-3xl font-bold text-primary mb-3">Your cart is empty</h1>
-          <p className="text-grey mb-8">Looks like you haven't added anything to your cart yet.</p>
+          <h1 className="text-3xl font-bold text-primary mb-3">
+            Your cart is empty
+          </h1>
+          <p className="text-grey mb-8">
+            Looks like you haven't added anything to your cart yet.
+          </p>
           <Link href="/shop">
             <Button size="lg">Start Shopping</Button>
           </Link>
@@ -75,7 +84,9 @@ export default function CartPage() {
       {isUpdatingPrices && (
         <div className="mb-4 bg-secondary border border-blue-200 rounded-lg p-3 flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin text-primary/70" />
-          <span className="text-sm text-primary">Updating prices to {currency}...</span>
+          <span className="text-sm text-primary">
+            Updating prices to {currency}...
+          </span>
         </div>
       )}
 
@@ -86,25 +97,45 @@ export default function CartPage() {
               <div className="bg-white border border-accent-2 rounded-lg p-4 flex gap-4">
                 <div className="relative w-24 h-24 bg-accent-1 rounded-md overflow-hidden shrink-0">
                   <Image
-                    src={item.product.images.find(img => img.color === item.color)?.url || item.product.images[0].url}
+                    src={
+                      item.product.images.find(
+                        (img) => img.color === item.color,
+                      )?.url || item.product.images[0].url
+                    }
                     alt={item.product.name}
                     fill
                     className="object-cover"
                   />
                 </div>
 
-                <div className='w-full'>
-                  <div className='flex flex-row justify-between items-start'>
+                <div className="w-full">
+                  <div className="flex flex-row justify-between items-start">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-primary mb-1">{item.product.name}</h3>
+                      <h3 className="font-semibold text-primary mb-1">
+                        {item.product.name}
+                      </h3>
                       <p className="text-sm text-grey mb-2">
                         Color: {item.color} • Size: {item.size}
                       </p>
-                      <p className="font-bold text-primary">{formatPrice(item.product.price, currency)}</p>
+                      <p className="font-bold text-primary">
+                        {formatPrice(item.product.price, currency)}
+                      </p>
                     </div>
 
                     <button
-                      onClick={() => removeItem(item.productId, item.color, item.size)}
+                      onClick={async () => {
+                        try {
+                          await removeItem(
+                            item.productId,
+                            item.color,
+                            item.size,
+                            accessToken || undefined,
+                          );
+                          toast.success("Item removed from cart");
+                        } catch (error: any) {
+                          toast.error(error.message || "Failed to remove item");
+                        }
+                      }}
                       className="p-2 hover:bg-red-50 rounded-full transition-colors"
                     >
                       <X className="w-5 h-5 text-primary" />
@@ -114,14 +145,30 @@ export default function CartPage() {
                   <div className="flex flex-row items-end justify-between mt-4">
                     <div className="flex items-center gap-1 border border-accent-2 sm:px-2 sm:py-1">
                       <button
-                        onClick={() => updateQuantity(item.productId, item.color, item.size, item.quantity - 1)}
+                        onClick={() =>
+                          updateQuantity(
+                            item.productId,
+                            item.color,
+                            item.size,
+                            item.quantity - 1,
+                          )
+                        }
                         className="p-1.5 hover:bg-accent-1 cursor-pointer"
                       >
                         <Minus className="w-4 h-4" />
                       </button>
-                      <span className="font-medium min-w-[3ch] text-center">{item.quantity}</span>
+                      <span className="font-medium min-w-[3ch] text-center">
+                        {item.quantity}
+                      </span>
                       <button
-                        onClick={() => updateQuantity(item.productId, item.color, item.size, item.quantity + 1)}
+                        onClick={() =>
+                          updateQuantity(
+                            item.productId,
+                            item.color,
+                            item.size,
+                            item.quantity + 1,
+                          )
+                        }
                         className="p-1.5 hover:bg-accent-1 cursor-pointer"
                       >
                         <Plus className="w-4 h-4" />
@@ -129,32 +176,41 @@ export default function CartPage() {
                     </div>
 
                     <p className="text-primary xl:text-lg">
-                      {formatPrice(item.product.price * item.quantity, currency)}
+                      {formatPrice(
+                        item.product.price * item.quantity,
+                        currency,
+                      )}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {item.customization && (
-                <BYOMCartItem item={item} />
-              )}
+              {item.customization && <BYOMCartItem item={item} />}
             </div>
           ))}
         </div>
 
         <div className="lg:col-span-1">
           <div className="bg-white border border-accent-2 rounded-lg p-6 sticky top-4">
-            <h2 className="text-xl font-bold text-primary mb-6">Order Summary</h2>
+            <h2 className="text-xl font-bold text-primary mb-6">
+              Order Summary
+            </h2>
 
             <div className="space-y-3 mb-6">
               <div className="flex items-center justify-between">
                 <span className="text-grey">Subtotal</span>
-                <span className="font-semibold text-primary">{formatPrice(subtotal, currency)}</span>
+                <span className="font-semibold text-primary">
+                  {formatPrice(subtotal, currency)}
+                </span>
               </div>
               <div className="border-t border-accent-2 pt-3 mt-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold text-primary">Total</span>
-                  <span className="text-2xl font-bold text-primary">{formatPrice(total, currency)}</span>
+                  <span className="text-lg font-semibold text-primary">
+                    Total
+                  </span>
+                  <span className="text-2xl font-bold text-primary">
+                    {formatPrice(total, currency)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -166,7 +222,7 @@ export default function CartPage() {
                 </Button>
               </Link>
 
-              <div className='flex items-center justify-center mt-5'>
+              <div className="flex items-center justify-center mt-5">
                 <Link href="/shop" className="underline">
                   Continue Shopping
                 </Link>

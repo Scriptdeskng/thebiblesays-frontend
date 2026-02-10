@@ -168,7 +168,6 @@ export default function ProfilePage() {
     { id: 'personal' as Tab, label: 'Personal Info', icon: User },
     { id: 'orders' as Tab, label: 'Orders', icon: Package },
     { id: 'wishlist' as Tab, label: 'Wishlist', icon: Heart },
-    { id: 'drafts' as Tab, label: 'Drafts', icon: FileText },
     { id: 'address' as Tab, label: 'Address', icon: MapPin },
   ];
 

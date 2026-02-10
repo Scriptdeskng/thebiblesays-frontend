@@ -6,10 +6,12 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { BYOMCartItem } from '@/components/cart/BYOMCartItem';
 import { useCartStore } from '@/store/useCartStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { formatPrice } from '@/utils/format';
 import { useCurrencyStore } from '@/store/useCurrencyStore';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { productService } from '@/services/product.service';
+import toast from 'react-hot-toast';
 
 interface CartModalProps {
   isOpen: boolean;
@@ -19,38 +21,44 @@ interface CartModalProps {
 export const CartModal = ({ isOpen, onClose }: CartModalProps) => {
   const { items, updateQuantity, removeItem, getTotal } = useCartStore();
   const { currency, getCurrencyParam } = useCurrencyStore();
+  const { accessToken } = useAuthStore();
   
-    useEffect(() => {
-      const updatePrices = async () => {
-        if (items.length === 0) return;
-        const currencyParam = getCurrencyParam();
-        const productSlugs = items
-          .map(item => item.product?.slug)
-          .filter((slug): slug is string => Boolean(slug));
-  
-        const uniqueSlugs = [...new Set(productSlugs)];
-  
-        for (const slug of uniqueSlugs) {
-          try {
-            const updatedProduct = await productService.getProductBySlug(slug, currencyParam);
-  
-            if (updatedProduct) {
-              items.forEach(item => {
-                if (item.product?.slug === slug) {
-                  item.product.price = updatedProduct.price;
-                }
-              });
-            }
-          } catch (error) {
-            console.error(`Error updating price for ${slug}:`, error);
+  useEffect(() => {
+    const updatePrices = async () => {
+      if (items.length === 0) return;
+      const currencyParam = getCurrencyParam();
+      const productSlugs = items
+        .map(item => item.product?.slug)
+        .filter((slug): slug is string => typeof slug === 'string' && !slug.startsWith('custom-'));
+
+      const uniqueSlugs = [...new Set(productSlugs)];
+
+      for (const slug of uniqueSlugs) {
+        try {
+          const updatedProduct = await productService.getProductBySlug(slug, currencyParam);
+
+          if (updatedProduct) {
+            items.forEach(item => {
+              if (item.product?.slug === slug) {
+                item.product.price = updatedProduct.price;
+              }
+            });
           }
-        }
-        useCartStore.setState({ items: [...items] });
-      };
-      updatePrices();
-    }, [currency, getCurrencyParam]);
+        } catch (error) {}
+      }
+      useCartStore.setState({ items: [...items] });
+    };
+    updatePrices();
+  }, [currency, getCurrencyParam]);
 
   if (!isOpen) return null;
+
+  const getItemKey = (item: any, index: number) => {
+    if (item.customization) {
+      return `${item.productId}-${item.size}-${index}`;
+    }
+    return `${item.productId}-${item.color}-${item.size}`;
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -86,62 +94,81 @@ export const CartModal = ({ isOpen, onClose }: CartModalProps) => {
         ) : (
           <>
             <div className="p-6 space-y-4">
-              {items.map((item) => (
-                <div key={`${item.productId}-${item.color}-${item.size}`}>
-                  <div className="flex gap-4 pb-4 border-b border-accent-2">
-                    <div className="relative w-20 h-20 bg-accent-1 rounded-md overflow-hidden shrink-0">
-                      <Image
-                        src={item.product.images.find(img => img.color === item.color)?.url || item.product.images[0].url}
-                        alt={item.product.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
+              {items.map((item, index) => {
+                const uniqueKey = getItemKey(item, index);
+                
+                return (
+                  <div key={uniqueKey}>
+                    <div className="flex gap-4 pb-4 border-b border-accent-2">
+                      <div className="relative w-20 h-20 bg-accent-1 rounded-md overflow-hidden shrink-0">
+                        <Image
+                          src={item.product.images.find(img => img.color === item.color)?.url || item.product.images[0].url}
+                          alt={item.product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
 
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-primary mb-1 truncate">
-                        {item.product.name}
-                      </h3>
-                      <p className="text-sm text-grey mb-2">
-                        {item.color} • {item.size}
-                      </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-primary mb-1 truncate">
+                          {item.product.name}
+                          {item.customization && <span className="text-xs text-grey ml-2">(Custom)</span>}
+                        </h3>
+                        <p className="text-sm text-grey mb-2">
+                          {item.color} • {item.size}
+                        </p>
+                        {!item.customization && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => updateQuantity(item.productId, item.color, item.size, item.quantity - 1)}
+                              className="p-1 border border-accent-2 rounded hover:bg-accent-1"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="text-sm font-medium min-w-[2ch] text-center">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => updateQuantity(item.productId, item.color, item.size, item.quantity + 1)}
+                              className="p-1 border border-accent-2 rounded hover:bg-accent-1"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                        {item.customization && (
+                          <div className="text-sm text-grey">
+                            Quantity: {item.quantity}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col items-end justify-between">
                         <button
-                          onClick={() => updateQuantity(item.productId, item.color, item.size, item.quantity - 1)}
-                          className="p-1 border border-accent-2 rounded hover:bg-accent-1"
+                          onClick={async () => {
+                            try {
+                              await removeItem(item.productId, item.color, item.size, accessToken || undefined);
+                              toast.success('Item removed from cart');
+                            } catch (error: any) {
+                              toast.error(error.message || 'Failed to remove item');
+                            }
+                          }}
+                          className="p-1 hover:bg-red-50 rounded transition-colors"
                         >
-                          <Minus className="w-3 h-3" />
+                          <Trash2 className="w-4 h-4 text-grey" />
                         </button>
-                        <span className="text-sm font-medium min-w-[2ch] text-center">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(item.productId, item.color, item.size, item.quantity + 1)}
-                          className="p-1 border border-accent-2 rounded hover:bg-accent-1"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
+                        <p className="text-primary">
+                          {formatPrice(item.product.price * item.quantity, currency)}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end justify-between">
-                      <button
-                        onClick={() => removeItem(item.productId, item.color, item.size)}
-                        className="p-1 hover:bg-red-50 rounded transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-grey" />
-                      </button>
-                      <p className="text-primary">
-                        {formatPrice(item.product.price * item.quantity, currency)}
-                      </p>
-                    </div>
+                    {item.customization && (
+                      <BYOMCartItem item={item} compact />
+                    )}
                   </div>
-
-                  {item.customization && (
-                    <BYOMCartItem item={item} compact />
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="sticky bottom-0 bg-white border-t border-accent-2 p-6 space-y-4">
