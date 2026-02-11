@@ -1,8 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 import type { PageTab } from "./types";
+
+const VALID_TABS: PageTab[] = [
+  "custom-asset",
+  "custom-sticker",
+  "pricing",
+  "orders",
+];
+
+function isValidTab(tab: string | null): tab is PageTab {
+  return tab != null && VALID_TABS.includes(tab as PageTab);
+}
+
 import {
   CustomMerchPageHeader,
   CustomMerchTabBar,
@@ -22,7 +35,29 @@ import {
 export type { ByomProductApi } from "./types";
 
 export default function CustomMerchPage() {
-  const [pageTab, setPageTab] = useState<PageTab>("custom-asset");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const tabFromUrl = searchParams.get("tab");
+  const [pageTab, setPageTabState] = useState<PageTab>(() =>
+    isValidTab(tabFromUrl) ? tabFromUrl : "custom-asset"
+  );
+
+  const setPageTab = useCallback(
+    (tab: PageTab) => {
+      setPageTabState(tab);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", tab);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (isValidTab(t)) setPageTabState(t);
+  }, [searchParams]);
 
   const assets = useCustomMerchAssets();
   const stickers = useCustomMerchStickers();
