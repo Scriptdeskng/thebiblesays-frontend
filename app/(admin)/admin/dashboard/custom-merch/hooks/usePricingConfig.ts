@@ -8,6 +8,7 @@ import { DEFAULT_PRICING } from "../constants";
 
 export function usePricingConfig() {
   const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING);
+  const [pricingId, setPricingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -19,6 +20,8 @@ export function usePricingConfig() {
         ? response.find((r: any) => r.is_global === true) ?? response[0]
         : response;
       if (raw && typeof raw === "object") {
+        const id = raw.id != null ? Number(raw.id) : null;
+        setPricingId(Number.isNaN(id) ? null : id);
         const num = (v: unknown) =>
           typeof v === "number" && !Number.isNaN(v)
             ? v
@@ -35,7 +38,7 @@ export function usePricingConfig() {
               raw.baseFee
           ),
           imageCustomizationFee: num(
-            raw.text_image_combination_cost ??
+            raw.image_customization_cost ??
               raw.image_customization_fee ??
               raw.imageCustomizationFee
           ),
@@ -65,26 +68,31 @@ export function usePricingConfig() {
   }, []);
 
   const savePricing = useCallback(async () => {
+    const payload = {
+      product: pricing.product,
+      base_customization_fee: String(pricing.baseFee),
+      front_placement_cost: String(pricing.frontFee),
+      back_placement_cost: String(pricing.backFee),
+      side_placement_cost: String(pricing.sideFee),
+      text_customization_cost: String(pricing.textsCustomizationFee),
+      image_customization_cost: String(pricing.imageCustomizationFee),
+      is_active: pricing.is_active,
+      priority: pricing.priority,
+    };
     setSaving(true);
     try {
-      await dashboardService.createPricingGlobal({
-        product: pricing.product,
-        base_customization_fee: String(pricing.baseFee),
-        front_placement_cost: String(pricing.frontFee),
-        back_placement_cost: String(pricing.backFee),
-        side_placement_cost: String(pricing.sideFee),
-        text_customization_cost: String(pricing.textsCustomizationFee),
-        text_image_combination_cost: String(pricing.imageCustomizationFee),
-        is_active: pricing.is_active,
-        priority: pricing.priority,
-      });
+      if (pricingId != null) {
+        await dashboardService.patchPricingGlobal(pricingId, payload);
+      } else {
+        await dashboardService.createPricingGlobal(payload);
+      }
       toast.success("Pricing configuration saved");
     } catch {
       toast.error("Failed to save pricing");
     } finally {
       setSaving(false);
     }
-  }, [pricing]);
+  }, [pricing, pricingId]);
 
   return {
     pricing,

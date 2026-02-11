@@ -885,7 +885,7 @@ class DashboardService {
     back_placement_cost: string;
     side_placement_cost: string;
     text_customization_cost: string;
-    text_image_combination_cost: string;
+    image_customization_cost: string;
     is_active?: boolean;
     priority?: number;
   }): Promise<any> {
@@ -907,7 +907,7 @@ class DashboardService {
           back_placement_cost: data.back_placement_cost,
           side_placement_cost: data.side_placement_cost,
           text_customization_cost: data.text_customization_cost,
-          text_image_combination_cost: data.text_image_combination_cost,
+          image_customization_cost: data.image_customization_cost,
           is_active: data.is_active ?? true,
           priority: data.priority ?? 2147483647,
         },
@@ -915,6 +915,50 @@ class DashboardService {
       return response;
     } catch (error) {
       console.error("Error creating global pricing:", error);
+      throw error;
+    }
+  }
+
+  /** PATCH /dashboard/pricing/global/{id}/ - update global BYOM pricing */
+  async patchPricingGlobal(
+    id: number,
+    data: {
+      product?: number;
+      base_customization_fee: string;
+      front_placement_cost: string;
+      back_placement_cost: string;
+      side_placement_cost: string;
+      text_customization_cost: string;
+      image_customization_cost: string;
+      is_active?: boolean;
+      priority?: number;
+    }
+  ): Promise<any> {
+    try {
+      const { accessToken } = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+
+      return makeRequest({
+        url: `${API_URL}/dashboard/pricing/global/${id}/`,
+        method: "PATCH",
+        requireToken: true,
+        token: accessToken,
+        data: {
+          base_customization_fee: data.base_customization_fee,
+          front_placement_cost: data.front_placement_cost,
+          back_placement_cost: data.back_placement_cost,
+          side_placement_cost: data.side_placement_cost,
+          text_customization_cost: data.text_customization_cost,
+          image_customization_cost: data.image_customization_cost,
+          is_active: data.is_active ?? true,
+          priority: data.priority ?? 2147483647,
+        },
+      });
+    } catch (error) {
+      console.error("Error updating global pricing:", error);
       throw error;
     }
   }
