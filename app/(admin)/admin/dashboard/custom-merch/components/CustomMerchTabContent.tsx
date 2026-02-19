@@ -90,6 +90,7 @@ interface CustomMerchTabContentProps {
   totalPages: number;
   ordersPerPage: number;
   onPageChange: (page: number) => void;
+  onOrderClick?: (order: CustomMerchOrderRow) => void;
 }
 
 export default function CustomMerchTabContent({
@@ -165,6 +166,7 @@ export default function CustomMerchTabContent({
   totalPages,
   ordersPerPage,
   onPageChange,
+  onOrderClick,
 }: CustomMerchTabContentProps) {
   if (pageTab === "custom-asset") {
     return (
@@ -261,6 +263,7 @@ export default function CustomMerchTabContent({
         totalPages={totalPages}
         ordersPerPage={ordersPerPage}
         onPageChange={onPageChange}
+        onOrderClick={onOrderClick}
       />
     );
   }

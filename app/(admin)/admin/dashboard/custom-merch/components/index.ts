@@ -7,6 +7,7 @@ export { default as CustomStickerTab } from "./CustomStickerTab";
 export { default as StickerCard } from "./StickerCard";
 export { default as PricingConfigTab } from "./PricingConfigTab";
 export { default as CustomMerchOrdersTab } from "./CustomMerchOrdersTab";
+export { default as MerchOrderDetailView } from "./MerchOrderDetailView";
 export { default as MerchDetailView } from "./MerchDetailView";
 export { default as MerchDetailGate } from "./MerchDetailGate";
 export { default as CustomMerchPageHeader } from "./CustomMerchPageHeader";

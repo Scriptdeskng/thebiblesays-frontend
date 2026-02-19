@@ -963,8 +963,11 @@ class DashboardService {
     }
   }
 
-  /** GET /dashboard/byom-designs/designs_with_orders/ - designs with their orders */
-  async getByomDesignsWithOrders(): Promise<any[]> {
+  /**
+   * GET /dashboard/byom-designs/designs_with_orders/ - designs with their orders.
+   * Backend returns { count, results }.
+   */
+  async getByomDesignsWithOrders(): Promise<{ count: number; results: unknown[] }> {
     try {
       const { accessToken } = useAuthStore.getState();
 
@@ -979,7 +982,14 @@ class DashboardService {
         token: accessToken,
       });
 
-      return Array.isArray(response) ? response : [];
+      if (response && typeof response === "object" && "count" in response && "results" in response && Array.isArray((response as { results: unknown[] }).results)) {
+        const { count, results } = response as { count: number; results: unknown[] };
+        return { count, results };
+      }
+      if (Array.isArray(response)) {
+        return { count: response.length, results: response };
+      }
+      return { count: 0, results: [] };
     } catch (error) {
       console.error("Error fetching BYOM designs with orders:", error);
       throw error;

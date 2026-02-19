@@ -20,6 +20,7 @@ import {
   CustomMerchPageHeader,
   CustomMerchTabBar,
   MerchDetailGate,
+  MerchOrderDetailView,
   CustomMerchTabContent,
 } from "./components";
 import {
@@ -68,7 +69,7 @@ export default function CustomMerchPage() {
   const stickerUploadForm = useUploadStickerForm(stickers.loadData);
 
   useEffect(() => {
-    if (pageTab === "pricing") pricing.loadPricing();
+    if (pageTab === "pricing" || pageTab === "orders") pricing.loadPricing();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageTab, pricing.loadPricing]);
 
@@ -106,6 +107,23 @@ export default function CustomMerchPage() {
   );
 
   if (merchDetail.showDetail) return detailView;
+
+  const orderDetailView =
+    pageTab === "orders" && orders.selectedOrder ? (
+      <div>
+        <CustomMerchPageHeader />
+        <div className="w-full bg-[#1A1A1A0A] rounded-[10px] p-5">
+          <CustomMerchTabBar pageTab={pageTab} onTabChange={setPageTab} />
+          <MerchOrderDetailView
+            order={orders.selectedOrder}
+            pricing={pricing.pricing}
+            onBack={orders.backToOrders}
+          />
+        </div>
+      </div>
+    ) : null;
+
+  if (orderDetailView) return orderDetailView;
 
   return (
     <div>
@@ -185,6 +203,7 @@ export default function CustomMerchPage() {
           totalPages={orders.totalPages}
           ordersPerPage={orders.ordersPerPage}
           onPageChange={orders.setCurrentPage}
+          onOrderClick={(order) => orders.viewOrder(order.orderId)}
         />
       </div>
     </div>
