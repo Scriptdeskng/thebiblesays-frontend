@@ -1,10 +1,89 @@
-export function getBaseImagePath(
-  merchType: string,
-  colorName: string
-): string {
-  const type = merchType.toLowerCase();
-  const color = colorName.toLowerCase();
-  return `/byom/${type}-${color}.svg`;
+const BYOM_TYPES = [
+  "tshirt",
+  "short",
+  "pants",
+  "longsleeve",
+  "hoodie",
+  "hat",
+] as const;
+const BYOM_COLORS = [
+  "black",
+  "blue",
+  "green",
+  "grey",
+  "navy",
+  "red",
+  "white",
+  "yellow",
+] as const;
+
+export function getBaseImagePath(merchType: string, colorName: string): string {
+  const type = merchType.toLowerCase().replace(/^bs-/, "");
+  const normalizedType = BYOM_TYPES.includes(
+    type as (typeof BYOM_TYPES)[number]
+  )
+    ? type
+    : "hoodie";
+  const color = (colorName || "black").toLowerCase();
+  const normalizedColor = BYOM_COLORS.includes(
+    color as (typeof BYOM_COLORS)[number]
+  )
+    ? color
+    : "black";
+  return `/byom/${normalizedType}-${normalizedColor}.svg`;
+}
+
+/**
+ * Resolve product image for a BYOM order from configuration_json and public /byom assets.
+ * Uses merchType + colorName from config (e.g. "bs-hoodie" -> hoodie-black.svg); falls back to order.color.
+ */
+export function getByomOrderProductImagePath(config: {
+  configuration_json?: unknown;
+  color?: string;
+  product_name?: string;
+  name?: string;
+}): string {
+  let parsed: Record<string, unknown> = {};
+  const raw = config.configuration_json;
+  if (raw != null) {
+    try {
+      parsed =
+        typeof raw === "string"
+          ? JSON.parse(raw)
+          : (raw as Record<string, unknown>);
+    } catch {
+      // ignore
+    }
+  }
+  let merchType = (parsed.merchType as string) || "";
+  if (!merchType && (config.product_name || config.name)) {
+    const name = (config.product_name || config.name || "").toLowerCase();
+    if (name.includes("hoodie")) merchType = "hoodie";
+    else if (name.includes("tshirt") || name.includes("t-shirt"))
+      merchType = "tshirt";
+    else if (name.includes("long") || name.includes("sleeve"))
+      merchType = "longsleeve";
+    else if (name.includes("short")) merchType = "short";
+    else if (name.includes("pant") || name.includes("trouser"))
+      merchType = "pants";
+    else if (name.includes("hat")) merchType = "hat";
+    else merchType = "hoodie";
+  }
+  if (!merchType) merchType = "hoodie";
+  const type = merchType.toLowerCase().replace(/^bs-/, "");
+  const normalizedType = BYOM_TYPES.includes(
+    type as (typeof BYOM_TYPES)[number]
+  )
+    ? type
+    : "hoodie";
+  const colorName = (parsed.colorName as string) || config.color || "black";
+  const color = (colorName || "black").toLowerCase();
+  const normalizedColor = BYOM_COLORS.includes(
+    color as (typeof BYOM_COLORS)[number]
+  )
+    ? color
+    : "black";
+  return `/byom/${normalizedType}-${normalizedColor}.svg`;
 }
 
 export function getStickerUrl(
@@ -40,8 +119,7 @@ export function getSideDataFromConfig(
   let parsed: any = {};
   try {
     const raw = config.configuration_json;
-    parsed =
-      typeof raw === "string" ? JSON.parse(raw) : raw;
+    parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
   } catch {
     return { ...DEFAULT_SIDE };
   }

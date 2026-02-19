@@ -11,6 +11,7 @@ interface CustomMerchOrdersTabProps {
   totalPages: number;
   ordersPerPage?: number;
   onPageChange: (page: number) => void;
+  onOrderClick?: (order: CustomMerchOrderRow) => void;
 }
 
 export default function CustomMerchOrdersTab({
@@ -20,6 +21,7 @@ export default function CustomMerchOrdersTab({
   totalPages,
   ordersPerPage = 10,
   onPageChange,
+  onOrderClick,
 }: CustomMerchOrdersTabProps) {
   const start = (currentPage - 1) * ordersPerPage;
   const paginatedOrders = orders.slice(start, start + ordersPerPage);
@@ -83,9 +85,12 @@ export default function CustomMerchOrdersTab({
               paginatedOrders.map((order, index) => (
                 <tr
                   key={order.id}
+                  role={onOrderClick ? "button" : undefined}
+                  onClick={onOrderClick ? () => onOrderClick(order) : undefined}
                   className={clsx(
                     "border-b border-accent-2 hover:bg-admin-primary/5",
-                    index % 2 === 0 ? "bg-accent-1" : ""
+                    index % 2 === 0 ? "bg-accent-1" : "",
+                    onOrderClick && "cursor-pointer"
                   )}
                 >
                   <td className="pr-4 py-4 text-admin-primary font-medium">
@@ -102,7 +107,14 @@ export default function CustomMerchOrdersTab({
                   </td>
                   <td className="pr-4 py-4 text-admin-primary">{order.date}</td>
                   <td className="pr-4 py-4">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm bg-admin-primary/10 text-admin-primary/80">
+                    <span
+                      className={clsx(
+                        "inline-flex items-center px-2.5 py-1 rounded-full text-sm",
+                        order.status.toLowerCase() === "approved"
+                          ? "bg-green-500/10 text-green-700 dark:text-green-700"
+                          : "bg-admin-primary/10 text-admin-primary/80"
+                      )}
+                    >
                       {order.status}
                     </span>
                   </td>
