@@ -1,5 +1,10 @@
-import makeRequest from '@/lib/api';
-import { BYOMCustomization, MerchType, Asset, BYOMProduct } from '@/types/byom.types';
+import makeRequest from "@/lib/api";
+import {
+  BYOMCustomization,
+  MerchType,
+  Asset,
+  BYOMProduct,
+} from "@/types/byom.types";
 
 export interface CustomMerchDesign {
   id: number;
@@ -10,15 +15,15 @@ export interface CustomMerchDesign {
   text: string;
   size: string;
   font_style: string;
-  placement: 'front' | 'back' | 'side';
+  placement: "front" | "back" | "side";
   uploaded_image: string | null;
   uploaded_image_url: string | null;
   configuration_json: string;
-  status: 'draft' | 'pending_approval' | 'approved' | 'rejected';
+  status: "draft" | "pending_approval" | "approved" | "rejected";
   rejection_reason: string | null;
   is_active: boolean;
   price: string;
-  currency: 'NGN' | 'USD';
+  currency: "NGN" | "USD";
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +37,15 @@ export interface CreateCustomMerchPayload {
   placement?: 'front' | 'back' | 'side';
   configuration_json: string;
   is_active?: boolean;
+  selected_placements?: string[];
+  has_image?: boolean;
+  customization_options?: {
+    size: string;
+    text_count: number;
+    asset_count: number;
+    selected_placements: string[];
+    has_image: boolean;
+  };
 }
 
 export interface CustomMerchListResponse {
@@ -42,53 +56,69 @@ export interface CustomMerchListResponse {
 }
 
 class BYOMService {
-  async getAvailableProducts(currencyParam: string = ''): Promise<BYOMProduct[]> {
+  async getAvailableProducts(
+    currencyParam: string = "",
+  ): Promise<BYOMProduct[]> {
     const response = await makeRequest({
-      method: 'GET',
+      method: "GET",
       url: `byom/custom-merch/available_products/${currencyParam}`,
       requireToken: false,
     });
-    
 
-    return response?.products || response?.results || (Array.isArray(response) ? response : []);
+    return (
+      response?.products ||
+      response?.results ||
+      (Array.isArray(response) ? response : [])
+    );
   }
 
-  async getAssets(currencyParam: string = ''): Promise<Asset[]> {
+  async getAssets(currencyParam: string = ""): Promise<Asset[]> {
     const response = await makeRequest({
-      method: 'GET',
+      method: "GET",
       url: `byom/stickers/${currencyParam}`,
       requireToken: false,
     });
-    
-    const assets = response?.results || (Array.isArray(response) ? response : []);
-    
+
+    const assets =
+      response?.results || (Array.isArray(response) ? response : []);
+
     return assets.map((asset: Asset) => ({
       ...asset,
       image_url: asset.image_url || asset.image,
     }));
   }
 
-  async getMyDesigns(token: string, currencyParam: string = ''): Promise<CustomMerchListResponse> {
+  async getMyDesigns(
+    token: string,
+    currencyParam: string = "",
+  ): Promise<CustomMerchListResponse> {
     return makeRequest({
-      method: 'GET',
+      method: "GET",
       url: `byom/custom-merch/${currencyParam}`,
       requireToken: true,
       token,
     });
   }
 
-  async getSavedDesigns(token: string, currencyParam: string = ''): Promise<CustomMerchDesign[]> {
+  async getSavedDesigns(
+    token: string,
+    currencyParam: string = "",
+  ): Promise<CustomMerchDesign[]> {
     return makeRequest({
-      method: 'GET',
+      method: "GET",
       url: `byom/custom-merch/saved_designs/${currencyParam}`,
       requireToken: true,
       token,
     });
   }
 
-  async getDesignById(token: string, id: number, currencyParam: string = ''): Promise<CustomMerchDesign> {
+  async getDesignById(
+    token: string,
+    id: number,
+    currencyParam: string = "",
+  ): Promise<CustomMerchDesign> {
     return makeRequest({
-      method: 'GET',
+      method: "GET",
       url: `byom/custom-merch/${id}/${currencyParam}`,
       requireToken: true,
       token,
@@ -98,10 +128,10 @@ class BYOMService {
   async createDesign(
     token: string,
     payload: CreateCustomMerchPayload,
-    currencyParam: string = ''
+    currencyParam: string = "",
   ): Promise<CustomMerchDesign> {
     return makeRequest({
-      method: 'POST',
+      method: "POST",
       url: `byom/custom-merch/${currencyParam}`,
       data: payload,
       requireToken: true,
@@ -113,10 +143,10 @@ class BYOMService {
     token: string,
     id: number,
     payload: Partial<CreateCustomMerchPayload>,
-    currencyParam: string = ''
+    currencyParam: string = "",
   ): Promise<CustomMerchDesign> {
     return makeRequest({
-      method: 'PATCH',
+      method: "PATCH",
       url: `byom/custom-merch/${id}/${currencyParam}`,
       data: payload,
       requireToken: true,
@@ -126,7 +156,7 @@ class BYOMService {
 
   async deleteDesign(token: string, id: number): Promise<void> {
     return makeRequest({
-      method: 'DELETE',
+      method: "DELETE",
       url: `byom/custom-merch/${id}/`,
       requireToken: true,
       token,
@@ -134,12 +164,12 @@ class BYOMService {
   }
 
   async addToCart(
-    token: string, 
+    token: string,
     id: number,
-    currencyParam: string = ''
+    currencyParam: string = "",
   ): Promise<any> {
     return makeRequest({
-      method: 'POST',
+      method: "POST",
       url: `byom/custom-merch/${id}/add_to_cart/${currencyParam}`,
       requireToken: true,
       token,
@@ -150,10 +180,10 @@ class BYOMService {
   async createAndAddToCart(
     token: string,
     payload: CreateCustomMerchPayload,
-    currencyParam: string = ''
+    currencyParam: string = "",
   ): Promise<any> {
     return makeRequest({
-      method: 'POST',
+      method: "POST",
       url: `byom/custom-merch/create_and_add_to_cart/${currencyParam}`,
       requireToken: true,
       token,
@@ -162,12 +192,12 @@ class BYOMService {
   }
 
   async getPreview(
-    token: string, 
+    token: string,
     id: number,
-    currencyParam: string = ''
+    currencyParam: string = "",
   ): Promise<CustomMerchDesign> {
     return makeRequest({
-      method: 'GET',
+      method: "GET",
       url: `byom/custom-merch/${id}/preview/${currencyParam}`,
       requireToken: true,
       token,
@@ -182,10 +212,10 @@ class BYOMService {
       has_image?: boolean;
       customization_options?: any;
     },
-    currencyParam: string = ''
+    currencyParam: string = "",
   ): Promise<any> {
     return makeRequest({
-      method: 'POST',
+      method: "POST",
       url: `byom/pricing/calculate/${currencyParam}`,
       data: payload,
       requireToken: false,
@@ -194,24 +224,55 @@ class BYOMService {
 
   prepareDesignPayload(
     customization: BYOMCustomization,
-    productId?: number
+    productId?: number,
   ): CreateCustomMerchPayload {
     const allTexts = [
       ...(customization.front?.texts || []),
       ...(customization.back?.texts || []),
       ...(customization.side?.texts || []),
     ];
-    const textContent = allTexts.map(t => t.content).join(' | ');
+    const textContent = allTexts.map((t) => t.content).join(" | ");
 
-    let primaryPlacement: 'front' | 'back' | 'side' = 'front';
-    const frontCount = (customization.front?.texts?.length || 0) + (customization.front?.assets?.length || 0);
-    const backCount = (customization.back?.texts?.length || 0) + (customization.back?.assets?.length || 0);
-    const sideCount = (customization.side?.texts?.length || 0) + (customization.side?.assets?.length || 0);
+    const placements: string[] = [];
+    if (
+      (customization.front?.texts?.length || 0) +
+        (customization.front?.assets?.length || 0) >
+      0
+    )
+      placements.push("front");
+    if (
+      (customization.back?.texts?.length || 0) +
+        (customization.back?.assets?.length || 0) >
+      0
+    )
+      placements.push("back");
+    if (
+      (customization.side?.texts?.length || 0) +
+        (customization.side?.assets?.length || 0) >
+      0
+    )
+      placements.push("side");
+
+    const assetCount =
+      (customization.front?.assets?.length || 0) +
+      (customization.back?.assets?.length || 0) +
+      (customization.side?.assets?.length || 0);
+
+    let primaryPlacement: "front" | "back" | "side" = "front";
+    const frontCount =
+      (customization.front?.texts?.length || 0) +
+      (customization.front?.assets?.length || 0);
+    const backCount =
+      (customization.back?.texts?.length || 0) +
+      (customization.back?.assets?.length || 0);
+    const sideCount =
+      (customization.side?.texts?.length || 0) +
+      (customization.side?.assets?.length || 0);
 
     if (backCount > frontCount && backCount > sideCount) {
-      primaryPlacement = 'back';
+      primaryPlacement = "back";
     } else if (sideCount > frontCount && sideCount > backCount) {
-      primaryPlacement = 'side';
+      primaryPlacement = "side";
     }
 
     return {
@@ -222,6 +283,15 @@ class BYOMService {
       placement: primaryPlacement,
       configuration_json: JSON.stringify(customization),
       is_active: true,
+      selected_placements: placements,
+      has_image: assetCount > 0,
+      customization_options: {
+        size: customization.size,
+        text_count: allTexts.length,
+        asset_count: assetCount,
+        selected_placements: placements,
+        has_image: assetCount > 0,
+      },
     };
   }
 }

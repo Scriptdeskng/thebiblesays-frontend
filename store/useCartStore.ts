@@ -8,7 +8,12 @@ interface CartState {
   serverCartId: number | null;
   isLoading: boolean;
   addItem: (item: CartItem) => void;
-  removeItem: (productId: string, color: string, size: string, token?: string) => Promise<void>;
+  removeItem: (
+    productId: string,
+    color: string,
+    size: string,
+    token?: string,
+  ) => Promise<void>;
   updateQuantity: (
     productId: string,
     color: string,
@@ -44,7 +49,7 @@ export const useCartStore = create<CartState>()(
       addItem: (newItem) =>
         set((state) => {
           const isCustom = newItem.customization !== undefined;
-          
+
           if (isCustom) {
             return { items: [...state.items, newItem] };
           }
@@ -54,7 +59,7 @@ export const useCartStore = create<CartState>()(
               item.productId === newItem.productId &&
               item.color === newItem.color &&
               item.size === newItem.size &&
-              !item.customization
+              !item.customization,
           );
 
           if (existingIndex > -1) {
@@ -68,41 +73,45 @@ export const useCartStore = create<CartState>()(
 
       removeItem: async (productId, color, size, token) => {
         const state = get();
-        const itemToRemove = state.items.find(
-          (item) =>
-            item.productId === productId &&
-            item.color === color &&
-            item.size === size
-        );
 
-        if (itemToRemove && token) {
-          const isCustomItem = productId.startsWith("custom-cart-item-");
-          
-          if (isCustomItem) {
-            const serverItemId = parseInt(productId.replace("custom-cart-item-", ""));
-            
-            if (isNaN(serverItemId)) {
-              console.error("Invalid server item ID:", productId);
-            } else {
-              try {
-                await cartService.removeFromCart(token, serverItemId, '');
-              } catch (error: any) {
-                console.error("Failed to remove custom item from server:", error);
-                throw new Error("Failed to delete item from cart. Please try again.");
-              }
+        const isCustomItem = productId.startsWith("custom-cart-item-");
+
+        const itemToRemove = isCustomItem
+          ? state.items.find((item) => item.productId === productId)
+          : state.items.find(
+              (item) =>
+                item.productId === productId &&
+                item.color === color &&
+                item.size === size,
+            );
+
+        if (itemToRemove && token && isCustomItem) {
+          const serverItemId = parseInt(
+            productId.replace("custom-cart-item-", ""),
+          );
+          if (!isNaN(serverItemId)) {
+            try {
+              await cartService.removeFromCart(token, serverItemId, "");
+            } catch (error: any) {
+              console.error("Failed to remove custom item from server:", error);
+              throw new Error(
+                "Failed to delete item from cart. Please try again.",
+              );
             }
           }
         }
 
         set((state) => ({
-          items: state.items.filter(
-            (item) =>
-              !(
-                item.productId === productId &&
-                item.color === color &&
-                item.size === size
+          items: isCustomItem
+            ? state.items.filter((item) => item.productId !== productId)
+            : state.items.filter(
+                (item) =>
+                  !(
+                    item.productId === productId &&
+                    item.color === color &&
+                    item.size === size
+                  ),
               ),
-          ),
         }));
       },
 
@@ -126,112 +135,127 @@ export const useCartStore = create<CartState>()(
 
         try {
           const currentCartId = get().serverCartId;
-          
+
           if (!currentCartId) {
             set({ isLoading: false });
             return;
           }
 
-          const currencyParam = '';
-          const serverCart = await cartService.getCart(token, currentCartId, currencyParam);
+          const currencyParam = "";
+          const serverCart = await cartService.getCart(
+            token,
+            currentCartId,
+            currencyParam,
+          );
 
           if (serverCart && serverCart.items && serverCart.items.length > 0) {
             const serverItems: CartItem[] = serverCart.items
               .map((item) => {
-                const isCustomMerch = item.is_customized === true || item.is_customized === 'true';
-                
+                const isCustomMerch =
+                  item.is_customized === true || item.is_customized === "true";
+
                 if (isCustomMerch) {
                   let customizationData = null;
-                  let actualSize: Size = 'M';
+                  let actualSize: Size = "M";
                   let actualPrice = 0;
-                  
+
                   if (item.custom_merch_design) {
                     try {
                       if (item.custom_merch_design.configuration_json) {
-                        const configJson = typeof item.custom_merch_design.configuration_json === 'string'
-                          ? JSON.parse(item.custom_merch_design.configuration_json)
-                          : item.custom_merch_design.configuration_json;
-                        
+                        const configJson =
+                          typeof item.custom_merch_design.configuration_json ===
+                          "string"
+                            ? JSON.parse(
+                                item.custom_merch_design.configuration_json,
+                              )
+                            : item.custom_merch_design.configuration_json;
+
                         customizationData = configJson;
-                        actualSize = (configJson.size || 'M') as Size;
+                        actualSize = (configJson.size || "M") as Size;
                       }
                     } catch (e) {
-                      console.error('Error parsing configuration_json:', e);
+                      console.error("Error parsing configuration_json:", e);
                     }
                   }
-                  
+
                   if (!customizationData && item.customization_info) {
                     try {
-                      customizationData = typeof item.customization_info === 'string' 
-                        ? JSON.parse(item.customization_info) 
-                        : item.customization_info;
-                      
+                      customizationData =
+                        typeof item.customization_info === "string"
+                          ? JSON.parse(item.customization_info)
+                          : item.customization_info;
+
                       if (customizationData?.size) {
                         actualSize = customizationData.size as Size;
                       }
                     } catch (e) {
-                      console.error('Error parsing customization_info:', e);
+                      console.error("Error parsing customization_info:", e);
                     }
                   }
-                  
+
                   actualPrice = parseFloat(item.total_price) / item.quantity;
 
-                  const baseProductId = item.custom_merch_design?.product_detail?.id?.toString() 
-                    || item.product?.id?.toString() 
-                    || item.id.toString();
+                  const baseProductId =
+                    item.custom_merch_design?.product_detail?.id?.toString() ||
+                    item.product?.id?.toString() ||
+                    item.id.toString();
 
-                  const color = customizationData?.color 
-                    || item.custom_merch_design?.color 
-                    || item.product?.color 
-                    || 'black';
-                    
+                  const color =
+                    customizationData?.color ||
+                    item.custom_merch_design?.color ||
+                    item.product?.color ||
+                    "black";
+
                   const category = inferCategory(
-                    item.custom_merch_design?.product_detail?.name 
-                    || item.product?.name 
-                    || 'Custom Product'
+                    item.custom_merch_design?.product_detail?.name ||
+                      item.product?.name ||
+                      "Custom Product",
                   );
 
                   const uniqueProductId = `custom-cart-item-${item.id}`;
 
-                  const productName = item.custom_merch_design?.product_detail?.name 
-                    || item.custom_merch_design?.name
-                    || item.product?.name 
-                    || 'Custom Product';
+                  const productName =
+                    item.custom_merch_design?.product_detail?.name ||
+                    item.custom_merch_design?.name ||
+                    item.product?.name ||
+                    "Custom Product";
 
-                  const productImage = item.custom_merch_design?.product_detail?.featured_image 
-                    || item.product?.images?.[0]?.image 
-                    || item.product?.featured_image 
-                    || '';
+                  const productImage =
+                    item.custom_merch_design?.product_detail?.featured_image ||
+                    item.product?.images?.[0]?.image ||
+                    item.product?.featured_image ||
+                    "";
 
                   return {
                     productId: uniqueProductId,
                     color: color,
-                    size: actualSize, 
+                    size: actualSize,
                     quantity: item.quantity,
                     product: {
                       id: baseProductId,
                       name: productName,
-                      slug: item.custom_merch_design?.product_detail?.slug 
-                        || item.product?.slug 
-                        || `custom-${item.id}`,
-                      price: actualPrice, 
+                      slug:
+                        item.custom_merch_design?.product_detail?.slug ||
+                        item.product?.slug ||
+                        `custom-${item.id}`,
+                      price: actualPrice,
                       images: [
                         {
                           url: productImage,
                           color: color,
                           alt: productName,
-                        }
+                        },
                       ],
                       colors: [
                         {
                           name: color,
-                          hex: '#000000',
-                        }
+                          hex: "#000000",
+                        },
                       ],
                       sizes: [actualSize] as readonly Size[],
                       category: category,
                       inStock: true,
-                      description: '',
+                      description: "",
                       features: [],
                       rating: 0,
                       reviewCount: 0,
@@ -240,38 +264,42 @@ export const useCartStore = create<CartState>()(
                     baseProductId: baseProductId,
                   };
                 } else {
-                  const size = (item.product?.size || 'M') as Size;
-                  const color = item.product?.color || 'black';
-                  const category = inferCategory(item.product?.name || '');
+                  const size = (item.product?.size || "M") as Size;
+                  const color = item.product?.color || "black";
+                  const category = inferCategory(item.product?.name || "");
                   const price = parseFloat(item.total_price) / item.quantity;
 
                   return {
-                    productId: item.product?.id?.toString() || item.id.toString(),
+                    productId:
+                      item.product?.id?.toString() || item.id.toString(),
                     color: color,
                     size: size,
                     quantity: item.quantity,
                     product: {
                       id: item.product?.id?.toString() || item.id.toString(),
-                      name: item.product?.name || 'Product',
+                      name: item.product?.name || "Product",
                       slug: item.product?.slug || `product-${item.id}`,
                       price: price,
                       images: [
                         {
-                          url: item.product?.images?.[0]?.image || item.product?.featured_image || '',
+                          url:
+                            item.product?.images?.[0]?.image ||
+                            item.product?.featured_image ||
+                            "",
                           color: color,
-                          alt: item.product?.name || 'Product',
-                        }
+                          alt: item.product?.name || "Product",
+                        },
                       ],
                       colors: [
                         {
                           name: color,
-                          hex: '#000000',
-                        }
+                          hex: "#000000",
+                        },
                       ],
                       sizes: [size] as readonly Size[],
                       category: category,
                       inStock: true,
-                      description: '',
+                      description: "",
                       features: [],
                       rating: 0,
                       reviewCount: 0,
@@ -284,17 +312,17 @@ export const useCartStore = create<CartState>()(
             set({
               items: serverItems,
               serverCartId: serverCart.id,
-              isLoading: false
+              isLoading: false,
             });
           } else {
             set({
               items: [],
               serverCartId: serverCart?.id || currentCartId,
-              isLoading: false
+              isLoading: false,
             });
           }
         } catch (error) {
-          console.error('Cart sync error:', error);
+          console.error("Cart sync error:", error);
           set({ isLoading: false });
         }
       },
